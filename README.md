@@ -11,15 +11,41 @@ Constela is a **compiler-first, AI-friendly UI framework** designed for vibecodi
 
 ## Quick Start
 
+### Installation
+
 ```bash
-# Install dependencies
-pnpm install
+npm install @constela/runtime @constela/compiler
+```
 
-# Build all packages
-pnpm build
+### Basic Usage
 
-# Run tests
-pnpm test
+```typescript
+import { compile } from '@constela/compiler';
+import { createApp } from '@constela/runtime';
+
+const program = {
+  version: "1.0",
+  state: {
+    count: { type: "number", initial: 0 }
+  },
+  actions: [
+    {
+      name: "increment",
+      steps: [{ do: "update", target: "count", operation: "increment" }]
+    }
+  ],
+  view: {
+    kind: "element",
+    tag: "button",
+    props: { onClick: { event: "click", action: "increment" } },
+    children: [{ kind: "text", value: { expr: "state", name: "count" } }]
+  }
+};
+
+const result = compile(program);
+if (result.ok) {
+  createApp(result.program, document.getElementById('app'));
+}
 ```
 
 ## DSL Overview
@@ -269,6 +295,19 @@ npx serve .
 3. **Compiler-first** - Parse → validate → analyze → transform pipeline
 4. **Deterministic state** - Explicit declarations, no implicit reactivity
 5. **AI-friendly errors** - Structured errors with JSON Pointer paths
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test
+```
 
 ## Roadmap
 
