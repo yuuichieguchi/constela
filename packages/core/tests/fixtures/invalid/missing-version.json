@@ -1,0 +1,13 @@
+{
+  "state": {
+    "count": {
+      "type": "number",
+      "initial": 0
+    }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div"
+  }
+}

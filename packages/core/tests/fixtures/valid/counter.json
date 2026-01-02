@@ -1,0 +1,107 @@
+{
+  "version": "1.0",
+  "state": {
+    "count": {
+      "type": "number",
+      "initial": 0
+    }
+  },
+  "actions": [
+    {
+      "name": "increment",
+      "steps": [
+        {
+          "do": "update",
+          "target": "count",
+          "operation": "increment"
+        }
+      ]
+    },
+    {
+      "name": "decrement",
+      "steps": [
+        {
+          "do": "update",
+          "target": "count",
+          "operation": "decrement"
+        }
+      ]
+    },
+    {
+      "name": "reset",
+      "steps": [
+        {
+          "do": "set",
+          "target": "count",
+          "value": {
+            "expr": "lit",
+            "value": 0
+          }
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": {
+        "expr": "lit",
+        "value": "counter"
+      }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "span",
+        "children": [
+          {
+            "kind": "text",
+            "value": {
+              "expr": "state",
+              "name": "count"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "button",
+        "props": {
+          "onclick": {
+            "event": "click",
+            "action": "increment"
+          }
+        },
+        "children": [
+          {
+            "kind": "text",
+            "value": {
+              "expr": "lit",
+              "value": "+"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "button",
+        "props": {
+          "onclick": {
+            "event": "click",
+            "action": "decrement"
+          }
+        },
+        "children": [
+          {
+            "kind": "text",
+            "value": {
+              "expr": "lit",
+              "value": "-"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

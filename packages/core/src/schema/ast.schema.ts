@@ -1,0 +1,295 @@
+/**
+ * JSON Schema for Constela AST
+ *
+ * This module defines the JSON Schema for validating Constela AST structures.
+ */
+
+import type { JSONSchemaType } from 'ajv';
+
+// Note: We use a loose type here because AJV's JSONSchemaType is complex
+// and our schema needs to handle recursive definitions
+
+export const astSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://constela.dev/schemas/ast.json',
+  title: 'Constela AST',
+  description: 'Schema for Constela UI framework AST',
+  type: 'object',
+  required: ['version', 'state', 'actions', 'view'],
+  additionalProperties: false,
+  properties: {
+    version: {
+      type: 'string',
+      const: '1.0',
+    },
+    state: {
+      type: 'object',
+      additionalProperties: {
+        $ref: '#/$defs/StateField',
+      },
+    },
+    actions: {
+      type: 'array',
+      items: {
+        $ref: '#/$defs/ActionDefinition',
+      },
+    },
+    view: {
+      $ref: '#/$defs/ViewNode',
+    },
+  },
+  $defs: {
+    // ==================== Expressions ====================
+    Expression: {
+      oneOf: [
+        { $ref: '#/$defs/LitExpr' },
+        { $ref: '#/$defs/StateExpr' },
+        { $ref: '#/$defs/VarExpr' },
+        { $ref: '#/$defs/BinExpr' },
+        { $ref: '#/$defs/NotExpr' },
+      ],
+    },
+    LitExpr: {
+      type: 'object',
+      required: ['expr', 'value'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'lit' },
+        value: {
+          oneOf: [
+            { type: 'string' },
+            { type: 'number' },
+            { type: 'boolean' },
+            { type: 'null' },
+            { type: 'array' },
+          ],
+        },
+      },
+    },
+    StateExpr: {
+      type: 'object',
+      required: ['expr', 'name'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'state' },
+        name: { type: 'string' },
+      },
+    },
+    VarExpr: {
+      type: 'object',
+      required: ['expr', 'name'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'var' },
+        name: { type: 'string' },
+        path: { type: 'string' },
+      },
+    },
+    BinExpr: {
+      type: 'object',
+      required: ['expr', 'op', 'left', 'right'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'bin' },
+        op: {
+          type: 'string',
+          enum: ['+', '-', '*', '/', '==', '!=', '<', '<=', '>', '>=', '&&', '||'],
+        },
+        left: { $ref: '#/$defs/Expression' },
+        right: { $ref: '#/$defs/Expression' },
+      },
+    },
+    NotExpr: {
+      type: 'object',
+      required: ['expr', 'operand'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'not' },
+        operand: { $ref: '#/$defs/Expression' },
+      },
+    },
+
+    // ==================== State Fields ====================
+    StateField: {
+      oneOf: [
+        { $ref: '#/$defs/NumberField' },
+        { $ref: '#/$defs/StringField' },
+        { $ref: '#/$defs/ListField' },
+      ],
+    },
+    NumberField: {
+      type: 'object',
+      required: ['type', 'initial'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'number' },
+        initial: { type: 'number' },
+      },
+    },
+    StringField: {
+      type: 'object',
+      required: ['type', 'initial'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'string' },
+        initial: { type: 'string' },
+      },
+    },
+    ListField: {
+      type: 'object',
+      required: ['type', 'initial'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'list' },
+        initial: { type: 'array' },
+      },
+    },
+
+    // ==================== Action Steps ====================
+    ActionStep: {
+      oneOf: [
+        { $ref: '#/$defs/SetStep' },
+        { $ref: '#/$defs/UpdateStep' },
+        { $ref: '#/$defs/FetchStep' },
+      ],
+    },
+    SetStep: {
+      type: 'object',
+      required: ['do', 'target', 'value'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'set' },
+        target: { type: 'string' },
+        value: { $ref: '#/$defs/Expression' },
+      },
+    },
+    UpdateStep: {
+      type: 'object',
+      required: ['do', 'target', 'operation'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'update' },
+        target: { type: 'string' },
+        operation: {
+          type: 'string',
+          enum: ['increment', 'decrement', 'push', 'pop', 'remove'],
+        },
+        value: { $ref: '#/$defs/Expression' },
+      },
+    },
+    FetchStep: {
+      type: 'object',
+      required: ['do', 'url'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'fetch' },
+        url: { $ref: '#/$defs/Expression' },
+        method: {
+          type: 'string',
+          enum: ['GET', 'POST', 'PUT', 'DELETE'],
+        },
+        body: { $ref: '#/$defs/Expression' },
+        result: { type: 'string' },
+        onSuccess: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+        onError: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+      },
+    },
+
+    // ==================== Event Handler ====================
+    EventHandler: {
+      type: 'object',
+      required: ['event', 'action'],
+      additionalProperties: false,
+      properties: {
+        event: { type: 'string' },
+        action: { type: 'string' },
+        payload: { $ref: '#/$defs/Expression' },
+      },
+    },
+
+    // ==================== Action Definition ====================
+    ActionDefinition: {
+      type: 'object',
+      required: ['name', 'steps'],
+      additionalProperties: false,
+      properties: {
+        name: { type: 'string' },
+        steps: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+      },
+    },
+
+    // ==================== View Nodes ====================
+    ViewNode: {
+      oneOf: [
+        { $ref: '#/$defs/ElementNode' },
+        { $ref: '#/$defs/TextNode' },
+        { $ref: '#/$defs/IfNode' },
+        { $ref: '#/$defs/EachNode' },
+      ],
+    },
+    ElementNode: {
+      type: 'object',
+      required: ['kind', 'tag'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'element' },
+        tag: { type: 'string' },
+        props: {
+          type: 'object',
+          additionalProperties: {
+            oneOf: [
+              { $ref: '#/$defs/Expression' },
+              { $ref: '#/$defs/EventHandler' },
+            ],
+          },
+        },
+        children: {
+          type: 'array',
+          items: { $ref: '#/$defs/ViewNode' },
+        },
+      },
+    },
+    TextNode: {
+      type: 'object',
+      required: ['kind', 'value'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'text' },
+        value: { $ref: '#/$defs/Expression' },
+      },
+    },
+    IfNode: {
+      type: 'object',
+      required: ['kind', 'condition', 'then'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'if' },
+        condition: { $ref: '#/$defs/Expression' },
+        then: { $ref: '#/$defs/ViewNode' },
+        else: { $ref: '#/$defs/ViewNode' },
+      },
+    },
+    EachNode: {
+      type: 'object',
+      required: ['kind', 'items', 'as', 'body'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'each' },
+        items: { $ref: '#/$defs/Expression' },
+        as: { type: 'string' },
+        index: { type: 'string' },
+        key: { $ref: '#/$defs/Expression' },
+        body: { $ref: '#/$defs/ViewNode' },
+      },
+    },
+  },
+} as const;

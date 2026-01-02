@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constela Todo List Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; min-height: 100vh; padding: 2rem; }
+    .todo-app { max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { margin-bottom: 1.5rem; color: #333; }
+    .todo-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .todo-input input { flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+    .todo-input button { padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .todo-input button:hover { background: #1d4ed8; }
+    .todo-list { list-style: none; }
+    .todo-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #eee; }
+    .todo-list li:last-child { border-bottom: none; }
+    .delete-btn { padding: 0.25rem 0.75rem; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }
+    .delete-btn:hover { background: #dc2626; }
+    .empty-message { text-align: center; color: #6b7280; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { compile } from '../../packages/compiler/dist/index.js';
+    import { createApp } from '../../packages/runtime/dist/index.js';
+
+    const response = await fetch('./app.json');
+    const ast = await response.json();
+    const result = compile(ast);
+
+    if (!result.ok) {
+      console.error('Compilation failed:', result.errors);
+    } else {
+      createApp(result.program, document.getElementById('app'));
+    }
+  </script>
+</body>
+</html>

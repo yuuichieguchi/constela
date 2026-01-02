@@ -1,0 +1,168 @@
+{
+  "version": "1.0",
+  "state": {
+    "todos": {
+      "type": "list",
+      "initial": []
+    },
+    "newTodoText": {
+      "type": "string",
+      "initial": ""
+    }
+  },
+  "actions": [
+    {
+      "name": "addTodo",
+      "steps": [
+        {
+          "do": "update",
+          "target": "todos",
+          "operation": "push",
+          "value": {
+            "expr": "state",
+            "name": "newTodoText"
+          }
+        },
+        {
+          "do": "set",
+          "target": "newTodoText",
+          "value": {
+            "expr": "lit",
+            "value": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeTodo",
+      "steps": [
+        {
+          "do": "update",
+          "target": "todos",
+          "operation": "remove",
+          "value": {
+            "expr": "var",
+            "name": "index"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateInput",
+      "steps": [
+        {
+          "do": "set",
+          "target": "newTodoText",
+          "value": {
+            "expr": "var",
+            "name": "value"
+          }
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": {
+        "expr": "lit",
+        "value": "todo-app"
+      }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "input",
+        "props": {
+          "value": {
+            "expr": "state",
+            "name": "newTodoText"
+          },
+          "oninput": {
+            "event": "input",
+            "action": "updateInput",
+            "payload": {
+              "expr": "var",
+              "name": "event.target.value"
+            }
+          }
+        }
+      },
+      {
+        "kind": "element",
+        "tag": "button",
+        "props": {
+          "onclick": {
+            "event": "click",
+            "action": "addTodo"
+          }
+        },
+        "children": [
+          {
+            "kind": "text",
+            "value": {
+              "expr": "lit",
+              "value": "Add"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "ul",
+        "children": [
+          {
+            "kind": "each",
+            "items": {
+              "expr": "state",
+              "name": "todos"
+            },
+            "as": "todo",
+            "index": "idx",
+            "key": {
+              "expr": "var",
+              "name": "idx"
+            },
+            "body": {
+              "kind": "element",
+              "tag": "li",
+              "children": [
+                {
+                  "kind": "text",
+                  "value": {
+                    "expr": "var",
+                    "name": "todo"
+                  }
+                },
+                {
+                  "kind": "element",
+                  "tag": "button",
+                  "props": {
+                    "onclick": {
+                      "event": "click",
+                      "action": "removeTodo",
+                      "payload": {
+                        "expr": "var",
+                        "name": "idx"
+                      }
+                    }
+                  },
+                  "children": [
+                    {
+                      "kind": "text",
+                      "value": {
+                        "expr": "lit",
+                        "value": "x"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

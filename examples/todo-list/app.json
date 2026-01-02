@@ -1,0 +1,133 @@
+{
+  "version": "1.0",
+  "state": {
+    "todos": { "type": "list", "initial": [] },
+    "newTodo": { "type": "string", "initial": "" }
+  },
+  "actions": [
+    {
+      "name": "setNewTodo",
+      "steps": [
+        { "do": "set", "target": "newTodo", "value": { "expr": "var", "name": "value" } }
+      ]
+    },
+    {
+      "name": "addTodo",
+      "steps": [
+        {
+          "do": "update",
+          "target": "todos",
+          "operation": "push",
+          "value": { "expr": "state", "name": "newTodo" }
+        },
+        { "do": "set", "target": "newTodo", "value": { "expr": "lit", "value": "" } }
+      ]
+    },
+    {
+      "name": "removeTodo",
+      "steps": [
+        {
+          "do": "update",
+          "target": "todos",
+          "operation": "remove",
+          "value": { "expr": "var", "name": "item" }
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "todo-app" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Constela Todo List" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "todo-input" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "input",
+            "props": {
+              "type": { "expr": "lit", "value": "text" },
+              "placeholder": { "expr": "lit", "value": "Add a new todo..." },
+              "value": { "expr": "state", "name": "newTodo" },
+              "onInput": { "event": "input", "action": "setNewTodo", "payload": { "expr": "var", "name": "value" } }
+            }
+          },
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "onClick": { "event": "click", "action": "addTodo" }
+            },
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "Add" } }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "ul",
+        "props": { "className": { "expr": "lit", "value": "todo-list" } },
+        "children": [
+          {
+            "kind": "each",
+            "items": { "expr": "state", "name": "todos" },
+            "as": "item",
+            "index": "index",
+            "body": {
+              "kind": "element",
+              "tag": "li",
+              "children": [
+                {
+                  "kind": "element",
+                  "tag": "span",
+                  "children": [
+                    { "kind": "text", "value": { "expr": "var", "name": "item" } }
+                  ]
+                },
+                {
+                  "kind": "element",
+                  "tag": "button",
+                  "props": {
+                    "className": { "expr": "lit", "value": "delete-btn" },
+                    "onClick": { "event": "click", "action": "removeTodo", "payload": { "expr": "var", "name": "item" } }
+                  },
+                  "children": [
+                    { "kind": "text", "value": { "expr": "lit", "value": "Delete" } }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "kind": "if",
+        "condition": {
+          "expr": "bin",
+          "op": "==",
+          "left": { "expr": "state", "name": "todos" },
+          "right": { "expr": "lit", "value": [] }
+        },
+        "then": {
+          "kind": "element",
+          "tag": "p",
+          "props": { "className": { "expr": "lit", "value": "empty-message" } },
+          "children": [
+            { "kind": "text", "value": { "expr": "lit", "value": "No todos yet. Add one above!" } }
+          ]
+        }
+      }
+    ]
+  }
+}

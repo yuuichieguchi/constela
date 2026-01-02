@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constela Counter Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .counter-app { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+    h1 { margin-bottom: 1rem; color: #333; }
+    .counter-display { font-size: 4rem; font-weight: bold; margin: 1rem 0; color: #2563eb; }
+    .counter-buttons { display: flex; gap: 0.5rem; justify-content: center; }
+    button { padding: 0.75rem 1.5rem; font-size: 1.25rem; border: none; border-radius: 4px; cursor: pointer; background: #2563eb; color: white; transition: background 0.2s; }
+    button:hover { background: #1d4ed8; }
+    button:last-child { background: #6b7280; }
+    button:last-child:hover { background: #4b5563; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { compile } from '../../packages/compiler/dist/index.js';
+    import { createApp } from '../../packages/runtime/dist/index.js';
+
+    const response = await fetch('./app.json');
+    const ast = await response.json();
+    const result = compile(ast);
+
+    if (!result.ok) {
+      console.error('Compilation failed:', result.errors);
+    } else {
+      createApp(result.program, document.getElementById('app'));
+    }
+  </script>
+</body>
+</html>

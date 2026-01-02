@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "state": {
+    "count": {
+      "type": "number",
+      "initial": 0
+    }
+  },
+  "actions": [
+    {
+      "name": "doSomething",
+      "steps": [
+        {
+          "do": "set",
+          "target": "nonexistent",
+          "value": {
+            "expr": "lit",
+            "value": 1
+          }
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      {
+        "kind": "text",
+        "value": {
+          "expr": "state",
+          "name": "undefinedState"
+        }
+      }
+    ]
+  }
+}
