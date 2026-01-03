@@ -608,9 +608,19 @@ describe('StateField Type Guards', () => {
       expect(isStateField({ type: 'list', initial: [] })).toBe(true);
     });
 
+    it('should return true for boolean field', () => {
+      expect(isStateField({ type: 'boolean', initial: true })).toBe(true);
+      expect(isStateField({ type: 'boolean', initial: false })).toBe(true);
+    });
+
+    it('should return true for object field', () => {
+      expect(isStateField({ type: 'object', initial: {} })).toBe(true);
+      expect(isStateField({ type: 'object', initial: { key: 'value' } })).toBe(true);
+    });
+
     it('should return false for invalid type', () => {
-      expect(isStateField({ type: 'boolean', initial: true })).toBe(false);
-      expect(isStateField({ type: 'object', initial: {} })).toBe(false);
+      expect(isStateField({ type: 'unknown', initial: null })).toBe(false);
+      expect(isStateField({ type: 'array', initial: [] })).toBe(false);
     });
 
     it('should return false for missing initial value', () => {

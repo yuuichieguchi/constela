@@ -1,12 +1,14 @@
 /**
  * Expression Evaluator - Evaluates compiled expressions
- * 
+ *
  * Supports:
  * - Literal values (lit)
  * - State reads (state)
  * - Variable reads (var)
  * - Binary operations (bin)
  * - Not operation (not)
+ * - Conditional expressions (cond)
+ * - Property access (get)
  */
 
 import type { StateStore } from '../state/store.js';
@@ -66,8 +68,29 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
     case 'not':
       return !evaluate(expr.operand, ctx);
 
-    default:
-      throw new Error('Unknown expression type');
+    case 'cond':
+      return evaluate(expr.if, ctx) ? evaluate(expr.then, ctx) : evaluate(expr.else, ctx);
+
+    case 'get': {
+      const baseValue = evaluate(expr.base, ctx);
+      if (baseValue == null) return undefined;
+
+      const pathParts = expr.path.split('.');
+      const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+
+      let value: unknown = baseValue;
+      for (const part of pathParts) {
+        if (forbiddenKeys.has(part)) return undefined;
+        if (value == null) return undefined;
+        value = (value as Record<string, unknown>)[part];
+      }
+      return value;
+    }
+
+    default: {
+      const _exhaustiveCheck: never = expr;
+      throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
+    }
   }
 }
 

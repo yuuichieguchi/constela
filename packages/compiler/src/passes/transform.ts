@@ -53,6 +53,8 @@ export interface CompiledUpdateStep {
   target: string;
   operation: string;
   value?: CompiledExpression;
+  index?: CompiledExpression;       // for replaceAt, insertAt, splice
+  deleteCount?: CompiledExpression; // for splice
 }
 
 export interface CompiledFetchStep {
@@ -108,7 +110,9 @@ export type CompiledExpression =
   | CompiledStateExpr
   | CompiledVarExpr
   | CompiledBinExpr
-  | CompiledNotExpr;
+  | CompiledNotExpr
+  | CompiledCondExpr
+  | CompiledGetExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -136,6 +140,19 @@ export interface CompiledBinExpr {
 export interface CompiledNotExpr {
   expr: 'not';
   operand: CompiledExpression;
+}
+
+export interface CompiledCondExpr {
+  expr: 'cond';
+  if: CompiledExpression;
+  then: CompiledExpression;
+  else: CompiledExpression;
+}
+
+export interface CompiledGetExpr {
+  expr: 'get';
+  base: CompiledExpression;
+  path: string;
 }
 
 // ==================== Compiled Event Handler ====================
@@ -232,6 +249,21 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
       // Should not happen if analyze pass is correct, return undefined literal
       return { expr: 'lit', value: null };
     }
+
+    case 'cond':
+      return {
+        expr: 'cond',
+        if: transformExpression(expr.if, ctx),
+        then: transformExpression(expr.then, ctx),
+        else: transformExpression(expr.else, ctx),
+      };
+
+    case 'get':
+      return {
+        expr: 'get',
+        base: transformExpression(expr.base, ctx),
+        path: expr.path,
+      };
   }
 }
 
@@ -277,6 +309,12 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       };
       if (step.value) {
         updateStep.value = transformExpression(step.value, emptyContext);
+      }
+      if (step.index) {
+        updateStep.index = transformExpression(step.index, emptyContext);
+      }
+      if (step.deleteCount) {
+        updateStep.deleteCount = transformExpression(step.deleteCount, emptyContext);
       }
       return updateStep;
     }

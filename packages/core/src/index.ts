@@ -19,11 +19,15 @@ export type {
   BinExpr,
   NotExpr,
   ParamExpr,
+  CondExpr,
+  GetExpr,
   // State Fields
   StateField,
   NumberField,
   StringField,
   ListField,
+  BooleanField,
+  ObjectField,
   // Action Steps
   ActionStep,
   SetStep,
@@ -65,6 +69,8 @@ export {
   isBinExpr,
   isNotExpr,
   isParamExpr,
+  isCondExpr,
+  isGetExpr,
   isExpression,
   // ViewNode type guards
   isElementNode,
@@ -83,6 +89,8 @@ export {
   isNumberField,
   isStringField,
   isListField,
+  isBooleanField,
+  isObjectField,
   isStateField,
   // EventHandler type guard
   isEventHandler,
@@ -105,6 +113,10 @@ export {
   createComponentCycleError,
   createComponentPropTypeError,
   createUndefinedParamError,
+  createOperationInvalidForTypeError,
+  createOperationMissingFieldError,
+  createOperationUnknownError,
+  createCondElseRequiredError,
 } from './types/error.js';
 
 // ==================== Validator ====================

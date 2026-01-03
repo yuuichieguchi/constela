@@ -918,6 +918,359 @@ describe('evaluate', () => {
     });
   });
 
+  // ==================== Conditional Expressions ====================
+
+  describe('cond expressions', () => {
+    it('should return then branch when condition is truthy', () => {
+      // Arrange
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: true },
+        then: { expr: 'lit', value: 'Welcome!' },
+        else: { expr: 'lit', value: 'Please log in' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Welcome!');
+    });
+
+    it('should return else branch when condition is falsy', () => {
+      // Arrange
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: false },
+        then: { expr: 'lit', value: 'Welcome!' },
+        else: { expr: 'lit', value: 'Please log in' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Please log in');
+    });
+
+    it('should work with state references as condition', () => {
+      // Arrange
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'state', name: 'isLoggedIn' },
+        then: { expr: 'lit', value: 'Welcome!' },
+        else: { expr: 'lit', value: 'Please log in' },
+      } as CompiledExpression;
+      const context = createContext({ isLoggedIn: { type: 'boolean', initial: true } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Welcome!');
+    });
+
+    it('should work with nested expressions', () => {
+      // Arrange - condition: count > 0
+      const expr = {
+        expr: 'cond',
+        if: {
+          expr: 'bin',
+          op: '>',
+          left: { expr: 'state', name: 'count' },
+          right: { expr: 'lit', value: 0 },
+        },
+        then: { expr: 'lit', value: 'Has items' },
+        else: { expr: 'lit', value: 'Empty' },
+      } as CompiledExpression;
+      const context = createContext({ count: { type: 'number', initial: 5 } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Has items');
+    });
+
+    it('should handle truthy non-boolean values in condition', () => {
+      // Arrange - non-empty string is truthy
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: 'some string' },
+        then: { expr: 'lit', value: 'truthy' },
+        else: { expr: 'lit', value: 'falsy' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('truthy');
+    });
+
+    it('should handle falsy non-boolean values in condition', () => {
+      // Arrange - empty string is falsy
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: '' },
+        then: { expr: 'lit', value: 'truthy' },
+        else: { expr: 'lit', value: 'falsy' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('falsy');
+    });
+
+    it('should handle null condition as falsy', () => {
+      // Arrange
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: null },
+        then: { expr: 'lit', value: 'truthy' },
+        else: { expr: 'lit', value: 'falsy' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('falsy');
+    });
+
+    it('should handle zero as falsy', () => {
+      // Arrange
+      const expr = {
+        expr: 'cond',
+        if: { expr: 'lit', value: 0 },
+        then: { expr: 'lit', value: 'truthy' },
+        else: { expr: 'lit', value: 'falsy' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('falsy');
+    });
+  });
+
+  // ==================== Get Expressions (Property Access) ====================
+
+  describe('get expressions', () => {
+    it('should access simple property from object', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'user' },
+        path: 'name',
+      } as CompiledExpression;
+      const context = createContext({}, { user: { name: 'Alice', age: 30 } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Alice');
+    });
+
+    it('should access nested path (a.b.c)', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'state', name: 'user' },
+        path: 'address.city',
+      } as CompiledExpression;
+      const context = createContext({
+        user: {
+          type: 'object',
+          initial: {
+            name: 'Bob',
+            address: { city: 'Tokyo', country: 'Japan' },
+          },
+        },
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Tokyo');
+    });
+
+    it('should return undefined for null base', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'lit', value: null },
+        path: 'name',
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for undefined base', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'nonexistent' },
+        path: 'name',
+      } as CompiledExpression;
+      const context = createContext({}, {});
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for missing property', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'user' },
+        path: 'email',
+      } as CompiledExpression;
+      const context = createContext({}, { user: { name: 'Alice' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for missing nested property', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'user' },
+        path: 'address.city',
+      } as CompiledExpression;
+      const context = createContext({}, { user: { name: 'Alice' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    // ==================== Prototype Pollution Prevention ====================
+
+    it('should block __proto__ access', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'obj' },
+        path: '__proto__',
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should block constructor access', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'obj' },
+        path: 'constructor',
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should block prototype access', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'obj' },
+        path: 'prototype',
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should block __proto__ in nested path', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'obj' },
+        path: 'nested.__proto__.dangerous',
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { nested: { value: 1 } } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should access array element with index path', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'items' },
+        path: '0',
+      } as CompiledExpression;
+      const context = createContext({}, { items: ['first', 'second', 'third'] });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('first');
+    });
+
+    it('should access nested property from array element', () => {
+      // Arrange
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'users' },
+        path: '0.name',
+      } as CompiledExpression;
+      const context = createContext({}, {
+        users: [{ name: 'Alice' }, { name: 'Bob' }],
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Alice');
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

@@ -18,7 +18,13 @@ export type ErrorCode =
   | 'COMPONENT_PROP_MISSING'
   | 'COMPONENT_CYCLE'
   | 'COMPONENT_PROP_TYPE'
-  | 'PARAM_UNDEFINED';
+  | 'PARAM_UNDEFINED'
+  | 'OPERATION_INVALID_FOR_TYPE'
+  | 'OPERATION_MISSING_FIELD'
+  | 'OPERATION_UNKNOWN'
+  | 'EXPR_INVALID_BASE'
+  | 'EXPR_INVALID_CONDITION'
+  | 'EXPR_COND_ELSE_REQUIRED';
 
 // ==================== ConstelaError Class ====================
 
@@ -185,6 +191,61 @@ export function createUndefinedParamError(paramName: string, path?: string): Con
   return new ConstelaError(
     'PARAM_UNDEFINED',
     `Undefined param reference: '${paramName}' is not defined in component params`,
+    path
+  );
+}
+
+/**
+ * Creates an operation invalid for type error
+ */
+export function createOperationInvalidForTypeError(
+  operation: string,
+  stateType: string,
+  path?: string
+): ConstelaError {
+  return new ConstelaError(
+    'OPERATION_INVALID_FOR_TYPE',
+    `Operation '${operation}' is not valid for state type '${stateType}'`,
+    path
+  );
+}
+
+/**
+ * Creates an operation missing field error
+ */
+export function createOperationMissingFieldError(
+  operation: string,
+  field: string,
+  path?: string
+): ConstelaError {
+  return new ConstelaError(
+    'OPERATION_MISSING_FIELD',
+    `Operation '${operation}' requires field '${field}'`,
+    path
+  );
+}
+
+/**
+ * Creates an operation unknown error
+ */
+export function createOperationUnknownError(
+  operation: string,
+  path?: string
+): ConstelaError {
+  return new ConstelaError(
+    'OPERATION_UNKNOWN',
+    `Unknown operation: '${operation}'`,
+    path
+  );
+}
+
+/**
+ * Creates a cond else required error
+ */
+export function createCondElseRequiredError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'EXPR_COND_ELSE_REQUIRED',
+    `Cond expression requires 'else' field`,
     path
   );
 }

@@ -392,7 +392,7 @@ describe('validateAst - Invalid Schema', () => {
       const ast = {
         version: '1.0',
         state: {
-          data: { type: 'object', initial: {} },
+          data: { type: 'unknown', initial: null },
         },
         actions: [],
         view: { kind: 'element', tag: 'div' },

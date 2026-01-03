@@ -15,6 +15,8 @@ import {
   type BinExpr,
   type NotExpr,
   type ParamExpr,
+  type CondExpr,
+  type GetExpr,
   type ViewNode,
   type ElementNode,
   type TextNode,
@@ -30,6 +32,8 @@ import {
   type NumberField,
   type StringField,
   type ListField,
+  type BooleanField,
+  type ObjectField,
   type EventHandler,
 } from './ast.js';
 
@@ -118,6 +122,39 @@ export function isParamExpr(value: unknown): value is ParamExpr {
 }
 
 /**
+ * Checks if value is a cond expression
+ *
+ * Note: This performs shallow validation only - it checks that `if`, `then`, and `else`
+ * are objects but does not recursively validate they are valid Expressions.
+ * This is intentional for performance: deep validation would require traversing
+ * potentially deeply nested expression trees on every type guard call.
+ * Use the AST validator for full recursive validation instead.
+ */
+export function isCondExpr(value: unknown): value is CondExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'cond') return false;
+  if (!isObject(value['if']) || !isObject(value['then']) || !isObject(value['else'])) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a get expression
+ *
+ * Note: This performs shallow validation only - it checks that `base` is
+ * an object but does not recursively validate it is a valid Expression.
+ * This is intentional for performance: deep validation would require traversing
+ * potentially deeply nested expression trees on every type guard call.
+ * Use the AST validator for full recursive validation instead.
+ */
+export function isGetExpr(value: unknown): value is GetExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'get') return false;
+  if (!isObject(value['base'])) return false;
+  if (typeof value['path'] !== 'string') return false;
+  return true;
+}
+
+/**
  * Checks if value is any valid expression
  */
 export function isExpression(value: unknown): value is Expression {
@@ -127,7 +164,9 @@ export function isExpression(value: unknown): value is Expression {
     isVarExpr(value) ||
     isBinExpr(value) ||
     isNotExpr(value) ||
-    isParamExpr(value)
+    isParamExpr(value) ||
+    isCondExpr(value) ||
+    isGetExpr(value)
   );
 }
 
@@ -293,10 +332,34 @@ export function isListField(value: unknown): value is ListField {
 }
 
 /**
+ * Checks if value is a boolean field
+ */
+export function isBooleanField(value: unknown): value is BooleanField {
+  if (!isObject(value)) return false;
+  if (value['type'] !== 'boolean') return false;
+  return typeof value['initial'] === 'boolean';
+}
+
+/**
+ * Checks if value is an object field
+ */
+export function isObjectField(value: unknown): value is ObjectField {
+  if (!isObject(value)) return false;
+  if (value['type'] !== 'object') return false;
+  return typeof value['initial'] === 'object' && value['initial'] !== null;
+}
+
+/**
  * Checks if value is any valid state field
  */
 export function isStateField(value: unknown): value is StateField {
-  return isNumberField(value) || isStringField(value) || isListField(value);
+  return (
+    isNumberField(value) ||
+    isStringField(value) ||
+    isListField(value) ||
+    isBooleanField(value) ||
+    isObjectField(value)
+  );
 }
 
 // ==================== EventHandler Type Guard ====================

@@ -32,6 +32,11 @@ export const UPDATE_OPERATIONS = [
   'push',
   'pop',
   'remove',
+  'toggle',
+  'merge',
+  'replaceAt',
+  'insertAt',
+  'splice',
 ] as const;
 
 export type UpdateOperation = (typeof UPDATE_OPERATIONS)[number];
@@ -108,7 +113,26 @@ export interface ParamExpr {
   path?: string;  // for json params: "user.name"
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr;
+/**
+ * Cond expression - conditional if/then/else
+ */
+export interface CondExpr {
+  expr: 'cond';
+  if: Expression;
+  then: Expression;
+  else: Expression;
+}
+
+/**
+ * Get expression - property access
+ */
+export interface GetExpr {
+  expr: 'get';
+  base: Expression;
+  path: string;
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr;
 
 // ==================== State Fields ====================
 
@@ -136,7 +160,23 @@ export interface ListField {
   initial: unknown[];
 }
 
-export type StateField = NumberField | StringField | ListField;
+/**
+ * Boolean state field
+ */
+export interface BooleanField {
+  type: 'boolean';
+  initial: boolean;
+}
+
+/**
+ * Object state field
+ */
+export interface ObjectField {
+  type: 'object';
+  initial: Record<string, unknown>;
+}
+
+export type StateField = NumberField | StringField | ListField | BooleanField | ObjectField;
 
 // ==================== Action Steps ====================
 
@@ -151,12 +191,31 @@ export interface SetStep {
 
 /**
  * Update step - performs an operation on a state field
+ *
+ * Operations and their required fields:
+ * - increment/decrement: Numeric operations. Optional `value` for amount (default: 1)
+ * - push: Add item to array. Requires `value`
+ * - pop: Remove last item from array. No additional fields
+ * - remove: Remove item from array by value or index. Requires `value`
+ * - toggle: Flip boolean value. No additional fields
+ * - merge: Shallow merge object. Requires `value` (object)
+ * - replaceAt: Replace array item at index. Requires `index` and `value`
+ * - insertAt: Insert item at array index. Requires `index` and `value`
+ * - splice: Delete and/or insert items. Requires `index` and `deleteCount`, optional `value` (array)
+ *
+ * @property target - The state field name to update
+ * @property operation - The update operation to perform
+ * @property value - Value for push/merge/replaceAt/insertAt/splice operations
+ * @property index - Array index for replaceAt/insertAt/splice operations
+ * @property deleteCount - Number of items to delete for splice operation
  */
 export interface UpdateStep {
   do: 'update';
   target: string;
   operation: UpdateOperation;
   value?: Expression;
+  index?: Expression;
+  deleteCount?: Expression;
 }
 
 /**

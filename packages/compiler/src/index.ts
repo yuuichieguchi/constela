@@ -30,5 +30,8 @@ export type {
   CompiledExpression,
   CompiledAction,
   CompiledActionStep,
+  CompiledSetStep,
+  CompiledUpdateStep,
+  CompiledFetchStep,
   CompiledEventHandler,
 } from './passes/transform.js';

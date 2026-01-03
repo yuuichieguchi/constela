@@ -295,7 +295,7 @@ describe('validatePass - Schema Validation', () => {
       const ast = {
         version: '1.0',
         state: {
-          data: { type: 'object', initial: {} },
+          data: { type: 'unknown', initial: {} },
         },
         actions: [],
         view: { kind: 'element', tag: 'div' },

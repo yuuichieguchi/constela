@@ -8,7 +8,7 @@
  */
 
 import type { StateStore } from '../state/store.js';
-import type { CompiledAction, CompiledActionStep, CompiledExpression } from '@constela/compiler';
+import type { CompiledAction, CompiledActionStep, CompiledExpression, CompiledUpdateStep } from '@constela/compiler';
 import { evaluate } from '../expression/evaluator.js';
 
 export interface ActionContext {
@@ -37,7 +37,7 @@ async function executeStep(
       break;
 
     case 'update':
-      await executeUpdateStep(step.target, step.operation, step.value, ctx);
+      await executeUpdateStep(step, ctx);
       break;
 
     case 'fetch':
@@ -57,11 +57,10 @@ async function executeSetStep(
 }
 
 async function executeUpdateStep(
-  target: string,
-  operation: string,
-  value: CompiledExpression | undefined,
+  step: CompiledUpdateStep,
   ctx: ActionContext
 ): Promise<void> {
+  const { target, operation, value } = step;
   const evalCtx = { state: ctx.state, locals: ctx.locals };
   const currentValue = ctx.state.get(target);
 
@@ -105,6 +104,59 @@ async function executeUpdateStep(
         // Remove by value
         ctx.state.set(target, arr.filter((x) => x !== removeValue));
       }
+      break;
+    }
+
+    case 'toggle': {
+      const current = typeof currentValue === 'boolean' ? currentValue : false;
+      ctx.state.set(target, !current);
+      break;
+    }
+
+    case 'merge': {
+      const evalResult = value ? evaluate(value, evalCtx) : {};
+      const mergeValue = typeof evalResult === 'object' && evalResult !== null
+        ? evalResult as Record<string, unknown>
+        : {};
+      const current = typeof currentValue === 'object' && currentValue !== null
+        ? currentValue as Record<string, unknown>
+        : {};
+      ctx.state.set(target, { ...current, ...mergeValue });
+      break;
+    }
+
+    case 'replaceAt': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const newValue = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && idx >= 0 && idx < arr.length) {
+        arr[idx] = newValue;
+      }
+      ctx.state.set(target, arr);
+      break;
+    }
+
+    case 'insertAt': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const newValue = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && idx >= 0) {
+        arr.splice(idx, 0, newValue);
+      }
+      ctx.state.set(target, arr);
+      break;
+    }
+
+    case 'splice': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const delCount = step.deleteCount ? evaluate(step.deleteCount, evalCtx) : 0;
+      const items = value ? evaluate(value, evalCtx) : [];
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && typeof delCount === 'number') {
+        const insertItems = Array.isArray(items) ? items : [];
+        arr.splice(idx, delCount, ...insertItems);
+      }
+      ctx.state.set(target, arr);
       break;
     }
   }

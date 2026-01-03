@@ -27,6 +27,8 @@ import {
   createComponentCycleError,
   createUndefinedParamError,
   createSchemaError,
+  createOperationInvalidForTypeError,
+  createOperationMissingFieldError,
   isEventHandler,
 } from '@constela/core';
 
@@ -152,6 +154,17 @@ function validateExpression(
     case 'lit':
       // Literals are always valid
       break;
+
+    case 'cond':
+      errors.push(...validateExpression(expr.if, buildPath(path, 'if'), context, scope, paramScope));
+      errors.push(...validateExpression(expr.then, buildPath(path, 'then'), context, scope, paramScope));
+      errors.push(...validateExpression(expr.else, buildPath(path, 'else'), context, scope, paramScope));
+      break;
+
+    case 'get':
+      errors.push(...validateExpression(expr.base, buildPath(path, 'base'), context, scope, paramScope));
+      // path is a string, no validation needed
+      break;
   }
 
   return errors;
@@ -183,16 +196,57 @@ function validateActionStep(
       );
       break;
 
-    case 'update':
+    case 'update': {
       if (!context.stateNames.has(step.target)) {
         errors.push(createUndefinedStateError(step.target, buildPath(path, 'target')));
+      } else {
+        // Validate operation-type compatibility
+        const stateField = ast.state[step.target];
+        if (stateField) {
+          const stateType = stateField.type;
+          const op = step.operation;
+
+          // Check operation-type compatibility
+          if (op === 'toggle' && stateType !== 'boolean') {
+            errors.push(createOperationInvalidForTypeError(op, stateType, buildPath(path, 'operation')));
+          }
+          if (op === 'merge' && stateType !== 'object') {
+            errors.push(createOperationInvalidForTypeError(op, stateType, buildPath(path, 'operation')));
+          }
+          if ((op === 'increment' || op === 'decrement') && stateType !== 'number') {
+            errors.push(createOperationInvalidForTypeError(op, stateType, buildPath(path, 'operation')));
+          }
+          if ((op === 'push' || op === 'pop' || op === 'remove' || op === 'replaceAt' || op === 'insertAt' || op === 'splice') && stateType !== 'list') {
+            errors.push(createOperationInvalidForTypeError(op, stateType, buildPath(path, 'operation')));
+          }
+
+          // Check required fields
+          if (op === 'merge' && !step.value) {
+            errors.push(createOperationMissingFieldError(op, 'value', path));
+          }
+          if ((op === 'replaceAt' || op === 'insertAt') && (!step.index || !step.value)) {
+            if (!step.index) errors.push(createOperationMissingFieldError(op, 'index', path));
+            if (!step.value) errors.push(createOperationMissingFieldError(op, 'value', path));
+          }
+          if (op === 'splice' && (!step.index || !step.deleteCount)) {
+            if (!step.index) errors.push(createOperationMissingFieldError(op, 'index', path));
+            if (!step.deleteCount) errors.push(createOperationMissingFieldError(op, 'deleteCount', path));
+          }
+        }
       }
+
+      // Validate expressions
       if (step.value) {
-        errors.push(
-          ...validateExpressionStateOnly(step.value, buildPath(path, 'value'), context)
-        );
+        errors.push(...validateExpressionStateOnly(step.value, buildPath(path, 'value'), context));
+      }
+      if (step.index) {
+        errors.push(...validateExpressionStateOnly(step.index, buildPath(path, 'index'), context));
+      }
+      if (step.deleteCount) {
+        errors.push(...validateExpressionStateOnly(step.deleteCount, buildPath(path, 'deleteCount'), context));
       }
       break;
+    }
 
     case 'fetch':
       errors.push(
@@ -264,6 +318,16 @@ function validateExpressionStateOnly(
     case 'lit':
       // Literals are always valid
       break;
+
+    case 'cond':
+      errors.push(...validateExpressionStateOnly(expr.if, buildPath(path, 'if'), context));
+      errors.push(...validateExpressionStateOnly(expr.then, buildPath(path, 'then'), context));
+      errors.push(...validateExpressionStateOnly(expr.else, buildPath(path, 'else'), context));
+      break;
+
+    case 'get':
+      errors.push(...validateExpressionStateOnly(expr.base, buildPath(path, 'base'), context));
+      break;
   }
 
   return errors;
@@ -322,6 +386,24 @@ function validateExpressionInEventPayload(
 
     case 'lit':
       // Literals are always valid
+      break;
+
+    case 'cond':
+      errors.push(
+        ...validateExpressionInEventPayload(expr.if, buildPath(path, 'if'), context, scope)
+      );
+      errors.push(
+        ...validateExpressionInEventPayload(expr.then, buildPath(path, 'then'), context, scope)
+      );
+      errors.push(
+        ...validateExpressionInEventPayload(expr.else, buildPath(path, 'else'), context, scope)
+      );
+      break;
+
+    case 'get':
+      errors.push(
+        ...validateExpressionInEventPayload(expr.base, buildPath(path, 'base'), context, scope)
+      );
       break;
   }
 

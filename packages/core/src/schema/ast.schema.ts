@@ -52,6 +52,8 @@ export const astSchema = {
         { $ref: '#/$defs/BinExpr' },
         { $ref: '#/$defs/NotExpr' },
         { $ref: '#/$defs/ParamExpr' },
+        { $ref: '#/$defs/CondExpr' },
+        { $ref: '#/$defs/GetExpr' },
       ],
     },
     LitExpr: {
@@ -123,6 +125,27 @@ export const astSchema = {
         path: { type: 'string' },
       },
     },
+    CondExpr: {
+      type: 'object',
+      required: ['expr', 'if', 'then', 'else'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'cond' },
+        if: { $ref: '#/$defs/Expression' },
+        then: { $ref: '#/$defs/Expression' },
+        else: { $ref: '#/$defs/Expression' },
+      },
+    },
+    GetExpr: {
+      type: 'object',
+      required: ['expr', 'base', 'path'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'get' },
+        base: { $ref: '#/$defs/Expression' },
+        path: { type: 'string' },
+      },
+    },
 
     // ==================== State Fields ====================
     StateField: {
@@ -130,6 +153,8 @@ export const astSchema = {
         { $ref: '#/$defs/NumberField' },
         { $ref: '#/$defs/StringField' },
         { $ref: '#/$defs/ListField' },
+        { $ref: '#/$defs/BooleanField' },
+        { $ref: '#/$defs/ObjectField' },
       ],
     },
     NumberField: {
@@ -157,6 +182,24 @@ export const astSchema = {
       properties: {
         type: { type: 'string', const: 'list' },
         initial: { type: 'array' },
+      },
+    },
+    BooleanField: {
+      type: 'object',
+      required: ['type', 'initial'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'boolean' },
+        initial: { type: 'boolean' },
+      },
+    },
+    ObjectField: {
+      type: 'object',
+      required: ['type', 'initial'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'object' },
+        initial: { type: 'object' },
       },
     },
 
@@ -187,9 +230,11 @@ export const astSchema = {
         target: { type: 'string' },
         operation: {
           type: 'string',
-          enum: ['increment', 'decrement', 'push', 'pop', 'remove'],
+          enum: ['increment', 'decrement', 'push', 'pop', 'remove', 'toggle', 'merge', 'replaceAt', 'insertAt', 'splice'],
         },
         value: { $ref: '#/$defs/Expression' },
+        index: { $ref: '#/$defs/Expression' },
+        deleteCount: { $ref: '#/$defs/Expression' },
       },
     },
     FetchStep: {

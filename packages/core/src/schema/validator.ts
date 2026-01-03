@@ -54,7 +54,7 @@ const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
-const VALID_STATE_TYPES = ['number', 'string', 'list'];
+const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
 const VALID_UPDATE_OPS: readonly string[] = UPDATE_OPERATIONS;
@@ -353,6 +353,16 @@ function validateStateField(field: unknown, path: string): ValidationError | nul
     case 'list':
       if (!Array.isArray(field['initial'])) {
         return { path: path + '/initial', message: 'must be an array' };
+      }
+      break;
+    case 'boolean':
+      if (typeof field['initial'] !== 'boolean') {
+        return { path: path + '/initial', message: 'must be a boolean' };
+      }
+      break;
+    case 'object':
+      if (!isObject(field['initial'])) {
+        return { path: path + '/initial', message: 'must be an object' };
       }
       break;
   }
