@@ -415,18 +415,21 @@ All errors include structured information:
 ## Running Examples
 
 ```bash
+# Install dependencies
+pnpm install
+
 # Build packages first
 pnpm build
 
-# Serve examples (requires a static file server)
-npx serve .
+# Start examples dev server
+pnpm --filter @constela/examples dev
 
 # Then open in browser:
-# - http://localhost:3000/examples/counter/
-# - http://localhost:3000/examples/todo-list/
-# - http://localhost:3000/examples/fetch-list/
-# - http://localhost:3000/examples/components/
-# - http://localhost:3000/examples/router/
+# - http://localhost:5173/counter/
+# - http://localhost:5173/todo-list/
+# - http://localhost:5173/fetch-list/
+# - http://localhost:5173/components/
+# - http://localhost:5173/router/
 ```
 
 ## Design Principles

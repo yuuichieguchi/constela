@@ -24,6 +24,25 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.27)(jsdom@25.0.1)
 
+  examples:
+    dependencies:
+      '@constela/compiler':
+        specifier: workspace:*
+        version: link:../packages/compiler
+      '@constela/router':
+        specifier: workspace:*
+        version: link:../packages/router
+      '@constela/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.27
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21(@types/node@20.19.27)
+
   packages/cli:
     dependencies:
       '@constela/compiler':

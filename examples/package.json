@@ -1,0 +1,19 @@
+{
+  "name": "@constela/examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@constela/compiler": "workspace:*",
+    "@constela/runtime": "workspace:*",
+    "@constela/router": "workspace:*"
+  }
+}

@@ -20,8 +20,8 @@
 <body>
   <div id="app"></div>
   <script type="module">
-    import { compile } from '../../packages/compiler/dist/index.js';
-    import { createApp } from '../../packages/runtime/dist/index.js';
+    import { compile } from '@constela/compiler';
+    import { createApp } from '@constela/runtime';
 
     const response = await fetch('./app.json');
     const ast = await response.json();
