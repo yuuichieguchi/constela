@@ -25,7 +25,14 @@ Constela is optimized for:
 ### Installation
 
 ```bash
+# Basic usage
 npm install @constela/runtime @constela/compiler
+
+# With routing
+npm install @constela/runtime @constela/compiler @constela/router
+
+# With CLI tools
+npm install @constela/runtime @constela/compiler @constela/cli
 ```
 
 ### Basic Usage
