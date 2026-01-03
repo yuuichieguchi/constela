@@ -665,3 +665,609 @@ describe('validateAst - Type Narrowing', () => {
     }
   });
 });
+
+// ==================== Component Schema Validation Tests ====================
+
+describe('validateAst - Component Definitions', () => {
+  describe('Valid Component Definitions', () => {
+    it('should accept program with valid component definition', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Button: {
+            params: {
+              label: { type: 'string', required: true },
+            },
+            view: {
+              kind: 'element',
+              tag: 'button',
+              children: [
+                { kind: 'text', value: { expr: 'param', name: 'label' } },
+              ],
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept component with only view (no params)', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Divider: {
+            view: { kind: 'element', tag: 'hr' },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept component with multiple param types', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Card: {
+            params: {
+              title: { type: 'string', required: true },
+              count: { type: 'number', required: false },
+              visible: { type: 'boolean', required: false },
+              data: { type: 'json', required: false },
+            },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept component with slot in view', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Container: {
+            view: {
+              kind: 'element',
+              tag: 'div',
+              children: [{ kind: 'slot' }],
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept empty components object', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {},
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('Valid Component Invocation', () => {
+    it('should accept component node in view', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Button: {
+            params: { label: { type: 'string', required: true } },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'Button',
+          props: {
+            label: { expr: 'lit', value: 'Click me' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept component node with children', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Container: {
+            view: {
+              kind: 'element',
+              tag: 'div',
+              children: [{ kind: 'slot' }],
+            },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'Container',
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Child content' } },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept nested component invocations', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Icon: {
+            params: { name: { type: 'string', required: true } },
+            view: { kind: 'element', tag: 'i' },
+          },
+          Button: {
+            params: { icon: { type: 'string', required: false } },
+            view: {
+              kind: 'element',
+              tag: 'button',
+              children: [
+                {
+                  kind: 'component',
+                  name: 'Icon',
+                  props: { name: { expr: 'param', name: 'icon' } },
+                },
+              ],
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('Valid Param Expression', () => {
+    it('should accept param expression in component view', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Greeting: {
+            params: { name: { type: 'string', required: true } },
+            view: {
+              kind: 'text',
+              value: { expr: 'param', name: 'name' },
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept param expression with path', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          UserCard: {
+            params: { user: { type: 'json', required: true } },
+            view: {
+              kind: 'text',
+              value: { expr: 'param', name: 'user', path: 'name' },
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+});
+
+describe('validateAst - Invalid Component Schema', () => {
+  describe('Invalid Component Definition', () => {
+    it('should return error for component without view', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: { label: { type: 'string' } },
+            // missing view
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/view');
+      }
+    });
+
+    it('should return error for invalid param type', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: {
+              data: { type: 'object', required: true }, // 'object' is not valid
+            },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/params/data/type');
+      }
+    });
+
+    it('should return error for param missing type', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: {
+              label: { required: true }, // missing type
+            },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/params/label/type');
+      }
+    });
+  });
+
+  describe('Invalid Component Node', () => {
+    it('should return error for component node without name', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Button: {
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+        view: {
+          kind: 'component',
+          // missing name
+          props: {},
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/name');
+      }
+    });
+
+    it('should return error for component node with non-string name', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {},
+        view: {
+          kind: 'component',
+          name: 123, // should be string
+          props: {},
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/name');
+      }
+    });
+  });
+
+  // NOTE: Slot validation (slot outside component definition) is semantic validation,
+  // which is implemented in @constela/compiler analyze pass, not in the core validator.
+  describe.skip('Invalid Slot Node', () => {
+    it('should return error for slot outside of component definition', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: { kind: 'slot' }, // slot at top level is invalid
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+      }
+    });
+  });
+
+  describe('Invalid Param Expression', () => {
+    it('should return error for param expression without name', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: { title: { type: 'string' } },
+            view: {
+              kind: 'text',
+              value: { expr: 'param' }, // missing name
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/view/value/name');
+      }
+    });
+
+    it('should return error for param expression with non-string name', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: { title: { type: 'string' } },
+            view: {
+              kind: 'text',
+              value: { expr: 'param', name: 123 }, // name should be string
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/view/value/name');
+      }
+    });
+
+    it('should return error for param expression with non-string path', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Invalid: {
+            params: { data: { type: 'json' } },
+            view: {
+              kind: 'text',
+              value: { expr: 'param', name: 'data', path: 123 }, // path should be string
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/components/Invalid/view/value/path');
+      }
+    });
+  });
+});
+
+// NOTE: Component semantic validation (COMPONENT_NOT_FOUND, COMPONENT_PROP_MISSING,
+// COMPONENT_CYCLE, PARAM_UNDEFINED) is implemented in @constela/compiler analyze pass,
+// not in the core validator. These tests are skipped here and will be tested in the compiler package.
+describe.skip('validateAst - Component Semantic Validation', () => {
+  describe('Component Not Found', () => {
+    it('should return error for referencing undefined component', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {},
+        view: {
+          kind: 'component',
+          name: 'NonexistentComponent',
+          props: {},
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('COMPONENT_NOT_FOUND');
+        expect(result.error.message).toContain('NonexistentComponent');
+      }
+    });
+  });
+
+  describe('Required Prop Missing', () => {
+    it('should return error for missing required prop', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Button: {
+            params: {
+              label: { type: 'string', required: true },
+            },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'Button',
+          props: {}, // missing required 'label' prop
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('COMPONENT_PROP_MISSING');
+        expect(result.error.message).toContain('Button');
+        expect(result.error.message).toContain('label');
+      }
+    });
+  });
+
+  describe('Component Cycle Detection', () => {
+    it('should return error for self-referencing component', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Recursive: {
+            view: {
+              kind: 'component',
+              name: 'Recursive', // self-reference
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('COMPONENT_CYCLE');
+      }
+    });
+
+    it('should return error for circular component dependency', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          A: {
+            view: { kind: 'component', name: 'B' },
+          },
+          B: {
+            view: { kind: 'component', name: 'C' },
+          },
+          C: {
+            view: { kind: 'component', name: 'A' }, // cycle: A -> B -> C -> A
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('COMPONENT_CYCLE');
+      }
+    });
+  });
+
+  describe('Undefined Param Reference', () => {
+    it('should return error for referencing undefined param', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        components: {
+          Card: {
+            params: {
+              title: { type: 'string', required: true },
+            },
+            view: {
+              kind: 'text',
+              value: { expr: 'param', name: 'nonexistent' }, // not defined in params
+            },
+          },
+        },
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('PARAM_UNDEFINED');
+        expect(result.error.message).toContain('nonexistent');
+      }
+    });
+  });
+});

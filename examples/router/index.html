@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constela Router Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .app { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    nav { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+    nav a { color: #2563eb; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; transition: background 0.2s; }
+    nav a:hover { background: #eff6ff; }
+    nav a.active { background: #2563eb; color: white; }
+    .page { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .page h1 { color: #333; margin-bottom: 1rem; }
+    .page p { color: #666; margin-bottom: 0.5rem; line-height: 1.6; }
+    .page .note { font-style: italic; color: #999; font-size: 0.9rem; }
+    #app { min-height: 200px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav id="nav">
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/users/1">User 1</a>
+      <a href="/users/42">User 42</a>
+    </nav>
+    <div id="app"></div>
+  </div>
+
+  <script type="module">
+    import { compile } from '../../packages/compiler/dist/index.js';
+    import { createRouter, bindLink } from '../../packages/router/dist/index.js';
+
+    // Compile all pages
+    async function loadProgram(path) {
+      const response = await fetch(path);
+      const ast = await response.json();
+      const result = compile(ast);
+      if (!result.ok) {
+        console.error('Compilation failed:', result.errors);
+        return null;
+      }
+      return result.program;
+    }
+
+    const [homeProgram, aboutProgram, userProgram] = await Promise.all([
+      loadProgram('./home.json'),
+      loadProgram('./about.json'),
+      loadProgram('./user.json'),
+    ]);
+
+    // Create router
+    const router = createRouter({
+      routes: [
+        { path: '/', program: homeProgram, title: 'Home - Constela Router' },
+        { path: '/about', program: aboutProgram, title: 'About - Constela Router' },
+        {
+          path: '/users/:id',
+          program: userProgram,
+          title: (ctx) => `User ${ctx.params.id} - Constela Router`
+        },
+      ],
+      onRouteChange: (ctx) => {
+        // Update active nav link
+        document.querySelectorAll('nav a').forEach(a => {
+          const href = a.getAttribute('href');
+          a.classList.toggle('active', href === ctx.path || (ctx.path.startsWith('/users/') && href.startsWith('/users/')));
+        });
+
+        // If on user page, update state with user ID from route params
+        if (ctx.params.id && userProgram) {
+          // Note: In a real app, you'd pass params to the program differently
+          console.log('Route params:', ctx.params);
+        }
+      },
+    });
+
+    // Mount router
+    router.mount(document.getElementById('app'));
+
+    // Bind navigation links
+    document.querySelectorAll('nav a').forEach(a => {
+      bindLink(router, a);
+    });
+  </script>
+</body>
+</html>

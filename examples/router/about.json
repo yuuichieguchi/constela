@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "page about-page" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "About" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "This is the about page. The router manages client-side navigation without page reloads." } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Key features: History API integration, dynamic route params, and declarative routing." } }
+        ]
+      }
+    ]
+  }
+}

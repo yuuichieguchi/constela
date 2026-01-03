@@ -50,8 +50,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 // ==================== Recursive Validation ====================
 
-const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not'];
+const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param'];
+const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
 const VALID_STATE_TYPES = ['number', 'string', 'list'];
 // Use constants from ast.ts to avoid duplication
@@ -78,7 +79,7 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
   }
 
   if (!VALID_VIEW_KINDS.includes(kind)) {
-    return { path: path + '/kind', message: 'must be one of: element, text, if, each' };
+    return { path: path + '/kind', message: 'must be one of: element, text, if, each, component, slot' };
   }
 
   // Check based on kind
@@ -150,6 +151,30 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
         if (bodyError) return bodyError;
       }
       break;
+
+    case 'component':
+      if (typeof node['name'] !== 'string') {
+        return { path: path + '/name', message: 'name is required' };
+      }
+      // Check props
+      if (node['props'] !== undefined && isObject(node['props'])) {
+        for (const [propName, propValue] of Object.entries(node['props'])) {
+          const error = validateExpression(propValue, path + '/props/' + propName);
+          if (error) return error;
+        }
+      }
+      // Check children
+      if (Array.isArray(node['children'])) {
+        for (let i = 0; i < node['children'].length; i++) {
+          const error = validateViewNode(node['children'][i], path + '/children/' + i);
+          if (error) return error;
+        }
+      }
+      break;
+
+    case 'slot':
+      // Slot has no required fields, it's just a placeholder
+      break;
   }
 
   return null;
@@ -169,7 +194,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not' };
+    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param' };
   }
 
   switch (exprType) {
@@ -212,6 +237,16 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         return { path: path + '/operand', message: 'operand is required' };
       }
       return validateExpression(expr['operand'], path + '/operand');
+
+    case 'param':
+      if (typeof expr['name'] !== 'string') {
+        return { path: path + '/name', message: 'name is required' };
+      }
+      // path is optional, but if present must be a string
+      if ('path' in expr && typeof expr['path'] !== 'string') {
+        return { path: path + '/path', message: 'path must be a string' };
+      }
+      break;
   }
 
   return null;
@@ -326,6 +361,59 @@ function validateStateField(field: unknown, path: string): ValidationError | nul
 }
 
 /**
+ * Validates a ParamDef and returns the first error found
+ */
+function validateParamDef(param: unknown, path: string): ValidationError | null {
+  if (!isObject(param)) {
+    return { path, message: 'must be an object' };
+  }
+
+  const paramType = param['type'];
+  if (typeof paramType !== 'string') {
+    return { path: path + '/type', message: 'type is required' };
+  }
+
+  if (!VALID_PARAM_TYPES.includes(paramType)) {
+    return { path: path + '/type', message: 'must be one of: string, number, boolean, json' };
+  }
+
+  // required is optional, but if present must be a boolean
+  if ('required' in param && typeof param['required'] !== 'boolean') {
+    return { path: path + '/required', message: 'required must be a boolean' };
+  }
+
+  return null;
+}
+
+/**
+ * Validates a ComponentDef and returns the first error found
+ */
+function validateComponentDef(def: unknown, path: string): ValidationError | null {
+  if (!isObject(def)) {
+    return { path, message: 'must be an object' };
+  }
+
+  // view is required
+  if (!('view' in def)) {
+    return { path: path + '/view', message: 'view is required' };
+  }
+
+  // Validate params if present
+  if ('params' in def && isObject(def['params'])) {
+    for (const [paramName, paramDef] of Object.entries(def['params'])) {
+      const error = validateParamDef(paramDef, path + '/params/' + paramName);
+      if (error) return error;
+    }
+  }
+
+  // Validate view
+  const viewError = validateViewNode(def['view'], path + '/view');
+  if (viewError) return viewError;
+
+  return null;
+}
+
+/**
  * Custom validation for the entire AST
  */
 function customValidateAst(input: Record<string, unknown>): ValidationError | null {
@@ -354,6 +442,14 @@ function customValidateAst(input: Record<string, unknown>): ValidationError | nu
   if ('view' in input) {
     const error = validateViewNode(input['view'], '/view');
     if (error) return error;
+  }
+
+  // Validate components
+  if ('components' in input && isObject(input['components'])) {
+    for (const [name, def] of Object.entries(input['components'])) {
+      const error = validateComponentDef(def, '/components/' + name);
+      if (error) return error;
+    }
   }
 
   return null;

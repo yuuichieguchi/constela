@@ -13,7 +13,12 @@ export type ErrorCode =
   | 'UNDEFINED_ACTION'
   | 'VAR_UNDEFINED'
   | 'DUPLICATE_ACTION'
-  | 'UNSUPPORTED_VERSION';
+  | 'UNSUPPORTED_VERSION'
+  | 'COMPONENT_NOT_FOUND'
+  | 'COMPONENT_PROP_MISSING'
+  | 'COMPONENT_CYCLE'
+  | 'COMPONENT_PROP_TYPE'
+  | 'PARAM_UNDEFINED';
 
 // ==================== ConstelaError Class ====================
 
@@ -116,5 +121,70 @@ export function createUnsupportedVersionError(version: string): ConstelaError {
     'UNSUPPORTED_VERSION',
     `Unsupported version: '${version}'. Supported versions: 1.0`,
     '/version'
+  );
+}
+
+/**
+ * Creates a component not found error
+ */
+export function createComponentNotFoundError(name: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'COMPONENT_NOT_FOUND',
+    `Component '${name}' is not defined in components`,
+    path
+  );
+}
+
+/**
+ * Creates a missing required prop error
+ */
+export function createComponentPropMissingError(
+  componentName: string,
+  propName: string,
+  path?: string
+): ConstelaError {
+  return new ConstelaError(
+    'COMPONENT_PROP_MISSING',
+    `Component '${componentName}' requires prop '${propName}'`,
+    path
+  );
+}
+
+/**
+ * Creates a component cycle error
+ */
+export function createComponentCycleError(cycle: string[], path?: string): ConstelaError {
+  return new ConstelaError(
+    'COMPONENT_CYCLE',
+    `Circular component reference detected: ${cycle.join(' -> ')}`,
+    path
+  );
+}
+
+/**
+ * Creates a prop type mismatch error
+ */
+export function createComponentPropTypeError(
+  componentName: string,
+  propName: string,
+  expected: string,
+  actual: string,
+  path?: string
+): ConstelaError {
+  return new ConstelaError(
+    'COMPONENT_PROP_TYPE',
+    `Component '${componentName}' prop '${propName}' expects ${expected}, got ${actual}`,
+    path
+  );
+}
+
+/**
+ * Creates an undefined param reference error
+ */
+export function createUndefinedParamError(paramName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'PARAM_UNDEFINED',
+    `Undefined param reference: '${paramName}' is not defined in component params`,
+    path
   );
 }

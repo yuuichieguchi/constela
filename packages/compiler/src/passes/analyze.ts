@@ -15,12 +15,18 @@ import type {
   ViewNode,
   Expression,
   ActionStep,
+  ComponentDef,
 } from '@constela/core';
 import {
   createUndefinedStateError,
   createUndefinedActionError,
   createUndefinedVarError,
   createDuplicateActionError,
+  createComponentNotFoundError,
+  createComponentPropMissingError,
+  createComponentCycleError,
+  createUndefinedParamError,
+  createSchemaError,
   isEventHandler,
 } from '@constela/core';
 
@@ -29,6 +35,15 @@ import {
 export interface AnalysisContext {
   stateNames: Set<string>;
   actionNames: Set<string>;
+  componentNames: Set<string>;
+}
+
+/**
+ * Param scope for tracking available params in component definitions
+ */
+interface ParamScope {
+  params: Set<string>;
+  componentName: string;
 }
 
 export interface AnalyzePassSuccess {
@@ -59,13 +74,16 @@ function buildPath(base: string, ...segments: (string | number)[]): string {
 // ==================== Context Collection ====================
 
 /**
- * Collects state and action names from the AST
+ * Collects state, action, and component names from the AST
  */
 function collectContext(ast: Program): AnalysisContext {
   const stateNames = new Set<string>(Object.keys(ast.state));
   const actionNames = new Set<string>(ast.actions.map((a) => a.name));
+  const componentNames = new Set<string>(
+    ast.components ? Object.keys(ast.components) : []
+  );
 
-  return { stateNames, actionNames };
+  return { stateNames, actionNames, componentNames };
 }
 
 // ==================== Duplicate Action Detection ====================
@@ -98,7 +116,8 @@ function validateExpression(
   expr: Expression,
   path: string,
   context: AnalysisContext,
-  scope: Set<string>
+  scope: Set<string>,
+  paramScope?: ParamScope
 ): ConstelaError[] {
   const errors: ConstelaError[] = [];
 
@@ -115,13 +134,19 @@ function validateExpression(
       }
       break;
 
+    case 'param':
+      if (!paramScope || !paramScope.params.has(expr.name)) {
+        errors.push(createUndefinedParamError(expr.name, path));
+      }
+      break;
+
     case 'bin':
-      errors.push(...validateExpression(expr.left, buildPath(path, 'left'), context, scope));
-      errors.push(...validateExpression(expr.right, buildPath(path, 'right'), context, scope));
+      errors.push(...validateExpression(expr.left, buildPath(path, 'left'), context, scope, paramScope));
+      errors.push(...validateExpression(expr.right, buildPath(path, 'right'), context, scope, paramScope));
       break;
 
     case 'not':
-      errors.push(...validateExpression(expr.operand, buildPath(path, 'operand'), context, scope));
+      errors.push(...validateExpression(expr.operand, buildPath(path, 'operand'), context, scope, paramScope));
       break;
 
     case 'lit':
@@ -306,15 +331,25 @@ function validateExpressionInEventPayload(
 // ==================== View Node Validation ====================
 
 /**
+ * Options for view node validation
+ */
+interface ViewNodeValidationOptions {
+  insideComponent: boolean;
+  paramScope?: ParamScope;
+}
+
+/**
  * Validates a view node for state, action, and variable references
  */
 function validateViewNode(
   node: ViewNode,
   path: string,
   context: AnalysisContext,
-  scope: Set<string>
+  scope: Set<string>,
+  options: ViewNodeValidationOptions = { insideComponent: false }
 ): ConstelaError[] {
   const errors: ConstelaError[] = [];
+  const { insideComponent, paramScope } = options;
 
   switch (node.kind) {
     case 'element':
@@ -342,7 +377,7 @@ function validateViewNode(
             }
           } else {
             // It's an expression
-            errors.push(...validateExpression(propValue as Expression, propPath, context, scope));
+            errors.push(...validateExpression(propValue as Expression, propPath, context, scope, paramScope));
           }
         }
       }
@@ -352,29 +387,29 @@ function validateViewNode(
           const child = node.children[i];
           if (child === undefined) continue;
           errors.push(
-            ...validateViewNode(child, buildPath(path, 'children', i), context, scope)
+            ...validateViewNode(child, buildPath(path, 'children', i), context, scope, options)
           );
         }
       }
       break;
 
     case 'text':
-      errors.push(...validateExpression(node.value, buildPath(path, 'value'), context, scope));
+      errors.push(...validateExpression(node.value, buildPath(path, 'value'), context, scope, paramScope));
       break;
 
     case 'if':
       errors.push(
-        ...validateExpression(node.condition, buildPath(path, 'condition'), context, scope)
+        ...validateExpression(node.condition, buildPath(path, 'condition'), context, scope, paramScope)
       );
-      errors.push(...validateViewNode(node.then, buildPath(path, 'then'), context, scope));
+      errors.push(...validateViewNode(node.then, buildPath(path, 'then'), context, scope, options));
       if (node.else) {
-        errors.push(...validateViewNode(node.else, buildPath(path, 'else'), context, scope));
+        errors.push(...validateViewNode(node.else, buildPath(path, 'else'), context, scope, options));
       }
       break;
 
-    case 'each':
+    case 'each': {
       // Validate items expression with current scope
-      errors.push(...validateExpression(node.items, buildPath(path, 'items'), context, scope));
+      errors.push(...validateExpression(node.items, buildPath(path, 'items'), context, scope, paramScope));
 
       // Create new scope for body with 'as' and optional 'index' variables
       const bodyScope = new Set(scope);
@@ -385,12 +420,236 @@ function validateViewNode(
 
       // Validate key expression if present (uses the new scope)
       if (node.key) {
-        errors.push(...validateExpression(node.key, buildPath(path, 'key'), context, bodyScope));
+        errors.push(...validateExpression(node.key, buildPath(path, 'key'), context, bodyScope, paramScope));
       }
 
       // Validate body with new scope
-      errors.push(...validateViewNode(node.body, buildPath(path, 'body'), context, bodyScope));
+      errors.push(...validateViewNode(node.body, buildPath(path, 'body'), context, bodyScope, options));
       break;
+    }
+
+    case 'component': {
+      // Check if component exists
+      if (!context.componentNames.has(node.name)) {
+        errors.push(createComponentNotFoundError(node.name, path));
+      } else {
+        // Component exists, validate props
+        const componentDef = ast.components?.[node.name];
+        if (componentDef) {
+          errors.push(
+            ...validateComponentProps(node, componentDef, path, context, scope, paramScope)
+          );
+        }
+      }
+      // Validate children (slot content) - these are in the caller's context
+      if (node.children) {
+        for (let i = 0; i < node.children.length; i++) {
+          const child = node.children[i];
+          if (child === undefined) continue;
+          errors.push(
+            ...validateViewNode(child, buildPath(path, 'children', i), context, scope, options)
+          );
+        }
+      }
+      break;
+    }
+
+    case 'slot':
+      // Slot is only valid inside component definitions
+      if (!insideComponent) {
+        errors.push(
+          createSchemaError(`Slot can only be used inside component definitions`, path)
+        );
+      }
+      break;
+  }
+
+  return errors;
+}
+
+/**
+ * Validates component props against the component definition
+ */
+function validateComponentProps(
+  node: { name: string; props?: Record<string, Expression> },
+  componentDef: ComponentDef,
+  path: string,
+  context: AnalysisContext,
+  scope: Set<string>,
+  paramScope?: ParamScope
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+  const params = componentDef.params ?? {};
+  const providedProps = node.props ?? {};
+
+  // Check for missing required props
+  for (const [paramName, paramDef] of Object.entries(params)) {
+    const isRequired = paramDef.required !== false; // true by default
+    if (isRequired && !(paramName in providedProps)) {
+      errors.push(
+        createComponentPropMissingError(node.name, paramName, buildPath(path, 'props'))
+      );
+    }
+  }
+
+  // Validate prop expressions
+  for (const [propName, propValue] of Object.entries(providedProps)) {
+    errors.push(
+      ...validateExpression(propValue, buildPath(path, 'props', propName), context, scope, paramScope)
+    );
+  }
+
+  return errors;
+}
+
+// Reference to AST for component lookup (set in analyzePass)
+let ast: Program;
+
+// ==================== Component Cycle Detection ====================
+
+/**
+ * Collects all component calls from a view node
+ */
+function collectComponentCalls(node: ViewNode): Set<string> {
+  const calls = new Set<string>();
+
+  switch (node.kind) {
+    case 'component':
+      calls.add(node.name);
+      // Also check children (slot content) for nested component calls
+      if (node.children) {
+        for (const child of node.children) {
+          for (const call of collectComponentCalls(child)) {
+            calls.add(call);
+          }
+        }
+      }
+      break;
+
+    case 'element':
+      if (node.children) {
+        for (const child of node.children) {
+          for (const call of collectComponentCalls(child)) {
+            calls.add(call);
+          }
+        }
+      }
+      break;
+
+    case 'if':
+      for (const call of collectComponentCalls(node.then)) {
+        calls.add(call);
+      }
+      if (node.else) {
+        for (const call of collectComponentCalls(node.else)) {
+          calls.add(call);
+        }
+      }
+      break;
+
+    case 'each':
+      for (const call of collectComponentCalls(node.body)) {
+        calls.add(call);
+      }
+      break;
+
+    case 'text':
+    case 'slot':
+      // No component calls in text or slot nodes
+      break;
+  }
+
+  return calls;
+}
+
+/**
+ * Detects cycles in component call graph using DFS
+ */
+function detectComponentCycles(
+  programAst: Program,
+  context: AnalysisContext
+): ConstelaError[] {
+  if (!programAst.components) return [];
+
+  const errors: ConstelaError[] = [];
+
+  // Build call graph
+  const callGraph = new Map<string, Set<string>>();
+  for (const [name, def] of Object.entries(programAst.components)) {
+    const calls = collectComponentCalls(def.view);
+    callGraph.set(name, calls);
+  }
+
+  // DFS with recursion stack
+  const visited = new Set<string>();
+  const recStack = new Set<string>();
+
+  function dfs(name: string, path: string[]): boolean {
+    visited.add(name);
+    recStack.add(name);
+
+    const calls = callGraph.get(name) || new Set();
+    for (const callee of calls) {
+      if (!visited.has(callee)) {
+        if (dfs(callee, [...path, callee])) return true;
+      } else if (recStack.has(callee)) {
+        // Found cycle
+        const cycleStart = path.indexOf(callee);
+        const cycle =
+          cycleStart >= 0
+            ? [...path.slice(cycleStart), callee]
+            : [...path, callee];
+        errors.push(createComponentCycleError(cycle, `/components/${path[0]}`));
+        return true;
+      }
+    }
+
+    recStack.delete(name);
+    return false;
+  }
+
+  for (const name of context.componentNames) {
+    if (!visited.has(name)) {
+      dfs(name, [name]);
+    }
+  }
+
+  return errors;
+}
+
+// ==================== Component Definition Validation ====================
+
+/**
+ * Validates all component definitions
+ */
+function validateComponents(
+  programAst: Program,
+  context: AnalysisContext
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  if (!programAst.components) return errors;
+
+  for (const [name, def] of Object.entries(programAst.components)) {
+    // Create param scope for this component
+    const paramNames = new Set<string>(
+      def.params ? Object.keys(def.params) : []
+    );
+    const paramScope: ParamScope = {
+      params: paramNames,
+      componentName: name,
+    };
+
+    // Validate component view with insideComponent = true
+    errors.push(
+      ...validateViewNode(
+        def.view,
+        buildPath('', 'components', name, 'view'),
+        context,
+        new Set<string>(),
+        { insideComponent: true, paramScope }
+      )
+    );
   }
 
   return errors;
@@ -401,11 +660,11 @@ function validateViewNode(
 /**
  * Validates all actions for state references
  */
-function validateActions(ast: Program, context: AnalysisContext): ConstelaError[] {
+function validateActions(programAst: Program, context: AnalysisContext): ConstelaError[] {
   const errors: ConstelaError[] = [];
 
-  for (let i = 0; i < ast.actions.length; i++) {
-    const action = ast.actions[i];
+  for (let i = 0; i < programAst.actions.length; i++) {
+    const action = programAst.actions[i];
     if (action === undefined) continue;
     for (let j = 0; j < action.steps.length; j++) {
       const step = action.steps[j];
@@ -426,25 +685,42 @@ function validateActions(ast: Program, context: AnalysisContext): ConstelaError[
  *
  * - Collects state names
  * - Collects action names
+ * - Collects component names
  * - Validates state references
  * - Validates action references
  * - Validates variable scopes
+ * - Validates component references and props
+ * - Detects component cycles
+ * - Validates param references in component definitions
  *
- * @param ast - Validated AST from validate pass
+ * @param programAst - Validated AST from validate pass
  * @returns AnalyzePassResult
  */
-export function analyzePass(ast: Program): AnalyzePassResult {
-  const context = collectContext(ast);
+export function analyzePass(programAst: Program): AnalyzePassResult {
+  // Set module-level ast for component lookup in validateViewNode
+  ast = programAst;
+
+  const context = collectContext(programAst);
   const errors: ConstelaError[] = [];
 
   // Check for duplicate action names
-  errors.push(...checkDuplicateActions(ast));
+  errors.push(...checkDuplicateActions(programAst));
 
   // Validate actions
-  errors.push(...validateActions(ast, context));
+  errors.push(...validateActions(programAst, context));
 
-  // Validate view with empty initial scope
-  errors.push(...validateViewNode(ast.view, '/view', context, new Set<string>()));
+  // Detect component cycles
+  errors.push(...detectComponentCycles(programAst, context));
+
+  // Validate component definitions (params, slot usage inside components)
+  errors.push(...validateComponents(programAst, context));
+
+  // Validate view with empty initial scope (insideComponent = false)
+  errors.push(
+    ...validateViewNode(programAst.view, '/view', context, new Set<string>(), {
+      insideComponent: false,
+    })
+  );
 
   if (errors.length > 0) {
     return {
@@ -455,7 +731,7 @@ export function analyzePass(ast: Program): AnalyzePassResult {
 
   return {
     ok: true,
-    ast,
+    ast: programAst,
     context,
   };
 }

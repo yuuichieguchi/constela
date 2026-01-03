@@ -13,9 +13,18 @@ import type {
   ActionStep,
   StateField,
   EventHandler,
+  ComponentDef,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
+
+// ==================== Transform Context ====================
+
+interface TransformContext {
+  components: Record<string, ComponentDef>;
+  currentParams?: Record<string, CompiledExpression>; // Current component's param values
+  currentChildren?: CompiledNode[]; // Current component's children for slot
+}
 
 // ==================== Compiled Program Types ====================
 
@@ -149,7 +158,7 @@ export type { Program, AnalysisContext };
 /**
  * Transforms an AST Expression into a CompiledExpression
  */
-function transformExpression(expr: Expression): CompiledExpression {
+function transformExpression(expr: Expression, ctx: TransformContext): CompiledExpression {
   switch (expr.expr) {
     case 'lit':
       return {
@@ -178,15 +187,51 @@ function transformExpression(expr: Expression): CompiledExpression {
       return {
         expr: 'bin',
         op: expr.op,
-        left: transformExpression(expr.left),
-        right: transformExpression(expr.right),
+        left: transformExpression(expr.left, ctx),
+        right: transformExpression(expr.right, ctx),
       };
 
     case 'not':
       return {
         expr: 'not',
-        operand: transformExpression(expr.operand),
+        operand: transformExpression(expr.operand, ctx),
       };
+
+    case 'param': {
+      // Substitute param with the value from currentParams
+      const paramValue = ctx.currentParams?.[expr.name];
+      if (paramValue !== undefined) {
+        // If param has a path, we need to add it to the resulting expression
+        if (expr.path) {
+          // If the param value is a var or state expression, add the path
+          if (paramValue.expr === 'var') {
+            const existingPath = (paramValue as CompiledVarExpr).path;
+            const resultPath = existingPath
+              ? `${existingPath}.${expr.path}`
+              : expr.path;
+            return {
+              expr: 'var',
+              name: (paramValue as CompiledVarExpr).name,
+              path: resultPath,
+            };
+          }
+          if (paramValue.expr === 'state') {
+            // State expressions don't have path, so we convert to var-like access
+            // For now, return the original param value with path as a var
+            return {
+              expr: 'var',
+              name: (paramValue as CompiledStateExpr).name,
+              path: expr.path,
+            };
+          }
+          // For other expression types with path, return as-is for now
+          return paramValue;
+        }
+        return paramValue;
+      }
+      // Should not happen if analyze pass is correct, return undefined literal
+      return { expr: 'lit', value: null };
+    }
   }
 }
 
@@ -195,14 +240,14 @@ function transformExpression(expr: Expression): CompiledExpression {
 /**
  * Transforms an AST EventHandler into a CompiledEventHandler
  */
-function transformEventHandler(handler: EventHandler): CompiledEventHandler {
+function transformEventHandler(handler: EventHandler, ctx: TransformContext): CompiledEventHandler {
   const result: CompiledEventHandler = {
     event: handler.event,
     action: handler.action,
   };
 
   if (handler.payload) {
-    result.payload = transformExpression(handler.payload);
+    result.payload = transformExpression(handler.payload, ctx);
   }
 
   return result;
@@ -213,13 +258,15 @@ function transformEventHandler(handler: EventHandler): CompiledEventHandler {
 /**
  * Transforms an AST ActionStep into a CompiledActionStep
  */
+const emptyContext: TransformContext = { components: {} };
+
 function transformActionStep(step: ActionStep): CompiledActionStep {
   switch (step.do) {
     case 'set':
       return {
         do: 'set',
         target: step.target,
-        value: transformExpression(step.value),
+        value: transformExpression(step.value, emptyContext),
       };
 
     case 'update': {
@@ -229,7 +276,7 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         operation: step.operation,
       };
       if (step.value) {
-        updateStep.value = transformExpression(step.value);
+        updateStep.value = transformExpression(step.value, emptyContext);
       }
       return updateStep;
     }
@@ -237,13 +284,13 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
     case 'fetch': {
       const fetchStep: CompiledFetchStep = {
         do: 'fetch',
-        url: transformExpression(step.url),
+        url: transformExpression(step.url, emptyContext),
       };
       if (step.method) {
         fetchStep.method = step.method;
       }
       if (step.body) {
-        fetchStep.body = transformExpression(step.body);
+        fetchStep.body = transformExpression(step.body, emptyContext);
       }
       if (step.result) {
         fetchStep.result = step.result;
@@ -262,9 +309,31 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
 // ==================== View Node Transformation ====================
 
 /**
+ * Helper to flatten children when slot expands to multiple nodes
+ */
+function flattenSlotChildren(
+  children: ViewNode[],
+  ctx: TransformContext
+): CompiledNode[] {
+  const result: CompiledNode[] = [];
+  for (const child of children) {
+    if (child.kind === 'slot') {
+      // Slot should be replaced with currentChildren
+      if (ctx.currentChildren && ctx.currentChildren.length > 0) {
+        result.push(...ctx.currentChildren);
+      }
+      // If no children, slot produces nothing
+    } else {
+      result.push(transformViewNode(child, ctx));
+    }
+  }
+  return result;
+}
+
+/**
  * Transforms an AST ViewNode into a CompiledNode
  */
-function transformViewNode(node: ViewNode): CompiledNode {
+function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode {
   switch (node.kind) {
     case 'element': {
       const compiledElement: CompiledElementNode = {
@@ -276,15 +345,18 @@ function transformViewNode(node: ViewNode): CompiledNode {
         compiledElement.props = {};
         for (const [propName, propValue] of Object.entries(node.props)) {
           if (isEventHandler(propValue)) {
-            compiledElement.props[propName] = transformEventHandler(propValue);
+            compiledElement.props[propName] = transformEventHandler(propValue, ctx);
           } else {
-            compiledElement.props[propName] = transformExpression(propValue as Expression);
+            compiledElement.props[propName] = transformExpression(propValue as Expression, ctx);
           }
         }
       }
 
       if (node.children && node.children.length > 0) {
-        compiledElement.children = node.children.map(transformViewNode);
+        const flattenedChildren = flattenSlotChildren(node.children, ctx);
+        if (flattenedChildren.length > 0) {
+          compiledElement.children = flattenedChildren;
+        }
       }
 
       return compiledElement;
@@ -293,18 +365,18 @@ function transformViewNode(node: ViewNode): CompiledNode {
     case 'text':
       return {
         kind: 'text',
-        value: transformExpression(node.value),
+        value: transformExpression(node.value, ctx),
       };
 
     case 'if': {
       const compiledIf: CompiledIfNode = {
         kind: 'if',
-        condition: transformExpression(node.condition),
-        then: transformViewNode(node.then),
+        condition: transformExpression(node.condition, ctx),
+        then: transformViewNode(node.then, ctx),
       };
 
       if (node.else) {
-        compiledIf.else = transformViewNode(node.else);
+        compiledIf.else = transformViewNode(node.else, ctx);
       }
 
       return compiledIf;
@@ -313,9 +385,9 @@ function transformViewNode(node: ViewNode): CompiledNode {
     case 'each': {
       const compiledEach: CompiledEachNode = {
         kind: 'each',
-        items: transformExpression(node.items),
+        items: transformExpression(node.items, ctx),
         as: node.as,
-        body: transformViewNode(node.body),
+        body: transformViewNode(node.body, ctx),
       };
 
       if (node.index) {
@@ -323,10 +395,64 @@ function transformViewNode(node: ViewNode): CompiledNode {
       }
 
       if (node.key) {
-        compiledEach.key = transformExpression(node.key);
+        compiledEach.key = transformExpression(node.key, ctx);
       }
 
       return compiledEach;
+    }
+
+    case 'component': {
+      const def = ctx.components[node.name];
+      if (!def) {
+        // Component not found - should not happen if analyze pass is correct
+        // Return an empty element as fallback
+        return { kind: 'element', tag: 'div' };
+      }
+
+      // Transform props to CompiledExpressions
+      const params: Record<string, CompiledExpression> = {};
+      if (node.props) {
+        for (const [name, expr] of Object.entries(node.props)) {
+          params[name] = transformExpression(expr, ctx);
+        }
+      }
+
+      // Transform children for slot content
+      const children: CompiledNode[] = [];
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          children.push(transformViewNode(child, ctx));
+        }
+      }
+
+      // Create new context with currentParams and currentChildren
+      const newCtx: TransformContext = {
+        ...ctx,
+        currentParams: params,
+        currentChildren: children,
+      };
+
+      // Expand component view with the new context
+      return transformViewNode(def.view, newCtx);
+    }
+
+    case 'slot': {
+      // If currentChildren exists and has items, return them
+      if (ctx.currentChildren && ctx.currentChildren.length > 0) {
+        if (ctx.currentChildren.length === 1) {
+          // Single child, return it directly
+          const child = ctx.currentChildren[0];
+          if (child) return child;
+        }
+        // Multiple children - wrap in a span element
+        return {
+          kind: 'element',
+          tag: 'span',
+          children: ctx.currentChildren,
+        };
+      }
+      // No children - return an empty text node
+      return { kind: 'text', value: { expr: 'lit', value: '' } };
     }
   }
 }
@@ -379,10 +505,14 @@ function transformActions(actions: ActionDefinition[]): Record<string, CompiledA
  * @returns CompiledProgram
  */
 export function transformPass(ast: Program, _context: AnalysisContext): CompiledProgram {
+  const ctx: TransformContext = {
+    components: ast.components || {},
+  };
+
   return {
     version: '1.0',
     state: transformState(ast.state),
     actions: transformActions(ast.actions),
-    view: transformViewNode(ast.view),
+    view: transformViewNode(ast.view, ctx),
   };
 }

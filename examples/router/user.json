@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "state": {
+    "userId": { "type": "string", "initial": "" }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "page user-page" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "User Profile" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "User ID: " } },
+          { "kind": "text", "value": { "expr": "state", "name": "userId" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "props": { "className": { "expr": "lit", "value": "note" } },
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Note: The user ID is extracted from the URL path parameter." } }
+        ]
+      }
+    ]
+  }
+}

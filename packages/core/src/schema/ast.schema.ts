@@ -37,6 +37,10 @@ export const astSchema = {
     view: {
       $ref: '#/$defs/ViewNode',
     },
+    components: {
+      type: 'object',
+      additionalProperties: { $ref: '#/$defs/ComponentDef' },
+    },
   },
   $defs: {
     // ==================== Expressions ====================
@@ -47,6 +51,7 @@ export const astSchema = {
         { $ref: '#/$defs/VarExpr' },
         { $ref: '#/$defs/BinExpr' },
         { $ref: '#/$defs/NotExpr' },
+        { $ref: '#/$defs/ParamExpr' },
       ],
     },
     LitExpr: {
@@ -106,6 +111,16 @@ export const astSchema = {
       properties: {
         expr: { type: 'string', const: 'not' },
         operand: { $ref: '#/$defs/Expression' },
+      },
+    },
+    ParamExpr: {
+      type: 'object',
+      required: ['expr', 'name'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'param' },
+        name: { type: 'string' },
+        path: { type: 'string' },
       },
     },
 
@@ -234,6 +249,8 @@ export const astSchema = {
         { $ref: '#/$defs/TextNode' },
         { $ref: '#/$defs/IfNode' },
         { $ref: '#/$defs/EachNode' },
+        { $ref: '#/$defs/ComponentNode' },
+        { $ref: '#/$defs/SlotNode' },
       ],
     },
     ElementNode: {
@@ -289,6 +306,57 @@ export const astSchema = {
         index: { type: 'string' },
         key: { $ref: '#/$defs/Expression' },
         body: { $ref: '#/$defs/ViewNode' },
+      },
+    },
+    ComponentNode: {
+      type: 'object',
+      required: ['kind', 'name'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'component' },
+        name: { type: 'string' },
+        props: {
+          type: 'object',
+          additionalProperties: { $ref: '#/$defs/Expression' },
+        },
+        children: {
+          type: 'array',
+          items: { $ref: '#/$defs/ViewNode' },
+        },
+      },
+    },
+    SlotNode: {
+      type: 'object',
+      required: ['kind'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'slot' },
+      },
+    },
+
+    // ==================== Component Definition ====================
+    ParamDef: {
+      type: 'object',
+      required: ['type'],
+      additionalProperties: false,
+      properties: {
+        type: {
+          type: 'string',
+          enum: ['string', 'number', 'boolean', 'json'],
+        },
+        required: { type: 'boolean' },
+      },
+    },
+    ComponentDef: {
+      type: 'object',
+      required: ['view'],
+      additionalProperties: false,
+      properties: {
+        params: {
+          type: 'object',
+          additionalProperties: { $ref: '#/$defs/ParamDef' },
+        },
+        view: { $ref: '#/$defs/ViewNode' },
       },
     },
   },

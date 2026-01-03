@@ -14,11 +14,14 @@ import {
   type VarExpr,
   type BinExpr,
   type NotExpr,
+  type ParamExpr,
   type ViewNode,
   type ElementNode,
   type TextNode,
   type IfNode,
   type EachNode,
+  type ComponentNode,
+  type SlotNode,
   type ActionStep,
   type SetStep,
   type UpdateStep,
@@ -101,6 +104,20 @@ export function isNotExpr(value: unknown): value is NotExpr {
 }
 
 /**
+ * Checks if value is a param expression
+ */
+export function isParamExpr(value: unknown): value is ParamExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'param') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate path if present
+  if ('path' in value && value['path'] !== undefined) {
+    if (typeof value['path'] !== 'string') return false;
+  }
+  return true;
+}
+
+/**
  * Checks if value is any valid expression
  */
 export function isExpression(value: unknown): value is Expression {
@@ -109,7 +126,8 @@ export function isExpression(value: unknown): value is Expression {
     isStateExpr(value) ||
     isVarExpr(value) ||
     isBinExpr(value) ||
-    isNotExpr(value)
+    isNotExpr(value) ||
+    isParamExpr(value)
   );
 }
 
@@ -157,6 +175,32 @@ export function isEachNode(value: unknown): value is EachNode {
 }
 
 /**
+ * Checks if value is a component node
+ */
+export function isComponentNode(value: unknown): value is ComponentNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'component') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate props if present
+  if ('props' in value && value['props'] !== undefined) {
+    if (!isObject(value['props'])) return false;
+  }
+  // Validate children if present
+  if ('children' in value && value['children'] !== undefined) {
+    if (!Array.isArray(value['children'])) return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if value is a slot node
+ */
+export function isSlotNode(value: unknown): value is SlotNode {
+  if (!isObject(value)) return false;
+  return value['kind'] === 'slot';
+}
+
+/**
  * Checks if value is any valid view node
  */
 export function isViewNode(value: unknown): value is ViewNode {
@@ -164,7 +208,9 @@ export function isViewNode(value: unknown): value is ViewNode {
     isElementNode(value) ||
     isTextNode(value) ||
     isIfNode(value) ||
-    isEachNode(value)
+    isEachNode(value) ||
+    isComponentNode(value) ||
+    isSlotNode(value)
   );
 }
 

@@ -1,0 +1,116 @@
+{
+  "version": "1.0",
+  "state": {
+    "count": { "type": "number", "initial": 0 }
+  },
+  "actions": [
+    {
+      "name": "increment",
+      "steps": [
+        { "do": "update", "target": "count", "operation": "increment" }
+      ]
+    }
+  ],
+  "components": {
+    "Button": {
+      "params": {
+        "label": { "type": "string" },
+        "disabled": { "type": "boolean", "required": false }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "button",
+        "props": {
+          "className": { "expr": "lit", "value": "btn" },
+          "disabled": { "expr": "param", "name": "disabled" }
+        },
+        "children": [
+          { "kind": "text", "value": { "expr": "param", "name": "label" } }
+        ]
+      }
+    },
+    "Card": {
+      "params": {
+        "title": { "type": "string" }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "card" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "h2",
+            "props": { "className": { "expr": "lit", "value": "card-title" } },
+            "children": [
+              { "kind": "text", "value": { "expr": "param", "name": "title" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "card-content" } },
+            "children": [
+              { "kind": "slot" }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "components-demo" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Component Demo" } }
+        ]
+      },
+      {
+        "kind": "component",
+        "name": "Card",
+        "props": {
+          "title": { "expr": "lit", "value": "Counter Card" }
+        },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "p",
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "Count: " } },
+              { "kind": "text", "value": { "expr": "state", "name": "count" } }
+            ]
+          },
+          {
+            "kind": "component",
+            "name": "Button",
+            "props": {
+              "label": { "expr": "lit", "value": "Increment" },
+              "onClick": { "event": "click", "action": "increment" }
+            }
+          }
+        ]
+      },
+      {
+        "kind": "component",
+        "name": "Card",
+        "props": {
+          "title": { "expr": "lit", "value": "About Components" }
+        },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "p",
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "This example demonstrates reusable components with props and slots." } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

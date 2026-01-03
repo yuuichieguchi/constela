@@ -42,6 +42,18 @@ export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const;
 
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
+// ==================== Param Types ====================
+
+export const PARAM_TYPES = ['string', 'number', 'boolean', 'json'] as const;
+export type ParamType = (typeof PARAM_TYPES)[number];
+
+// ==================== Param Definition ====================
+
+export interface ParamDef {
+  type: ParamType;
+  required?: boolean;  // defaults to true when checking
+}
+
 // ==================== Expressions ====================
 
 /**
@@ -87,7 +99,16 @@ export interface NotExpr {
   operand: Expression;
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr;
+/**
+ * Param expression - references a component parameter
+ */
+export interface ParamExpr {
+  expr: 'param';
+  name: string;
+  path?: string;  // for json params: "user.name"
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr;
 
 // ==================== State Fields ====================
 
@@ -216,7 +237,31 @@ export interface EachNode {
   body: ViewNode;
 }
 
-export type ViewNode = ElementNode | TextNode | IfNode | EachNode;
+/**
+ * Component node - invokes a defined component
+ */
+export interface ComponentNode {
+  kind: 'component';
+  name: string;
+  props?: Record<string, Expression>;
+  children?: ViewNode[];  // slot content
+}
+
+/**
+ * Slot node - placeholder for children in component definition
+ */
+export interface SlotNode {
+  kind: 'slot';
+}
+
+export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode;
+
+// ==================== Component Definition ====================
+
+export interface ComponentDef {
+  params?: Record<string, ParamDef>;
+  view: ViewNode;
+}
 
 // ==================== Program (Root) ====================
 
@@ -228,6 +273,7 @@ export interface Program {
   state: Record<string, StateField>;
   actions: ActionDefinition[];
   view: ViewNode;
+  components?: Record<string, ComponentDef>;
 }
 
 // Re-export for convenience

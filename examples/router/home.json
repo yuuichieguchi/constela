@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "page home-page" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Home" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Welcome to the Constela Router example. Use the navigation above to explore different pages." } }
+        ]
+      }
+    ]
+  }
+}

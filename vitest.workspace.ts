@@ -5,4 +5,5 @@ export default defineWorkspace([
   'packages/compiler',
   'packages/runtime',
   'packages/cli',
+  'packages/router',
 ]);

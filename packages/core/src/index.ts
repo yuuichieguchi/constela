@@ -10,6 +10,7 @@ export type {
   BinaryOperator,
   UpdateOperation,
   HttpMethod,
+  ParamType,
   // Expressions
   Expression,
   LitExpr,
@@ -17,6 +18,7 @@ export type {
   VarExpr,
   BinExpr,
   NotExpr,
+  ParamExpr,
   // State Fields
   StateField,
   NumberField,
@@ -37,6 +39,11 @@ export type {
   TextNode,
   IfNode,
   EachNode,
+  ComponentNode,
+  SlotNode,
+  // Component Definition
+  ParamDef,
+  ComponentDef,
   // Program
   Program,
   ConstelaAst,
@@ -46,6 +53,7 @@ export {
   BINARY_OPERATORS,
   UPDATE_OPERATIONS,
   HTTP_METHODS,
+  PARAM_TYPES,
 } from './types/ast.js';
 
 // ==================== Type Guards ====================
@@ -56,12 +64,15 @@ export {
   isVarExpr,
   isBinExpr,
   isNotExpr,
+  isParamExpr,
   isExpression,
   // ViewNode type guards
   isElementNode,
   isTextNode,
   isIfNode,
   isEachNode,
+  isComponentNode,
+  isSlotNode,
   isViewNode,
   // ActionStep type guards
   isSetStep,
@@ -89,6 +100,11 @@ export {
   createUndefinedVarError,
   createDuplicateActionError,
   createUnsupportedVersionError,
+  createComponentNotFoundError,
+  createComponentPropMissingError,
+  createComponentCycleError,
+  createComponentPropTypeError,
+  createUndefinedParamError,
 } from './types/error.js';
 
 // ==================== Validator ====================
