@@ -82,20 +82,6 @@ JavaScript is still the execution target — it’s just no longer the authoring
 
 ---
 
-### Is this meant to replace React or Vue?
-
-Not today.
-
-Constela explores a different design space focused on:
-- AI-generated UIs
-- compile-time correctness
-- deterministic behavior
-
-If this model proves effective at scale,
-it may eventually challenge how UI frameworks are designed.
-
----
-
 ### Why is the DSL so limited?
 
 The limitations are intentional.
