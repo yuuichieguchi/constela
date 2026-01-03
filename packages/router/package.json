@@ -1,6 +1,6 @@
 {
   "name": "@constela/router",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Client-side routing for Constela applications",
   "type": "module",
   "main": "./dist/index.js",
