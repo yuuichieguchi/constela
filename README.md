@@ -88,10 +88,14 @@ Declare application state with explicit types:
   "state": {
     "count": { "type": "number", "initial": 0 },
     "query": { "type": "string", "initial": "" },
-    "items": { "type": "list", "initial": [] }
+    "items": { "type": "list", "initial": [] },
+    "isVisible": { "type": "boolean", "initial": true },
+    "form": { "type": "object", "initial": { "name": "", "email": "" } }
   }
 }
 ```
+
+**State types:** `number`, `string`, `list`, `boolean`, `object`
 
 ### View Nodes
 
@@ -130,6 +134,12 @@ Constrained expression system (no arbitrary JavaScript):
 
 // Negation
 { "expr": "not", "operand": {...} }
+
+// Conditional (if/then/else)
+{ "expr": "cond", "if": {...}, "then": {...}, "else": {...} }
+
+// Property access
+{ "expr": "get", "base": { "expr": "state", "name": "user" }, "path": "address.city" }
 ```
 
 **Binary operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
@@ -160,8 +170,40 @@ Named actions with declarative steps:
 
 **Step types:**
 - `set` - Set state value
-- `update` - Update with operation (`increment`, `decrement`, `push`, `pop`, `remove`)
+- `update` - Update with operation (see below)
 - `fetch` - HTTP request with `onSuccess`/`onError` handlers
+
+**Update operations:**
+
+| Operation | State Type | Required Fields | Description |
+|-----------|------------|-----------------|-------------|
+| `increment` | number | - | Add to number (default: 1) |
+| `decrement` | number | - | Subtract from number (default: 1) |
+| `push` | list | `value` | Add item to end of array |
+| `pop` | list | - | Remove last item from array |
+| `remove` | list | `value` | Remove item by value or index |
+| `toggle` | boolean | - | Flip boolean value |
+| `merge` | object | `value` | Shallow merge into object |
+| `replaceAt` | list | `index`, `value` | Replace item at index |
+| `insertAt` | list | `index`, `value` | Insert item at index |
+| `splice` | list | `index`, `deleteCount` | Delete/insert items |
+
+```json
+// Toggle boolean
+{ "do": "update", "target": "isOpen", "operation": "toggle" }
+
+// Merge object
+{ "do": "update", "target": "form", "operation": "merge", "value": { "expr": "lit", "value": { "name": "John" } } }
+
+// Replace at index
+{ "do": "update", "target": "items", "operation": "replaceAt", "index": { "expr": "lit", "value": 0 }, "value": {...} }
+
+// Insert at index
+{ "do": "update", "target": "items", "operation": "insertAt", "index": { "expr": "lit", "value": 1 }, "value": {...} }
+
+// Splice (delete 2 items at index 1, insert new items)
+{ "do": "update", "target": "items", "operation": "splice", "index": { "expr": "lit", "value": 1 }, "deleteCount": { "expr": "lit", "value": 2 }, "value": { "expr": "lit", "value": ["a", "b"] } }
+```
 
 ### Components
 
@@ -411,6 +453,9 @@ All errors include structured information:
 - `COMPONENT_CYCLE` - Circular component reference detected
 - `COMPONENT_PROP_TYPE` - Prop type mismatch
 - `PARAM_UNDEFINED` - Reference to undefined param in component
+- `OPERATION_INVALID_FOR_TYPE` - Update operation incompatible with state type
+- `OPERATION_MISSING_FIELD` - Required field missing for update operation
+- `EXPR_COND_ELSE_REQUIRED` - Cond expression requires else field
 
 ## Running Examples
 
