@@ -68,7 +68,7 @@ if (result.ok) {
 
 ## FAQ
 
-## Why JSON instead of JavaScript?
+### Why JSON instead of JavaScript?
 
 Because JSON is **structural, enumerable, and statically verifiable**.
 
@@ -147,6 +147,8 @@ You have three options:
 3. Extend Constela itself (by adding new operations or expressions)
 
 Constela is designed to be **extended deliberately**, not bypassed casually.
+
+---
 
 ### Is this similar to low-code / no-code tools?
 
