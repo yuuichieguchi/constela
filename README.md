@@ -137,8 +137,6 @@ app.setState('total', calculateTotal(items, 1.1));
 The DSL remains declarative and statically verifiable,
 while complex logic stays flexible outside the language boundary.
 
----
-
 ### What happens when I need something not supported?
 
 You have three options:
@@ -147,8 +145,6 @@ You have three options:
 3. Extend Constela itself (by adding new operations or expressions)
 
 Constela is designed to be **extended deliberately**, not bypassed casually.
-
----
 
 ### Is this similar to low-code / no-code tools?
 
@@ -161,8 +157,6 @@ It exposes UI behavior explicitly as data, with:
 - explicit structure
 
 It is closer to a **UI programming language** than a visual builder.
-
----
 
 ### Is this usable in production?
 
@@ -177,8 +171,6 @@ The current focus is on:
 Production readiness depends on your requirements,
 but the core design is intentionally conservative and deterministic.
 
----
-
 ### Why do compile-time errors matter so much here?
 
 Because runtime errors are too late for generated UI.
@@ -191,8 +183,6 @@ With Constela, many issues can be detected *before execution*:
 
 This is especially important when humans are not the primary authors.
 
----
-
 ### How is this different from just using TypeScript?
 
 TypeScript helps, but it still allows:
@@ -202,8 +192,6 @@ TypeScript helps, but it still allows:
 
 Constela goes further by **removing entire classes of invalid programs**
 through a constrained language and compiler-first design.
-
----
 
 ### Why not just generate React code with AI?
 
@@ -216,8 +204,6 @@ Generated React code can look correct but still:
 
 Constela explores whether a *restricted target* leads to more reliable
 AI-generated UIs.
-
----
 
 ### Who is this for?
 
