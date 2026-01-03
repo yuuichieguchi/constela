@@ -4,6 +4,7 @@ import { resolve } from 'path';
 export default defineConfig({
   root: '.',
   build: {
+    target: 'esnext',
     rollupOptions: {
       input: {
         counter: resolve(__dirname, 'counter/index.html'),
