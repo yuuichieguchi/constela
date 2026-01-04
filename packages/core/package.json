@@ -22,9 +22,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
-    "ajv": "^8.12.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.10.0",
     "tsup": "^8.0.0",

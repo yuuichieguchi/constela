@@ -2,12 +2,8 @@
  * JSON Schema for Constela AST
  *
  * This module defines the JSON Schema for validating Constela AST structures.
+ * The schema is kept for documentation and external tooling purposes.
  */
-
-import type { JSONSchemaType } from 'ajv';
-
-// Note: We use a loose type here because AJV's JSONSchemaType is complex
-// and our schema needs to handle recursive definitions
 
 export const astSchema = {
   $schema: 'http://json-schema.org/draft-07/schema#',

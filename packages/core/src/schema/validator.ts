@@ -2,11 +2,9 @@
  * AST Validator for Constela
  *
  * This module provides validation for Constela AST structures using
- * JSON Schema validation (AJV) and semantic validation.
+ * custom validation and semantic validation.
  */
 
-import Ajv, { ErrorObject } from 'ajv';
-import { astSchema } from './ast.schema.js';
 import {
   ConstelaError,
   createSchemaError,
@@ -31,16 +29,6 @@ export interface ValidationFailure {
 }
 
 export type ValidationResult = ValidationSuccess | ValidationFailure;
-
-// ==================== AJV Instance ====================
-
-const ajv = new Ajv({
-  allErrors: true,
-  verbose: true,
-  strict: false,
-});
-
-const validate = ajv.compile(astSchema);
 
 // ==================== Helper Functions ====================
 
@@ -465,28 +453,6 @@ function customValidateAst(input: Record<string, unknown>): ValidationError | nu
   return null;
 }
 
-// ==================== Error Finding ====================
-
-/**
- * Finds the best error from AJV errors for top-level required fields
- */
-function findTopLevelRequiredError(
-  errors: ErrorObject[]
-): { path: string; message: string } | null {
-  for (const error of errors) {
-    if (error.keyword === 'required' && error.instancePath === '') {
-      const params = error.params as Record<string, unknown>;
-      if (typeof params['missingProperty'] === 'string') {
-        return {
-          path: '/' + params['missingProperty'],
-          message: error.message ?? 'Required field missing',
-        };
-      }
-    }
-  }
-  return null;
-}
-
 // ==================== Semantic Validation ====================
 
 interface SemanticContext {
@@ -684,7 +650,7 @@ export function validateAst(input: unknown): ValidationResult {
     };
   }
 
-  // Check version first (before schema validation) for unsupported version error
+  // Check version first for unsupported version error
   if ('version' in input && input['version'] !== '1.0') {
     if (typeof input['version'] === 'string') {
       return {
@@ -694,45 +660,41 @@ export function validateAst(input: unknown): ValidationResult {
     }
   }
 
-  // Run schema validation first for top-level required fields
-  const valid = validate(input);
-
-  if (!valid && validate.errors && validate.errors.length > 0) {
-    // Check for top-level required field errors first
-    const topLevelError = findTopLevelRequiredError(validate.errors);
-    if (topLevelError) {
-      return {
-        ok: false,
-        error: createSchemaError(topLevelError.message, topLevelError.path),
-      };
-    }
-
-    // Use custom validation for detailed error paths
-    const customError = customValidateAst(input);
-    if (customError) {
-      return {
-        ok: false,
-        error: createSchemaError(customError.message, customError.path),
-      };
-    }
-
-    // Fallback to first AJV error
-    const firstError = validate.errors[0];
-    if (firstError) {
-      return {
-        ok: false,
-        error: createSchemaError(
-          firstError.message ?? 'Schema validation failed',
-          firstError.instancePath || '/'
-        ),
-      };
-    }
-  }
-
-  if (!valid) {
+  // Check required top-level fields
+  if (!('version' in input)) {
     return {
       ok: false,
-      error: createSchemaError('Schema validation failed', '/'),
+      error: createSchemaError("must have required property 'version'", '/version'),
+    };
+  }
+
+  if (!('state' in input)) {
+    return {
+      ok: false,
+      error: createSchemaError("must have required property 'state'", '/state'),
+    };
+  }
+
+  if (!('actions' in input)) {
+    return {
+      ok: false,
+      error: createSchemaError("must have required property 'actions'", '/actions'),
+    };
+  }
+
+  if (!('view' in input)) {
+    return {
+      ok: false,
+      error: createSchemaError("must have required property 'view'", '/view'),
+    };
+  }
+
+  // Run custom validation for detailed error paths
+  const customError = customValidateAst(input);
+  if (customError) {
+    return {
+      ok: false,
+      error: createSchemaError(customError.message, customError.path),
     };
   }
 
@@ -747,6 +709,6 @@ export function validateAst(input: unknown): ValidationResult {
 
   return {
     ok: true,
-    ast: input as Program,
+    ast: input as unknown as Program,
   };
 }
