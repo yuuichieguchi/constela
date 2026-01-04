@@ -579,6 +579,180 @@ describe('render element node', () => {
     });
   });
 
+  // ==================== Input/Change Event Handling ====================
+
+  describe('input/change event handling', () => {
+    it('should pass event.target.value as value local for input event', async () => {
+      // Arrange
+      const setInputValueAction: CompiledAction = {
+        name: 'setInputValue',
+        steps: [
+          { do: 'set', target: 'inputValue', value: { expr: 'var', name: 'value' } },
+        ],
+      };
+
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'input',
+        props: {
+          type: { expr: 'lit', value: 'text' },
+          onInput: {
+            event: 'input',
+            action: 'setInputValue',
+            payload: { expr: 'var', name: 'value' },
+          },
+        },
+      };
+      const context = createContext(
+        { inputValue: { type: 'string', initial: '' } },
+        { setInputValue: setInputValueAction }
+      );
+
+      // Act
+      const result = render(node, context) as HTMLInputElement;
+      container.appendChild(result);
+
+      // Simulate user typing by setting value and dispatching input event
+      result.value = 'hello world';
+      result.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Wait for async event handler
+      await Promise.resolve();
+
+      // Assert
+      expect(context.state.get('inputValue')).toBe('hello world');
+    });
+
+    it('should pass event.target.value as value local for change event', async () => {
+      // Arrange
+      const setChangeValueAction: CompiledAction = {
+        name: 'setChangeValue',
+        steps: [
+          { do: 'set', target: 'selectedValue', value: { expr: 'var', name: 'value' } },
+        ],
+      };
+
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'select',
+        props: {
+          onChange: {
+            event: 'change',
+            action: 'setChangeValue',
+            payload: { expr: 'var', name: 'value' },
+          },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'option',
+            props: { value: { expr: 'lit', value: 'option1' } },
+            children: [{ kind: 'text', value: { expr: 'lit', value: 'Option 1' } }],
+          },
+          {
+            kind: 'element',
+            tag: 'option',
+            props: { value: { expr: 'lit', value: 'option2' } },
+            children: [{ kind: 'text', value: { expr: 'lit', value: 'Option 2' } }],
+          },
+        ],
+      };
+      const context = createContext(
+        { selectedValue: { type: 'string', initial: '' } },
+        { setChangeValue: setChangeValueAction }
+      );
+
+      // Act
+      const result = render(node, context) as HTMLSelectElement;
+      container.appendChild(result);
+
+      // Simulate selecting an option
+      result.value = 'option2';
+      result.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Wait for async event handler
+      await Promise.resolve();
+
+      // Assert
+      expect(context.state.get('selectedValue')).toBe('option2');
+    });
+
+    it('should pass event.target.checked as checked local for checkbox change event', async () => {
+      // Arrange
+      const setCheckedAction: CompiledAction = {
+        name: 'setChecked',
+        steps: [
+          { do: 'set', target: 'isChecked', value: { expr: 'var', name: 'checked' } },
+        ],
+      };
+
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'input',
+        props: {
+          type: { expr: 'lit', value: 'checkbox' },
+          onChange: {
+            event: 'change',
+            action: 'setChecked',
+            payload: { expr: 'var', name: 'checked' },
+          },
+        },
+      };
+      const context = createContext(
+        { isChecked: { type: 'number', initial: 0 } },
+        { setChecked: setCheckedAction }
+      );
+
+      // Act
+      const result = render(node, context) as HTMLInputElement;
+      container.appendChild(result);
+
+      // Simulate checking the checkbox
+      result.checked = true;
+      result.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Wait for async event handler
+      await Promise.resolve();
+
+      // Assert
+      expect(context.state.get('isChecked')).toBe(true);
+    });
+
+    it('should maintain backward compatibility - click event without value local should still work', async () => {
+      // Arrange
+      const incrementAction: CompiledAction = {
+        name: 'increment',
+        steps: [
+          { do: 'update', target: 'count', operation: 'increment' },
+        ],
+      };
+
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'button',
+        props: {
+          onClick: { event: 'click', action: 'increment' },
+        },
+        children: [{ kind: 'text', value: { expr: 'lit', value: 'Click me' } }],
+      };
+      const context = createContext(
+        { count: { type: 'number', initial: 0 } },
+        { increment: incrementAction }
+      );
+
+      // Act
+      const result = render(node, context) as HTMLButtonElement;
+      container.appendChild(result);
+      result.click();
+
+      // Wait for async event handler
+      await Promise.resolve();
+
+      // Assert
+      expect(context.state.get('count')).toBe(1);
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

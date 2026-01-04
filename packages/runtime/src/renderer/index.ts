@@ -68,15 +68,35 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
         el.addEventListener(eventName, async (event) => {
           const action = ctx.actions[handler.action];
           if (action) {
-            // Create action context with event payload
+            // Create event-specific locals
+            const eventLocals: Record<string, unknown> = {};
+            const target = event.target;
+
+            // Extract value for input-like elements
+            if (target instanceof HTMLInputElement ||
+                target instanceof HTMLTextAreaElement ||
+                target instanceof HTMLSelectElement) {
+              eventLocals['value'] = target.value;
+
+              // Also provide checked for checkbox inputs
+              if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+                eventLocals['checked'] = target.checked;
+              }
+            }
+
+            // Evaluate payload with event locals merged into context locals
             let payload: unknown = undefined;
             if (handler.payload) {
-              payload = evaluate(handler.payload, { state: ctx.state, locals: ctx.locals });
+              payload = evaluate(handler.payload, {
+                state: ctx.state,
+                locals: { ...ctx.locals, ...eventLocals }
+              });
             }
+
             const actionCtx = {
               state: ctx.state,
               actions: ctx.actions,
-              locals: { ...ctx.locals, payload },
+              locals: { ...ctx.locals, ...eventLocals, payload },
               eventPayload: payload,
             };
             await executeAction(action, actionCtx);
