@@ -10,9 +10,13 @@
     "test:watch": "vitest",
     "lint": "eslint packages/*/src/**/*.ts",
     "type-check": "pnpm -r type-check",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@types/node": "^20.10.0",
     "eslint": "^9.0.0",
     "tsup": "^8.0.0",
