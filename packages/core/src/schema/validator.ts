@@ -39,7 +39,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -182,7 +182,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param' };
+    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get' };
   }
 
   switch (exprType) {
@@ -235,6 +235,35 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         return { path: path + '/path', message: 'path must be a string' };
       }
       break;
+
+    case 'cond':
+      if (!('if' in expr)) {
+        return { path: path + '/if', message: 'if is required' };
+      }
+      if (!('then' in expr)) {
+        return { path: path + '/then', message: 'then is required' };
+      }
+      if (!('else' in expr)) {
+        return { path: path + '/else', message: 'else is required' };
+      }
+      {
+        const ifError = validateExpression(expr['if'], path + '/if');
+        if (ifError) return ifError;
+        const thenError = validateExpression(expr['then'], path + '/then');
+        if (thenError) return thenError;
+        const elseError = validateExpression(expr['else'], path + '/else');
+        if (elseError) return elseError;
+      }
+      break;
+
+    case 'get':
+      if (!('base' in expr)) {
+        return { path: path + '/base', message: 'base is required' };
+      }
+      if (typeof expr['path'] !== 'string') {
+        return { path: path + '/path', message: 'path is required' };
+      }
+      return validateExpression(expr['base'], path + '/base');
   }
 
   return null;

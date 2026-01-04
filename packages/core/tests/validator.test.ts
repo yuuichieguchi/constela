@@ -289,6 +289,207 @@ describe('validateAst - Invalid Schema', () => {
         expect(result.error.path).toBe('/view/value/op');
       }
     });
+
+    // ==================== Cond and Get Expressions ====================
+
+    describe('Cond and Get Expressions', () => {
+      // ==================== Cond Expression Tests ====================
+
+      describe('Cond Expression', () => {
+        it('should accept valid cond expression', () => {
+          const ast = {
+            version: '1.0',
+            state: { isLoggedIn: { type: 'boolean', initial: false } },
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'cond',
+                if: { expr: 'state', name: 'isLoggedIn' },
+                then: { expr: 'lit', value: 'Welcome!' },
+                else: { expr: 'lit', value: 'Please log in' },
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(true);
+        });
+
+        it('should return error for cond expression missing if', () => {
+          const ast = {
+            version: '1.0',
+            state: {},
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'cond',
+                // missing 'if'
+                then: { expr: 'lit', value: 'yes' },
+                else: { expr: 'lit', value: 'no' },
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/if');
+          }
+        });
+
+        it('should return error for cond expression missing then', () => {
+          const ast = {
+            version: '1.0',
+            state: {},
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'cond',
+                if: { expr: 'lit', value: true },
+                // missing 'then'
+                else: { expr: 'lit', value: 'no' },
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/then');
+          }
+        });
+
+        it('should return error for cond expression missing else', () => {
+          const ast = {
+            version: '1.0',
+            state: {},
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'cond',
+                if: { expr: 'lit', value: true },
+                then: { expr: 'lit', value: 'yes' },
+                // missing 'else'
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/else');
+          }
+        });
+
+        it('should validate nested expressions in cond', () => {
+          const ast = {
+            version: '1.0',
+            state: {},
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'cond',
+                if: { expr: 'invalid-expr' }, // invalid nested expression
+                then: { expr: 'lit', value: 'yes' },
+                else: { expr: 'lit', value: 'no' },
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/if/expr');
+          }
+        });
+      });
+
+      // ==================== Get Expression Tests ====================
+
+      describe('Get Expression', () => {
+        it('should accept valid get expression', () => {
+          const ast = {
+            version: '1.0',
+            state: { user: { type: 'object', initial: { name: 'John' } } },
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'get',
+                base: { expr: 'state', name: 'user' },
+                path: 'name',
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(true);
+        });
+
+        it('should return error for get expression missing base', () => {
+          const ast = {
+            version: '1.0',
+            state: {},
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'get',
+                // missing 'base'
+                path: 'name',
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/base');
+          }
+        });
+
+        it('should return error for get expression missing path', () => {
+          const ast = {
+            version: '1.0',
+            state: { user: { type: 'object', initial: {} } },
+            actions: [],
+            view: {
+              kind: 'text',
+              value: {
+                expr: 'get',
+                base: { expr: 'state', name: 'user' },
+                // missing 'path'
+              },
+            },
+          };
+
+          const result = validateAst(ast);
+
+          expect(result.ok).toBe(false);
+          if (!result.ok) {
+            expect(result.error.code).toBe('SCHEMA_INVALID');
+            expect(result.error.path).toBe('/view/value/path');
+          }
+        });
+      });
+    });
   });
 
   describe('Invalid Action Steps', () => {
