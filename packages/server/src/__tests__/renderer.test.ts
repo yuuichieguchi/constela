@@ -7,10 +7,12 @@
  * - If nodes (true condition, false condition, without else)
  * - Each nodes (iteration, empty array, index variable)
  * - Event handlers (should be ignored in SSR)
+ * - Markdown nodes
+ * - Code nodes (with shiki syntax highlighting)
  */
 
 import { describe, it, expect } from 'vitest';
-import { renderToString } from '../../ssr/renderer.js';
+import { renderToString } from '../renderer.js';
 import type { CompiledProgram } from '@constela/compiler';
 
 describe('renderToString', () => {
@@ -35,7 +37,7 @@ describe('renderToString', () => {
   // ==================== Element Nodes ====================
 
   describe('element nodes', () => {
-    it('should render simple div element', () => {
+    it('should render simple div element', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -43,13 +45,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div></div>');
     });
 
-    it('should render element with class prop', () => {
+    it('should render element with class prop', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -60,13 +62,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div class="test"></div>');
     });
 
-    it('should render element with multiple props', () => {
+    it('should render element with multiple props', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -78,14 +80,14 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="container"');
       expect(result).toContain('id="main"');
     });
 
-    it('should render element with children', () => {
+    it('should render element with children', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -105,13 +107,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div><span>text</span></div>');
     });
 
-    it('should render nested elements', () => {
+    it('should render nested elements', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -141,7 +143,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div><ul><li>Item 1</li><li>Item 2</li></ul></div>');
@@ -151,7 +153,7 @@ describe('renderToString', () => {
   // ==================== Void Elements ====================
 
   describe('void elements', () => {
-    it('should render input as self-closing', () => {
+    it('should render input as self-closing', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -162,13 +164,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<input type="text" />');
     });
 
-    it('should render br as self-closing', () => {
+    it('should render br as self-closing', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -176,13 +178,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<br />');
     });
 
-    it('should render img as self-closing with props', () => {
+    it('should render img as self-closing with props', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -194,7 +196,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<img');
@@ -204,7 +206,7 @@ describe('renderToString', () => {
       expect(result).not.toContain('</img>');
     });
 
-    it('should render hr as self-closing', () => {
+    it('should render hr as self-closing', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -212,13 +214,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<hr />');
     });
 
-    it('should render meta as self-closing', () => {
+    it('should render meta as self-closing', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -229,7 +231,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<meta charset="utf-8" />');
@@ -239,7 +241,7 @@ describe('renderToString', () => {
   // ==================== Text Nodes ====================
 
   describe('text nodes', () => {
-    it('should render literal text', () => {
+    it('should render literal text', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -253,13 +255,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<p>Hello</p>');
     });
 
-    it('should render number as text', () => {
+    it('should render number as text', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -273,13 +275,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<span>42</span>');
     });
 
-    it('should escape HTML in text content', () => {
+    it('should escape HTML in text content', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -293,7 +295,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe(
@@ -301,7 +303,7 @@ describe('renderToString', () => {
       );
     });
 
-    it('should render state value using initial value', () => {
+    it('should render state value using initial value', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -320,13 +322,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<span>Hello from state</span>');
     });
 
-    it('should render empty string for null value', () => {
+    it('should render empty string for null value', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -340,7 +342,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<span></span>');
@@ -350,7 +352,7 @@ describe('renderToString', () => {
   // ==================== If Nodes ====================
 
   describe('if nodes', () => {
-    it('should render then branch when condition is true', () => {
+    it('should render then branch when condition is true', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -370,13 +372,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div>Visible</div>');
     });
 
-    it('should render else branch when condition is false', () => {
+    it('should render else branch when condition is false', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -403,13 +405,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<span>Hidden</span>');
     });
 
-    it('should render empty string when condition is false and no else', () => {
+    it('should render empty string when condition is false and no else', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -429,13 +431,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('');
     });
 
-    it('should evaluate literal true condition', () => {
+    it('should evaluate literal true condition', async () => {
       // Arrange
       const program = createProgram({
         kind: 'if',
@@ -450,13 +452,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div>Always visible</div>');
     });
 
-    it('should evaluate literal false condition', () => {
+    it('should evaluate literal false condition', async () => {
       // Arrange
       const program = createProgram({
         kind: 'if',
@@ -471,7 +473,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('');
@@ -481,7 +483,7 @@ describe('renderToString', () => {
   // ==================== Each Nodes ====================
 
   describe('each nodes', () => {
-    it('should iterate over array and render items', () => {
+    it('should iterate over array and render items', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -502,13 +504,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<li>A</li><li>B</li><li>C</li>');
     });
 
-    it('should render empty string for empty array', () => {
+    it('should render empty string for empty array', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -529,13 +531,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('');
     });
 
-    it('should provide index variable when specified', () => {
+    it('should provide index variable when specified', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -559,13 +561,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<li>0: Apple</li><li>1: Banana</li>');
     });
 
-    it('should iterate over literal array', () => {
+    it('should iterate over literal array', async () => {
       // Arrange
       const program = createProgram({
         kind: 'each',
@@ -581,13 +583,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<span>1</span><span>2</span><span>3</span>');
     });
 
-    it('should handle nested each nodes', () => {
+    it('should handle nested each nodes', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -625,7 +627,7 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe(
@@ -637,7 +639,7 @@ describe('renderToString', () => {
   // ==================== Event Handlers ====================
 
   describe('event handlers', () => {
-    it('should ignore onclick handler in SSR', () => {
+    it('should ignore onclick handler in SSR', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -651,14 +653,14 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<button>Click me</button>');
       expect(result).not.toContain('onclick');
     });
 
-    it('should ignore oninput handler in SSR', () => {
+    it('should ignore oninput handler in SSR', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -670,14 +672,14 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<input type="text" />');
       expect(result).not.toContain('oninput');
     });
 
-    it('should render element with both props and ignored handlers', () => {
+    it('should render element with both props and ignored handlers', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -693,7 +695,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="btn"');
@@ -704,7 +706,7 @@ describe('renderToString', () => {
   // ==================== Prop Value Handling ====================
 
   describe('prop value handling', () => {
-    it('should escape attribute values', () => {
+    it('should escape attribute values', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -715,13 +717,13 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<div data-value="hello &quot;world&quot;"></div>');
     });
 
-    it('should render state value in props', () => {
+    it('should render state value in props', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -738,13 +740,13 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('value="default value"');
     });
 
-    it('should not render boolean false props', () => {
+    it('should not render boolean false props', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -758,14 +760,14 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<button>Button</button>');
       expect(result).not.toContain('disabled');
     });
 
-    it('should render boolean true props as attribute name only', () => {
+    it('should render boolean true props as attribute name only', async () => {
       // Arrange
       const program = createProgram({
         kind: 'element',
@@ -779,7 +781,7 @@ describe('renderToString', () => {
       });
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe('<button disabled>Button</button>');
@@ -789,7 +791,7 @@ describe('renderToString', () => {
   // ==================== Complex Scenarios ====================
 
   describe('complex scenarios', () => {
-    it('should render a complete form', () => {
+    it('should render a complete form', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -831,7 +833,7 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<form class="login-form">');
@@ -841,7 +843,7 @@ describe('renderToString', () => {
       expect(result).toContain('</form>');
     });
 
-    it('should render conditional list with items', () => {
+    it('should render conditional list with items', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -880,7 +882,7 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toBe(
@@ -892,7 +894,7 @@ describe('renderToString', () => {
   // ==================== Markdown Nodes ====================
 
   describe('markdown nodes', () => {
-    it('should render markdown container with constela-markdown class', () => {
+    it('should render markdown container with constela-markdown class', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -900,13 +902,13 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="constela-markdown"');
     });
 
-    it('should render basic markdown heading (# heading -> h1)', () => {
+    it('should render basic markdown heading (# heading -> h1)', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -914,7 +916,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<h1');
@@ -922,7 +924,7 @@ describe('renderToString', () => {
       expect(result).toContain('</h1>');
     });
 
-    it('should render markdown with state value', () => {
+    it('should render markdown with state value', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -935,14 +937,14 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<h1');
       expect(result).toContain('From State');
     });
 
-    it('should render bold text in markdown', () => {
+    it('should render bold text in markdown', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -950,7 +952,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<strong');
@@ -958,7 +960,7 @@ describe('renderToString', () => {
       expect(result).toContain('</strong>');
     });
 
-    it('should render italic text in markdown', () => {
+    it('should render italic text in markdown', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -966,7 +968,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<em');
@@ -974,7 +976,7 @@ describe('renderToString', () => {
       expect(result).toContain('</em>');
     });
 
-    it('should render paragraph text', () => {
+    it('should render paragraph text', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -982,7 +984,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<p');
@@ -990,7 +992,7 @@ describe('renderToString', () => {
       expect(result).toContain('</p>');
     });
 
-    it('should render links in markdown', () => {
+    it('should render links in markdown', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -998,7 +1000,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<a');
@@ -1007,7 +1009,7 @@ describe('renderToString', () => {
       expect(result).toContain('</a>');
     });
 
-    it('should render unordered list in markdown', () => {
+    it('should render unordered list in markdown', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -1015,7 +1017,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<ul');
@@ -1025,7 +1027,7 @@ describe('renderToString', () => {
       expect(result).toContain('Item 3');
     });
 
-    it('should handle empty markdown content', () => {
+    it('should handle empty markdown content', async () => {
       // Arrange
       const program = createProgram({
         kind: 'markdown',
@@ -1033,7 +1035,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="constela-markdown"');
@@ -1043,7 +1045,7 @@ describe('renderToString', () => {
   // ==================== Code Nodes ====================
 
   describe('code nodes', () => {
-    it('should render code container with constela-code class', () => {
+    it('should render code container with constela-code class', async () => {
       // Arrange
       const program = createProgram({
         kind: 'code',
@@ -1052,13 +1054,13 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="constela-code"');
     });
 
-    it('should render code content', () => {
+    it('should render code content', async () => {
       // Arrange
       const codeContent = 'const greeting = "Hello, World!";';
       const program = createProgram({
@@ -1068,14 +1070,15 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
-      expect(result).toContain('const greeting');
+      expect(result).toContain('const');
+      expect(result).toContain('greeting');
       expect(result).toContain('Hello, World!');
     });
 
-    it('should render pre and code elements', () => {
+    it('should render pre and code elements', async () => {
       // Arrange
       const program = createProgram({
         kind: 'code',
@@ -1084,7 +1087,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('<pre');
@@ -1093,22 +1096,7 @@ describe('renderToString', () => {
       expect(result).toContain('</pre>');
     });
 
-    it('should render with specified language class', () => {
-      // Arrange
-      const program = createProgram({
-        kind: 'code',
-        language: { expr: 'lit', value: 'typescript' },
-        content: { expr: 'lit', value: 'const x: number = 1;' },
-      } as CompiledProgram['view']);
-
-      // Act
-      const result = renderToString(program);
-
-      // Assert
-      expect(result).toContain('language-typescript');
-    });
-
-    it('should render code with state values', () => {
+    it('should render code with state values', async () => {
       // Arrange
       const program = createProgram(
         {
@@ -1122,33 +1110,15 @@ describe('renderToString', () => {
       );
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
-      expect(result).toContain('const fromState = true;');
+      expect(result).toContain('const');
+      expect(result).toContain('fromState');
+      expect(result).toContain('true');
     });
 
-    it('should render language from state', () => {
-      // Arrange
-      const program = createProgram(
-        {
-          kind: 'code',
-          language: { expr: 'state', name: 'selectedLanguage' },
-          content: { expr: 'lit', value: 'let x = 1' },
-        } as CompiledProgram['view'],
-        {
-          selectedLanguage: { type: 'string', initial: 'python' },
-        }
-      );
-
-      // Act
-      const result = renderToString(program);
-
-      // Assert
-      expect(result).toContain('language-python');
-    });
-
-    it('should render multi-line code', () => {
+    it('should render multi-line code', async () => {
       // Arrange
       const codeContent = `function add(a, b) {
   return a + b;
@@ -1160,14 +1130,15 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
-      expect(result).toContain('function add');
-      expect(result).toContain('return a + b');
+      expect(result).toContain('function');
+      expect(result).toContain('add');
+      expect(result).toContain('return');
     });
 
-    it('should escape special HTML characters in code', () => {
+    it('should handle special HTML characters in code', async () => {
       // Arrange
       const codeContent = 'const html = "<div>&amp;</div>";';
       const program = createProgram({
@@ -1177,15 +1148,18 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
-      // HTML special characters should be escaped in the output
-      expect(result).toContain('&lt;div&gt;');
-      expect(result).toContain('&amp;amp;');
+      // Shiki handles escaping internally, code content should be present
+      expect(result).toContain('const');
+      expect(result).toContain('html');
+      // The < and > should be escaped in the output (shiki uses hex entities)
+      expect(result).toContain('&#x3C;');
+      expect(result).toContain('&#x3C;/');
     });
 
-    it('should handle empty code content', () => {
+    it('should handle empty code content', async () => {
       // Arrange
       const program = createProgram({
         kind: 'code',
@@ -1194,7 +1168,7 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('class="constela-code"');
@@ -1202,7 +1176,7 @@ describe('renderToString', () => {
       expect(result).toContain('<code');
     });
 
-    it('should handle empty language', () => {
+    it('should handle empty language', async () => {
       // Arrange
       const program = createProgram({
         kind: 'code',
@@ -1211,10 +1185,49 @@ describe('renderToString', () => {
       } as CompiledProgram['view']);
 
       // Act
-      const result = renderToString(program);
+      const result = await renderToString(program);
 
       // Assert
       expect(result).toContain('some code');
+    });
+
+    it('should render syntax highlighted code with shiki', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'typescript' },
+        content: { expr: 'lit', value: 'const x: number = 42;' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = await renderToString(program);
+
+      // Assert
+      // Shiki outputs spans with inline styles for syntax highlighting
+      expect(result).toContain('<span');
+      expect(result).toContain('style=');
+    });
+
+    it('should render language from state', async () => {
+      // Arrange
+      const program = createProgram(
+        {
+          kind: 'code',
+          language: { expr: 'state', name: 'selectedLanguage' },
+          content: { expr: 'lit', value: 'print("Hello")' },
+        } as CompiledProgram['view'],
+        {
+          selectedLanguage: { type: 'string', initial: 'python' },
+        }
+      );
+
+      // Act
+      const result = await renderToString(program);
+
+      // Assert
+      // Should render the code content
+      expect(result).toContain('print');
+      expect(result).toContain('Hello');
     });
   });
 });

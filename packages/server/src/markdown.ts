@@ -1,19 +1,8 @@
-/**
- * SSR Markdown Parser
- */
-
 import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
 
-// Configure marked
-marked.setOptions({
-  gfm: true,
-  breaks: false,
-});
+marked.setOptions({ gfm: true, breaks: false });
 
-/**
- * Parse markdown to HTML for SSR
- */
 export function parseMarkdownSSR(content: string): string {
   const rawHtml = marked.parse(content, { async: false }) as string;
   return DOMPurify.sanitize(rawHtml, {

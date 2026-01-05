@@ -18,7 +18,7 @@ import type {
 } from '@constela/compiler';
 import { parseMarkdownSSR } from './markdown.js';
 import { renderCodeSSR } from './code.js';
-import { escapeHtml } from '../utils/escape.js';
+import { escapeHtml } from './utils/escape.js';
 
 // ==================== Constants ====================
 
@@ -244,20 +244,20 @@ function formatValue(value: unknown): string {
 /**
  * Renders a compiled node to HTML string
  */
-function renderNode(node: CompiledNode, ctx: SSRContext): string {
+async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> {
   switch (node.kind) {
     case 'element':
-      return renderElement(node, ctx);
+      return await renderElement(node, ctx);
     case 'text':
       return renderText(node, ctx);
     case 'if':
-      return renderIf(node, ctx);
+      return await renderIf(node, ctx);
     case 'each':
-      return renderEach(node, ctx);
+      return await renderEach(node, ctx);
     case 'markdown':
       return renderMarkdown(node, ctx);
     case 'code':
-      return renderCode(node, ctx);
+      return await renderCode(node, ctx);
     default: {
       const _exhaustiveCheck: never = node;
       throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);
@@ -268,7 +268,7 @@ function renderNode(node: CompiledNode, ctx: SSRContext): string {
 /**
  * Renders an element node to HTML string
  */
-function renderElement(node: CompiledElementNode, ctx: SSRContext): string {
+async function renderElement(node: CompiledElementNode, ctx: SSRContext): Promise<string> {
   const tag = node.tag;
   const isVoid = VOID_ELEMENTS.has(tag);
 
@@ -311,7 +311,7 @@ function renderElement(node: CompiledElementNode, ctx: SSRContext): string {
   let childrenHtml = '';
   if (node.children) {
     for (const child of node.children) {
-      childrenHtml += renderNode(child, ctx);
+      childrenHtml += await renderNode(child, ctx);
     }
   }
 
@@ -329,15 +329,15 @@ function renderText(node: CompiledTextNode, ctx: SSRContext): string {
 /**
  * Renders an if node to HTML string
  */
-function renderIf(node: CompiledIfNode, ctx: SSRContext): string {
+async function renderIf(node: CompiledIfNode, ctx: SSRContext): Promise<string> {
   const condition = evaluate(node.condition, ctx);
 
   if (condition) {
-    return renderNode(node.then, ctx);
+    return await renderNode(node.then, ctx);
   }
 
   if (node.else) {
-    return renderNode(node.else, ctx);
+    return await renderNode(node.else, ctx);
   }
 
   return '';
@@ -346,7 +346,7 @@ function renderIf(node: CompiledIfNode, ctx: SSRContext): string {
 /**
  * Renders an each node to HTML string
  */
-function renderEach(node: CompiledEachNode, ctx: SSRContext): string {
+async function renderEach(node: CompiledEachNode, ctx: SSRContext): Promise<string> {
   const items = evaluate(node.items, ctx);
 
   if (!Array.isArray(items)) {
@@ -354,7 +354,8 @@ function renderEach(node: CompiledEachNode, ctx: SSRContext): string {
   }
 
   let result = '';
-  items.forEach((item, index) => {
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
     const itemLocals: Record<string, unknown> = {
       ...ctx.locals,
       [node.as]: item,
@@ -368,8 +369,8 @@ function renderEach(node: CompiledEachNode, ctx: SSRContext): string {
       locals: itemLocals,
     };
 
-    result += renderNode(node.body, itemCtx);
-  });
+    result += await renderNode(node.body, itemCtx);
+  }
 
   return result;
 }
@@ -386,10 +387,10 @@ function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): string {
 /**
  * Renders a code node to HTML string
  */
-function renderCode(node: CompiledCodeNode, ctx: SSRContext): string {
+async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<string> {
   const language = formatValue(evaluate(node.language, ctx));
   const content = formatValue(evaluate(node.content, ctx));
-  const html = renderCodeSSR(content, language);
+  const html = await renderCodeSSR(content, language);
   return `<div class="constela-code">${html}</div>`;
 }
 
@@ -399,9 +400,9 @@ function renderCode(node: CompiledCodeNode, ctx: SSRContext): string {
  * Renders a CompiledProgram to an HTML string.
  *
  * @param program - The compiled program to render
- * @returns HTML string representation
+ * @returns Promise that resolves to HTML string representation
  */
-export function renderToString(program: CompiledProgram): string {
+export async function renderToString(program: CompiledProgram): Promise<string> {
   // Initialize state from program's initial values
   const state = new Map<string, unknown>();
   for (const [name, field] of Object.entries(program.state)) {
@@ -413,5 +414,5 @@ export function renderToString(program: CompiledProgram): string {
     locals: {},
   };
 
-  return renderNode(program.view, ctx);
+  return await renderNode(program.view, ctx);
 }
