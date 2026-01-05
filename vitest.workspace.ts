@@ -6,4 +6,5 @@ export default defineWorkspace([
   'packages/runtime',
   'packages/cli',
   'packages/router',
+  'packages/next',
 ]);
