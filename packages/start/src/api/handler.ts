@@ -40,7 +40,7 @@ function createMethodNotAllowedResponse(allowedMethods: string[]): Response {
  * Create a 500 Internal Server Error response
  */
 function createInternalErrorResponse(error: unknown): Response {
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = process.env['NODE_ENV'] !== 'production';
   const message =
     isDev && error instanceof Error ? error.message : 'Internal Server Error';
   return new Response(JSON.stringify({ error: message }), {
