@@ -358,8 +358,8 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
 
     // Set language class for immediate access
     codeEl.className = `language-${language || 'plaintext'}`;
-    codeEl.dataset.language = language || 'plaintext';
-    container.dataset.language = language || 'plaintext';
+    codeEl.dataset['language'] = language || 'plaintext';
+    container.dataset['language'] = language || 'plaintext';
     codeEl.textContent = content;
 
     // Apply syntax highlighting asynchronously
@@ -369,9 +369,9 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
       const newCode = container.querySelector('code');
       if (newCode) {
         newCode.classList.add(`language-${language || 'plaintext'}`);
-        newCode.dataset.language = language || 'plaintext';
+        newCode.dataset['language'] = language || 'plaintext';
       }
-      container.dataset.language = language || 'plaintext';
+      container.dataset['language'] = language || 'plaintext';
     });
   });
   ctx.cleanups?.push(cleanup);

@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.4.0
+
+### Minor Changes
+
+- Add markdown and code view nodes for rich content rendering
+
 ## 0.3.3
 
 ### Patch Changes

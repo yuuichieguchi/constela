@@ -1,6 +1,6 @@
 {
   "name": "@constela/next",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Next.js integration for Constela UI framework with SSR support",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,8 +23,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.3.2",
-    "@constela/runtime": "^0.3.4",
+    "@constela/compiler": "^0.4.0",
+    "@constela/runtime": "^0.4.0",
     "next": ">=13.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
