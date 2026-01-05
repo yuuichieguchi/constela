@@ -47,5 +47,9 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-dompurify": "^2.35.0",
+    "marked": "^17.0.1"
+  }
 }

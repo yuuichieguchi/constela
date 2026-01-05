@@ -313,7 +313,24 @@ export interface SlotNode {
   kind: 'slot';
 }
 
-export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode;
+/**
+ * Markdown node - renders markdown content
+ */
+export interface MarkdownNode {
+  kind: 'markdown';
+  content: Expression;
+}
+
+/**
+ * Code node - renders syntax-highlighted code
+ */
+export interface CodeNode {
+  kind: 'code';
+  language: Expression;
+  content: Expression;
+}
+
+export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode | MarkdownNode | CodeNode;
 
 // ==================== Component Definition ====================
 

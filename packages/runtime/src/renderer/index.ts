@@ -9,16 +9,20 @@
  */
 
 import type { StateStore } from '../state/store.js';
-import type { 
-  CompiledNode, 
+import type {
+  CompiledNode,
   CompiledElementNode,
   CompiledTextNode,
   CompiledIfNode,
   CompiledEachNode,
-  CompiledAction, 
+  CompiledMarkdownNode,
+  CompiledCodeNode,
+  CompiledAction,
   CompiledExpression,
   CompiledEventHandler,
 } from '@constela/compiler';
+import { parseMarkdown } from './markdown.js';
+import { highlightCode } from './code.js';
 import { createEffect } from '../reactive/effect.js';
 import { evaluate } from '../expression/evaluator.js';
 import { executeAction } from '../action/executor.js';
@@ -50,6 +54,10 @@ export function render(node: CompiledNode, ctx: RenderContext): Node {
       return renderIf(node, ctx);
     case 'each':
       return renderEach(node, ctx);
+    case 'markdown':
+      return renderMarkdown(node, ctx);
+    case 'code':
+      return renderCode(node, ctx);
     default:
       throw new Error('Unknown node kind');
   }
@@ -319,4 +327,54 @@ function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
   }
 
   return fragment;
+}
+
+function renderMarkdown(node: CompiledMarkdownNode, ctx: RenderContext): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'constela-markdown';
+
+  const cleanup = createEffect(() => {
+    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals });
+    const html = parseMarkdown(String(content ?? ''));
+    container.innerHTML = html;
+  });
+  ctx.cleanups?.push(cleanup);
+
+  return container;
+}
+
+function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'constela-code';
+
+  const pre = document.createElement('pre');
+  const codeEl = document.createElement('code');
+  container.appendChild(pre);
+  pre.appendChild(codeEl);
+
+  const cleanup = createEffect(() => {
+    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals }) ?? 'plaintext');
+    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals }) ?? '');
+
+    // Set language class for immediate access
+    codeEl.className = `language-${language || 'plaintext'}`;
+    codeEl.dataset.language = language || 'plaintext';
+    container.dataset.language = language || 'plaintext';
+    codeEl.textContent = content;
+
+    // Apply syntax highlighting asynchronously
+    highlightCode(content, language || 'plaintext').then(html => {
+      container.innerHTML = html;
+      // Re-apply the language class to the new code element after highlighting
+      const newCode = container.querySelector('code');
+      if (newCode) {
+        newCode.classList.add(`language-${language || 'plaintext'}`);
+        newCode.dataset.language = language || 'plaintext';
+      }
+      container.dataset.language = language || 'plaintext';
+    });
+  });
+  ctx.cleanups?.push(cleanup);
+
+  return container;
 }

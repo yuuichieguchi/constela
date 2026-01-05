@@ -24,6 +24,8 @@ import {
   type EachNode,
   type ComponentNode,
   type SlotNode,
+  type MarkdownNode,
+  type CodeNode,
   type ActionStep,
   type SetStep,
   type UpdateStep,
@@ -240,6 +242,26 @@ export function isSlotNode(value: unknown): value is SlotNode {
 }
 
 /**
+ * Checks if value is a markdown node
+ */
+export function isMarkdownNode(value: unknown): value is MarkdownNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'markdown') return false;
+  return 'content' in value && isObject(value['content']);
+}
+
+/**
+ * Checks if value is a code node
+ */
+export function isCodeNode(value: unknown): value is CodeNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'code') return false;
+  if (!('language' in value) || !isObject(value['language'])) return false;
+  if (!('content' in value) || !isObject(value['content'])) return false;
+  return true;
+}
+
+/**
  * Checks if value is any valid view node
  */
 export function isViewNode(value: unknown): value is ViewNode {
@@ -249,7 +271,9 @@ export function isViewNode(value: unknown): value is ViewNode {
     isIfNode(value) ||
     isEachNode(value) ||
     isComponentNode(value) ||
-    isSlotNode(value)
+    isSlotNode(value) ||
+    isMarkdownNode(value) ||
+    isCodeNode(value)
   );
 }
 

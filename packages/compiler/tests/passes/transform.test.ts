@@ -7,6 +7,8 @@
  * - Text node transformation
  * - If node transformation
  * - Each node transformation
+ * - Markdown node transformation
+ * - Code node transformation
  * - Expression transformation
  * - Action transformation to Map/Record
  *
@@ -25,8 +27,30 @@ import {
   type CompiledTextNode,
   type CompiledIfNode,
   type CompiledEachNode,
+  type CompiledExpression,
 } from '../../src/passes/transform.js';
 import type { Program, AnalysisContext } from '../../src/passes/analyze.js';
+
+// ==================== Compiled Node Types for TDD (to be exported from transform.ts) ====================
+
+/**
+ * CompiledMarkdownNode - Compiled markdown node type
+ * This type should be added to transform.ts when implementing the feature.
+ */
+interface CompiledMarkdownNode {
+  kind: 'markdown';
+  content: CompiledExpression;
+}
+
+/**
+ * CompiledCodeNode - Compiled code node type
+ * This type should be added to transform.ts when implementing the feature.
+ */
+interface CompiledCodeNode {
+  kind: 'code';
+  language: CompiledExpression;
+  content: CompiledExpression;
+}
 
 // ==================== Helper to create AST ====================
 
@@ -899,6 +923,151 @@ describe('transformPass - Action Transformation', () => {
     expect(action?.steps).toHaveLength(2);
     expect(action?.steps[0].do).toBe('update');
     expect(action?.steps[1].do).toBe('set');
+  });
+});
+
+// ==================== Markdown Node Transformation ====================
+
+describe('transformPass - Markdown Node Transformation', () => {
+  it('should transform markdown node with literal content', () => {
+    const ast = createAst({
+      view: {
+        kind: 'markdown',
+        content: { expr: 'lit', value: '# Hello World\n\nThis is **bold** text.' },
+      },
+    });
+    const context = createContext();
+
+    const result = transformPass(ast, context);
+
+    expect(result.view.kind).toBe('markdown');
+    expect((result.view as CompiledMarkdownNode).content.expr).toBe('lit');
+    expect((result.view as CompiledMarkdownNode).content.value).toBe(
+      '# Hello World\n\nThis is **bold** text.'
+    );
+  });
+
+  it('should transform markdown node with state expression', () => {
+    const ast = createAst({
+      state: { markdownContent: { type: 'string', initial: '' } },
+      view: {
+        kind: 'markdown',
+        content: { expr: 'state', name: 'markdownContent' },
+      },
+    });
+    const context = createContext({ stateNames: new Set(['markdownContent']) });
+
+    const result = transformPass(ast, context);
+
+    expect(result.view.kind).toBe('markdown');
+    const markdownNode = result.view as CompiledMarkdownNode;
+    expect(markdownNode.content.expr).toBe('state');
+    expect(markdownNode.content.name).toBe('markdownContent');
+  });
+
+  it('should transform markdown node as child of element', () => {
+    const ast = createAst({
+      state: { readme: { type: 'string', initial: '' } },
+      view: {
+        kind: 'element',
+        tag: 'article',
+        children: [
+          {
+            kind: 'markdown',
+            content: { expr: 'state', name: 'readme' },
+          },
+        ],
+      },
+    });
+    const context = createContext({ stateNames: new Set(['readme']) });
+
+    const result = transformPass(ast, context);
+
+    const article = result.view as CompiledElementNode;
+    expect(article.tag).toBe('article');
+    expect(article.children).toHaveLength(1);
+    expect(article.children?.[0].kind).toBe('markdown');
+    const markdownChild = article.children?.[0] as CompiledMarkdownNode;
+    expect(markdownChild.content.expr).toBe('state');
+    expect(markdownChild.content.name).toBe('readme');
+  });
+});
+
+// ==================== Code Node Transformation ====================
+
+describe('transformPass - Code Node Transformation', () => {
+  it('should transform code node with literal language and content', () => {
+    const ast = createAst({
+      view: {
+        kind: 'code',
+        language: { expr: 'lit', value: 'typescript' },
+        content: { expr: 'lit', value: 'const x: number = 42;' },
+      },
+    });
+    const context = createContext();
+
+    const result = transformPass(ast, context);
+
+    expect(result.view.kind).toBe('code');
+    const codeNode = result.view as CompiledCodeNode;
+    expect(codeNode.language.expr).toBe('lit');
+    expect(codeNode.language.value).toBe('typescript');
+    expect(codeNode.content.expr).toBe('lit');
+    expect(codeNode.content.value).toBe('const x: number = 42;');
+  });
+
+  it('should transform code node with state expressions', () => {
+    const ast = createAst({
+      state: {
+        lang: { type: 'string', initial: 'javascript' },
+        snippet: { type: 'string', initial: '' },
+      },
+      view: {
+        kind: 'code',
+        language: { expr: 'state', name: 'lang' },
+        content: { expr: 'state', name: 'snippet' },
+      },
+    });
+    const context = createContext({ stateNames: new Set(['lang', 'snippet']) });
+
+    const result = transformPass(ast, context);
+
+    expect(result.view.kind).toBe('code');
+    const codeNode = result.view as CompiledCodeNode;
+    expect(codeNode.language.expr).toBe('state');
+    expect(codeNode.language.name).toBe('lang');
+    expect(codeNode.content.expr).toBe('state');
+    expect(codeNode.content.name).toBe('snippet');
+  });
+
+  it('should transform code node as child of element', () => {
+    const ast = createAst({
+      view: {
+        kind: 'element',
+        tag: 'div',
+        props: {
+          class: { expr: 'lit', value: 'code-container' },
+        },
+        children: [
+          {
+            kind: 'code',
+            language: { expr: 'lit', value: 'python' },
+            content: { expr: 'lit', value: 'print("Hello")' },
+          },
+        ],
+      },
+    });
+    const context = createContext();
+
+    const result = transformPass(ast, context);
+
+    const div = result.view as CompiledElementNode;
+    expect(div.tag).toBe('div');
+    expect(div.children).toHaveLength(1);
+    expect(div.children?.[0].kind).toBe('code');
+    const codeChild = div.children?.[0] as CompiledCodeNode;
+    expect(codeChild.language.value).toBe('python');
+    expect(codeChild.content.value).toBe('print("Hello")');
   });
 });
 

@@ -16,6 +16,8 @@ import {
   isIfNode,
   isEachNode,
   isViewNode,
+  isMarkdownNode,
+  isCodeNode,
   // Expression type guards
   isLitExpr,
   isStateExpr,
@@ -518,6 +520,170 @@ describe('ActionStep Type Guards', () => {
 
     it('should return false for invalid do value', () => {
       expect(isActionStep({ do: 'unknown', target: 'x' })).toBe(false);
+    });
+  });
+});
+
+// ==================== StateField Type Guards ====================
+
+// ==================== MarkdownNode and CodeNode Type Guards ====================
+
+describe('MarkdownNode and CodeNode Type Guards', () => {
+  describe('isMarkdownNode', () => {
+    it('should return true for valid markdown node with literal content', () => {
+      const node = {
+        kind: 'markdown',
+        content: { expr: 'lit', value: '# Hello World' },
+      };
+      expect(isMarkdownNode(node)).toBe(true);
+    });
+
+    it('should return true for markdown node with state expression', () => {
+      const node = {
+        kind: 'markdown',
+        content: { expr: 'state', name: 'markdownContent' },
+      };
+      expect(isMarkdownNode(node)).toBe(true);
+    });
+
+    it('should return false for missing content', () => {
+      const node = { kind: 'markdown' };
+      expect(isMarkdownNode(node)).toBe(false);
+    });
+
+    it('should return false for non-object content', () => {
+      const node = { kind: 'markdown', content: '# Hello' };
+      expect(isMarkdownNode(node)).toBe(false);
+    });
+
+    it('should return false for element node', () => {
+      const node = { kind: 'element', tag: 'div' };
+      expect(isMarkdownNode(node)).toBe(false);
+    });
+
+    it('should return false for text node', () => {
+      const node = { kind: 'text', value: { expr: 'lit', value: 'hello' } };
+      expect(isMarkdownNode(node)).toBe(false);
+    });
+
+    it('should return false for null', () => {
+      expect(isMarkdownNode(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(isMarkdownNode(undefined)).toBe(false);
+    });
+
+    it('should return false for primitive values', () => {
+      expect(isMarkdownNode('markdown')).toBe(false);
+      expect(isMarkdownNode(42)).toBe(false);
+    });
+  });
+
+  describe('isCodeNode', () => {
+    it('should return true for valid code node with literal values', () => {
+      const node = {
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: 'const x = 1;' },
+      };
+      expect(isCodeNode(node)).toBe(true);
+    });
+
+    it('should return true for code node with state expressions', () => {
+      const node = {
+        kind: 'code',
+        language: { expr: 'state', name: 'selectedLanguage' },
+        content: { expr: 'state', name: 'codeContent' },
+      };
+      expect(isCodeNode(node)).toBe(true);
+    });
+
+    it('should return true for code node with mixed expressions', () => {
+      const node = {
+        kind: 'code',
+        language: { expr: 'lit', value: 'typescript' },
+        content: { expr: 'state', name: 'snippet' },
+      };
+      expect(isCodeNode(node)).toBe(true);
+    });
+
+    it('should return false for missing language', () => {
+      const node = {
+        kind: 'code',
+        content: { expr: 'lit', value: 'const x = 1;' },
+      };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for missing content', () => {
+      const node = {
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+      };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for non-object language', () => {
+      const node = {
+        kind: 'code',
+        language: 'javascript',
+        content: { expr: 'lit', value: 'const x = 1;' },
+      };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for non-object content', () => {
+      const node = {
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: 'const x = 1;',
+      };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for element node', () => {
+      const node = { kind: 'element', tag: 'code' };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for text node', () => {
+      const node = { kind: 'text', value: { expr: 'lit', value: 'code' } };
+      expect(isCodeNode(node)).toBe(false);
+    });
+
+    it('should return false for null', () => {
+      expect(isCodeNode(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(isCodeNode(undefined)).toBe(false);
+    });
+
+    it('should return false for primitive values', () => {
+      expect(isCodeNode('code')).toBe(false);
+      expect(isCodeNode(42)).toBe(false);
+    });
+  });
+
+  describe('isViewNode with markdown and code', () => {
+    it('should return true for valid markdown node', () => {
+      expect(
+        isViewNode({
+          kind: 'markdown',
+          content: { expr: 'lit', value: '# Title' },
+        })
+      ).toBe(true);
+    });
+
+    it('should return true for valid code node', () => {
+      expect(
+        isViewNode({
+          kind: 'code',
+          language: { expr: 'lit', value: 'python' },
+          content: { expr: 'lit', value: 'print("hello")' },
+        })
+      ).toBe(true);
     });
   });
 });

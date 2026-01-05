@@ -38,7 +38,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 // ==================== Recursive Validation ====================
 
-const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot'];
+const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
@@ -67,7 +67,7 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
   }
 
   if (!VALID_VIEW_KINDS.includes(kind)) {
-    return { path: path + '/kind', message: 'must be one of: element, text, if, each, component, slot' };
+    return { path: path + '/kind', message: 'must be one of: element, text, if, each, component, slot, markdown, code' };
   }
 
   // Check based on kind
@@ -163,6 +163,25 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
     case 'slot':
       // Slot has no required fields, it's just a placeholder
       break;
+
+    case 'markdown':
+      if (!('content' in node)) {
+        return { path: path + '/content', message: 'content is required' };
+      }
+      return validateExpression(node['content'], path + '/content');
+
+    case 'code':
+      if (!('language' in node)) {
+        return { path: path + '/language', message: 'language is required' };
+      }
+      if (!('content' in node)) {
+        return { path: path + '/content', message: 'content is required' };
+      }
+      {
+        const langError = validateExpression(node['language'], path + '/language');
+        if (langError) return langError;
+        return validateExpression(node['content'], path + '/content');
+      }
   }
 
   return null;

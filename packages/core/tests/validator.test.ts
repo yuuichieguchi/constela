@@ -867,6 +867,526 @@ describe('validateAst - Type Narrowing', () => {
   });
 });
 
+// ==================== Markdown and Code Node Validation Tests ====================
+
+describe('validateAst - Markdown and Code Nodes', () => {
+  describe('Valid Markdown Node', () => {
+    it('should accept valid markdown node with literal content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'markdown',
+          content: { expr: 'lit', value: '# Hello World\n\nThis is **bold** text.' },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept markdown node with state expression', () => {
+      const ast = {
+        version: '1.0',
+        state: { markdownContent: { type: 'string', initial: '# Title' } },
+        actions: [],
+        view: {
+          kind: 'markdown',
+          content: { expr: 'state', name: 'markdownContent' },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept markdown node nested in element', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'markdown',
+              content: { expr: 'lit', value: '## Section Title' },
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept markdown node with binary expression content', () => {
+      const ast = {
+        version: '1.0',
+        state: { title: { type: 'string', initial: 'Hello' } },
+        actions: [],
+        view: {
+          kind: 'markdown',
+          content: {
+            expr: 'bin',
+            op: '+',
+            left: { expr: 'lit', value: '# ' },
+            right: { expr: 'state', name: 'title' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('Invalid Markdown Node', () => {
+    it('should return error for markdown node missing content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'markdown',
+          // missing content
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content');
+      }
+    });
+
+    it('should return error for markdown node with non-expression content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'markdown',
+          content: '# Hello World', // should be Expression object
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content');
+      }
+    });
+
+    it('should return error for markdown node with invalid expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'markdown',
+          content: { expr: 'invalid-expr', value: 'test' },
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content/expr');
+      }
+    });
+
+    it('should return error for nested markdown with missing content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'markdown',
+              // missing content
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/children/0/content');
+      }
+    });
+  });
+
+  describe('Valid Code Node', () => {
+    it('should accept valid code node with literal values', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept code node with state expressions', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          selectedLanguage: { type: 'string', initial: 'python' },
+          codeSnippet: { type: 'string', initial: 'print("hello")' },
+        },
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'state', name: 'selectedLanguage' },
+          content: { expr: 'state', name: 'codeSnippet' },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept code node nested in element', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'article',
+          children: [
+            {
+              kind: 'code',
+              language: { expr: 'lit', value: 'typescript' },
+              content: { expr: 'lit', value: 'const greeting: string = "Hello";' },
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept code node with conditional expression', () => {
+      const ast = {
+        version: '1.0',
+        state: { useTypeScript: { type: 'boolean', initial: true } },
+        actions: [],
+        view: {
+          kind: 'code',
+          language: {
+            expr: 'cond',
+            if: { expr: 'state', name: 'useTypeScript' },
+            then: { expr: 'lit', value: 'typescript' },
+            else: { expr: 'lit', value: 'javascript' },
+          },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('Invalid Code Node', () => {
+    it('should return error for code node missing language', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          // missing language
+          content: { expr: 'lit', value: 'const x = 1;' },
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/language');
+      }
+    });
+
+    it('should return error for code node missing content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          // missing content
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content');
+      }
+    });
+
+    it('should return error for code node with non-expression language', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: 'javascript', // should be Expression object
+          content: { expr: 'lit', value: 'const x = 1;' },
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/language');
+      }
+    });
+
+    it('should return error for code node with non-expression content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: 'const x = 1;', // should be Expression object
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content');
+      }
+    });
+
+    it('should return error for code node with invalid language expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'invalid-expr', value: 'js' },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/language/expr');
+      }
+    });
+
+    it('should return error for code node with invalid content expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'invalid-expr', value: 'test' },
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/content/expr');
+      }
+    });
+
+    it('should return error for nested code node with missing language', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'code',
+              // missing language
+              content: { expr: 'lit', value: 'const x = 1;' },
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/children/0/language');
+      }
+    });
+
+    it('should return error for nested code node with missing content', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'code',
+              language: { expr: 'lit', value: 'javascript' },
+              // missing content
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/view/children/0/content');
+      }
+    });
+  });
+
+  describe('Markdown and Code in Each Node', () => {
+    it('should validate markdown node in each body', () => {
+      const ast = {
+        version: '1.0',
+        state: { docs: { type: 'list', initial: [] } },
+        actions: [],
+        view: {
+          kind: 'each',
+          items: { expr: 'state', name: 'docs' },
+          as: 'doc',
+          body: {
+            kind: 'markdown',
+            content: { expr: 'var', name: 'doc', path: 'content' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should validate code node in each body', () => {
+      const ast = {
+        version: '1.0',
+        state: { snippets: { type: 'list', initial: [] } },
+        actions: [],
+        view: {
+          kind: 'each',
+          items: { expr: 'state', name: 'snippets' },
+          as: 'snippet',
+          body: {
+            kind: 'code',
+            language: { expr: 'var', name: 'snippet', path: 'lang' },
+            content: { expr: 'var', name: 'snippet', path: 'code' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('Markdown and Code in If Node', () => {
+    it('should validate markdown node in if then/else', () => {
+      const ast = {
+        version: '1.0',
+        state: { showMarkdown: { type: 'boolean', initial: true } },
+        actions: [],
+        view: {
+          kind: 'if',
+          condition: { expr: 'state', name: 'showMarkdown' },
+          then: {
+            kind: 'markdown',
+            content: { expr: 'lit', value: '# Visible' },
+          },
+          else: {
+            kind: 'text',
+            value: { expr: 'lit', value: 'Hidden' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should validate code node in if then/else', () => {
+      const ast = {
+        version: '1.0',
+        state: { showCode: { type: 'boolean', initial: true } },
+        actions: [],
+        view: {
+          kind: 'if',
+          condition: { expr: 'state', name: 'showCode' },
+          then: {
+            kind: 'code',
+            language: { expr: 'lit', value: 'javascript' },
+            content: { expr: 'lit', value: 'console.log("visible")' },
+          },
+          else: {
+            kind: 'code',
+            language: { expr: 'lit', value: 'javascript' },
+            content: { expr: 'lit', value: 'console.log("hidden")' },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+});
+
 // ==================== Component Schema Validation Tests ====================
 
 describe('validateAst - Component Definitions', () => {

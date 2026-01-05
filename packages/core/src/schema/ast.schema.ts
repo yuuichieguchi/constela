@@ -292,6 +292,8 @@ export const astSchema = {
         { $ref: '#/$defs/EachNode' },
         { $ref: '#/$defs/ComponentNode' },
         { $ref: '#/$defs/SlotNode' },
+        { $ref: '#/$defs/MarkdownNode' },
+        { $ref: '#/$defs/CodeNode' },
       ],
     },
     ElementNode: {
@@ -372,6 +374,25 @@ export const astSchema = {
       additionalProperties: false,
       properties: {
         kind: { type: 'string', const: 'slot' },
+      },
+    },
+    MarkdownNode: {
+      type: 'object',
+      required: ['kind', 'content'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'markdown' },
+        content: { $ref: '#/$defs/Expression' },
+      },
+    },
+    CodeNode: {
+      type: 'object',
+      required: ['kind', 'language', 'content'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'code' },
+        language: { $ref: '#/$defs/Expression' },
+        content: { $ref: '#/$defs/Expression' },
       },
     },
 

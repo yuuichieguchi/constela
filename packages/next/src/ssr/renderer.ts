@@ -11,9 +11,13 @@ import type {
   CompiledTextNode,
   CompiledIfNode,
   CompiledEachNode,
+  CompiledMarkdownNode,
+  CompiledCodeNode,
   CompiledExpression,
   CompiledEventHandler,
 } from '@constela/compiler';
+import { parseMarkdownSSR } from './markdown.js';
+import { renderCodeSSR } from './code.js';
 import { escapeHtml } from '../utils/escape.js';
 
 // ==================== Constants ====================
@@ -250,6 +254,10 @@ function renderNode(node: CompiledNode, ctx: SSRContext): string {
       return renderIf(node, ctx);
     case 'each':
       return renderEach(node, ctx);
+    case 'markdown':
+      return renderMarkdown(node, ctx);
+    case 'code':
+      return renderCode(node, ctx);
     default: {
       const _exhaustiveCheck: never = node;
       throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);
@@ -364,6 +372,25 @@ function renderEach(node: CompiledEachNode, ctx: SSRContext): string {
   });
 
   return result;
+}
+
+/**
+ * Renders a markdown node to HTML string
+ */
+function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): string {
+  const content = evaluate(node.content, ctx);
+  const html = parseMarkdownSSR(formatValue(content));
+  return `<div class="constela-markdown">${html}</div>`;
+}
+
+/**
+ * Renders a code node to HTML string
+ */
+function renderCode(node: CompiledCodeNode, ctx: SSRContext): string {
+  const language = formatValue(evaluate(node.language, ctx));
+  const content = formatValue(evaluate(node.content, ctx));
+  const html = renderCodeSSR(content, language);
+  return `<div class="constela-code">${html}</div>`;
 }
 
 // ==================== Main Export ====================

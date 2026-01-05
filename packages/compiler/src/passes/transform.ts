@@ -73,7 +73,9 @@ export type CompiledNode =
   | CompiledElementNode
   | CompiledTextNode
   | CompiledIfNode
-  | CompiledEachNode;
+  | CompiledEachNode
+  | CompiledMarkdownNode
+  | CompiledCodeNode;
 
 export interface CompiledElementNode {
   kind: 'element';
@@ -101,6 +103,17 @@ export interface CompiledEachNode {
   index?: string;
   key?: CompiledExpression;
   body: CompiledNode;
+}
+
+export interface CompiledMarkdownNode {
+  kind: 'markdown';
+  content: CompiledExpression;
+}
+
+export interface CompiledCodeNode {
+  kind: 'code';
+  language: CompiledExpression;
+  content: CompiledExpression;
 }
 
 // ==================== Compiled Expression Types ====================
@@ -473,6 +486,19 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       // Expand component view with the new context
       return transformViewNode(def.view, newCtx);
     }
+
+    case 'markdown':
+      return {
+        kind: 'markdown',
+        content: transformExpression(node.content, ctx),
+      };
+
+    case 'code':
+      return {
+        kind: 'code',
+        language: transformExpression(node.language, ctx),
+        content: transformExpression(node.content, ctx),
+      };
 
     case 'slot': {
       // If currentChildren exists and has items, return them

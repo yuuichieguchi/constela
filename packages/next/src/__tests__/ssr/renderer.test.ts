@@ -888,4 +888,333 @@ describe('renderToString', () => {
       );
     });
   });
+
+  // ==================== Markdown Nodes ====================
+
+  describe('markdown nodes', () => {
+    it('should render markdown container with constela-markdown class', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '# Hello' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('class="constela-markdown"');
+    });
+
+    it('should render basic markdown heading (# heading -> h1)', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '# Hello World' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<h1');
+      expect(result).toContain('Hello World');
+      expect(result).toContain('</h1>');
+    });
+
+    it('should render markdown with state value', () => {
+      // Arrange
+      const program = createProgram(
+        {
+          kind: 'markdown',
+          content: { expr: 'state', name: 'markdownContent' },
+        } as CompiledProgram['view'],
+        {
+          markdownContent: { type: 'string', initial: '# From State' },
+        }
+      );
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<h1');
+      expect(result).toContain('From State');
+    });
+
+    it('should render bold text in markdown', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '**bold text**' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<strong');
+      expect(result).toContain('bold text');
+      expect(result).toContain('</strong>');
+    });
+
+    it('should render italic text in markdown', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '*italic text*' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<em');
+      expect(result).toContain('italic text');
+      expect(result).toContain('</em>');
+    });
+
+    it('should render paragraph text', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: 'This is a paragraph.' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<p');
+      expect(result).toContain('This is a paragraph.');
+      expect(result).toContain('</p>');
+    });
+
+    it('should render links in markdown', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '[Click here](https://example.com)' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<a');
+      expect(result).toContain('href="https://example.com"');
+      expect(result).toContain('Click here');
+      expect(result).toContain('</a>');
+    });
+
+    it('should render unordered list in markdown', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '- Item 1\n- Item 2\n- Item 3' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<ul');
+      expect(result).toContain('<li');
+      expect(result).toContain('Item 1');
+      expect(result).toContain('Item 2');
+      expect(result).toContain('Item 3');
+    });
+
+    it('should handle empty markdown content', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'markdown',
+        content: { expr: 'lit', value: '' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('class="constela-markdown"');
+    });
+  });
+
+  // ==================== Code Nodes ====================
+
+  describe('code nodes', () => {
+    it('should render code container with constela-code class', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: 'const x = 1;' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('class="constela-code"');
+    });
+
+    it('should render code content', () => {
+      // Arrange
+      const codeContent = 'const greeting = "Hello, World!";';
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: codeContent },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('const greeting');
+      expect(result).toContain('Hello, World!');
+    });
+
+    it('should render pre and code elements', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: 'const x = 1;' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('<pre');
+      expect(result).toContain('<code');
+      expect(result).toContain('</code>');
+      expect(result).toContain('</pre>');
+    });
+
+    it('should render with specified language class', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'typescript' },
+        content: { expr: 'lit', value: 'const x: number = 1;' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('language-typescript');
+    });
+
+    it('should render code with state values', () => {
+      // Arrange
+      const program = createProgram(
+        {
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'state', name: 'codeContent' },
+        } as CompiledProgram['view'],
+        {
+          codeContent: { type: 'string', initial: 'const fromState = true;' },
+        }
+      );
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('const fromState = true;');
+    });
+
+    it('should render language from state', () => {
+      // Arrange
+      const program = createProgram(
+        {
+          kind: 'code',
+          language: { expr: 'state', name: 'selectedLanguage' },
+          content: { expr: 'lit', value: 'let x = 1' },
+        } as CompiledProgram['view'],
+        {
+          selectedLanguage: { type: 'string', initial: 'python' },
+        }
+      );
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('language-python');
+    });
+
+    it('should render multi-line code', () => {
+      // Arrange
+      const codeContent = `function add(a, b) {
+  return a + b;
+}`;
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: codeContent },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('function add');
+      expect(result).toContain('return a + b');
+    });
+
+    it('should escape special HTML characters in code', () => {
+      // Arrange
+      const codeContent = 'const html = "<div>&amp;</div>";';
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: codeContent },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      // HTML special characters should be escaped in the output
+      expect(result).toContain('&lt;div&gt;');
+      expect(result).toContain('&amp;amp;');
+    });
+
+    it('should handle empty code content', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: 'javascript' },
+        content: { expr: 'lit', value: '' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('class="constela-code"');
+      expect(result).toContain('<pre');
+      expect(result).toContain('<code');
+    });
+
+    it('should handle empty language', () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'code',
+        language: { expr: 'lit', value: '' },
+        content: { expr: 'lit', value: 'some code' },
+      } as CompiledProgram['view']);
+
+      // Act
+      const result = renderToString(program);
+
+      // Assert
+      expect(result).toContain('some code');
+    });
+  });
 });

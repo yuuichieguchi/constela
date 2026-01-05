@@ -27,6 +27,8 @@ export type {
   CompiledTextNode,
   CompiledIfNode,
   CompiledEachNode,
+  CompiledMarkdownNode,
+  CompiledCodeNode,
   CompiledExpression,
   CompiledAction,
   CompiledActionStep,

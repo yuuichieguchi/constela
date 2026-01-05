@@ -45,6 +45,8 @@ export type {
   EachNode,
   ComponentNode,
   SlotNode,
+  MarkdownNode,
+  CodeNode,
   // Component Definition
   ParamDef,
   ComponentDef,
@@ -79,6 +81,8 @@ export {
   isEachNode,
   isComponentNode,
   isSlotNode,
+  isMarkdownNode,
+  isCodeNode,
   isViewNode,
   // ActionStep type guards
   isSetStep,
