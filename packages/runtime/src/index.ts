@@ -29,3 +29,7 @@ export type { RenderContext } from './renderer/index.js';
 // App
 export { createApp } from './app.js';
 export type { AppInstance } from './app.js';
+
+// Hydration
+export { hydrateApp } from './hydrate.js';
+export type { HydrateOptions } from './hydrate.js';
