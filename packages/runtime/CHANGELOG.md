@@ -1,5 +1,17 @@
 # @constela/runtime
 
+## 0.6.0
+
+### Minor Changes
+
+- feat: add SSR infrastructure
+
+## 0.5.0
+
+### Minor Changes
+
+- feat: add SSR infrastructure
+
 ## 0.4.0
 
 ### Minor Changes

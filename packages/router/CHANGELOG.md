@@ -1,5 +1,23 @@
 # @constela/router
 
+## 3.0.0
+
+### Minor Changes
+
+- feat: add SSR infrastructure
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@0.6.0
+
+## 2.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@0.5.0
+
 ## 1.0.0
 
 ### Patch Changes
