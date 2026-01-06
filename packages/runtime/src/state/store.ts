@@ -10,6 +10,7 @@ import { createSignal, type Signal } from '../reactive/signal.js';
 export interface StateStore {
   get(name: string): unknown;
   set(name: string, value: unknown): void;
+  subscribe(name: string, fn: (value: unknown) => void): () => void;
 }
 
 export interface StateDefinition {
@@ -42,6 +43,14 @@ export function createStateStore(
         throw new Error(`State field "${name}" does not exist`);
       }
       signal.set(value);
+    },
+
+    subscribe(name: string, fn: (value: unknown) => void): () => void {
+      const signal = signals.get(name);
+      if (!signal) {
+        throw new Error(`State field "${name}" does not exist`);
+      }
+      return signal.subscribe!(fn);
     },
   };
 }

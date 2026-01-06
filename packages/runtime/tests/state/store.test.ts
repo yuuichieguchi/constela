@@ -325,6 +325,210 @@ describe('createStateStore', () => {
     });
   });
 
+  // ==================== subscribe() Method ====================
+
+  describe('subscribe()', () => {
+    it('should have subscribe method on StateStore', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+
+      // Assert
+      expect(typeof store.subscribe).toBe('function');
+    });
+
+    it('should call callback when state changes', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback = vi.fn();
+
+      // Act
+      store.subscribe('count', callback);
+      store.set('count', 42);
+
+      // Assert
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(42);
+    });
+
+    it('should call callback with each value change', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback = vi.fn();
+
+      // Act
+      store.subscribe('count', callback);
+      store.set('count', 1);
+      store.set('count', 2);
+      store.set('count', 3);
+
+      // Assert
+      expect(callback).toHaveBeenCalledTimes(3);
+      expect(callback).toHaveBeenNthCalledWith(1, 1);
+      expect(callback).toHaveBeenNthCalledWith(2, 2);
+      expect(callback).toHaveBeenNthCalledWith(3, 3);
+    });
+
+    it('should return unsubscribe function', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback = vi.fn();
+
+      // Act
+      const unsubscribe = store.subscribe('count', callback);
+
+      // Assert
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should stop calling callback after unsubscribe', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback = vi.fn();
+
+      // Act
+      const unsubscribe = store.subscribe('count', callback);
+      store.set('count', 1);
+      unsubscribe();
+      store.set('count', 2);
+      store.set('count', 3);
+
+      // Assert
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw error when subscribing to non-existent state', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback = vi.fn();
+
+      // Act & Assert
+      expect(() => {
+        store.subscribe('nonexistent', callback);
+      }).toThrow('State field "nonexistent" does not exist');
+    });
+
+    it('should support multiple subscribers for same state', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      const callback3 = vi.fn();
+
+      // Act
+      store.subscribe('count', callback1);
+      store.subscribe('count', callback2);
+      store.subscribe('count', callback3);
+      store.set('count', 100);
+
+      // Assert
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback1).toHaveBeenCalledWith(100);
+      expect(callback2).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledWith(100);
+      expect(callback3).toHaveBeenCalledTimes(1);
+      expect(callback3).toHaveBeenCalledWith(100);
+    });
+
+    it('should allow unsubscribing individual subscribers independently', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+      });
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      // Act
+      const unsubscribe1 = store.subscribe('count', callback1);
+      store.subscribe('count', callback2);
+
+      store.set('count', 1);
+      unsubscribe1();
+      store.set('count', 2);
+
+      // Assert
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback1).toHaveBeenCalledWith(1);
+      expect(callback2).toHaveBeenCalledTimes(2);
+      expect(callback2).toHaveBeenNthCalledWith(1, 1);
+      expect(callback2).toHaveBeenNthCalledWith(2, 2);
+    });
+
+    it('should not call callback on initial subscribe', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 42 },
+      });
+      const callback = vi.fn();
+
+      // Act
+      store.subscribe('count', callback);
+
+      // Assert
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should work with different state types', () => {
+      // Arrange
+      const store = createStateStore({
+        count: { type: 'number', initial: 0 },
+        name: { type: 'string', initial: '' },
+        items: { type: 'list', initial: [] },
+      });
+      const numberCallback = vi.fn();
+      const stringCallback = vi.fn();
+      const listCallback = vi.fn();
+
+      // Act
+      store.subscribe('count', numberCallback);
+      store.subscribe('name', stringCallback);
+      store.subscribe('items', listCallback);
+
+      store.set('count', 42);
+      store.set('name', 'hello');
+      store.set('items', [1, 2, 3]);
+
+      // Assert
+      expect(numberCallback).toHaveBeenCalledWith(42);
+      expect(stringCallback).toHaveBeenCalledWith('hello');
+      expect(listCallback).toHaveBeenCalledWith([1, 2, 3]);
+    });
+
+    it('should only notify subscribers of the changed state', () => {
+      // Arrange
+      const store = createStateStore({
+        a: { type: 'number', initial: 0 },
+        b: { type: 'number', initial: 0 },
+      });
+      const callbackA = vi.fn();
+      const callbackB = vi.fn();
+
+      // Act
+      store.subscribe('a', callbackA);
+      store.subscribe('b', callbackB);
+      store.set('a', 10);
+
+      // Assert
+      expect(callbackA).toHaveBeenCalledTimes(1);
+      expect(callbackA).toHaveBeenCalledWith(10);
+      expect(callbackB).not.toHaveBeenCalled();
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {
