@@ -1,5 +1,11 @@
 # @constela/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- Add dev, build, start commands for unified CLI experience
+
 ## 0.2.4
 
 ### Patch Changes
