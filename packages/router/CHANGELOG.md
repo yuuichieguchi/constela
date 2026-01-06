@@ -1,5 +1,12 @@
 # @constela/router
 
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@0.7.0
+
 ## 3.0.0
 
 ### Minor Changes

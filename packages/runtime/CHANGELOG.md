@@ -1,5 +1,11 @@
 # @constela/runtime
 
+## 0.7.0
+
+### Minor Changes
+
+- Add client-side features for official site migration
+
 ## 0.6.0
 
 ### Minor Changes
