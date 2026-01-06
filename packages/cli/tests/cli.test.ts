@@ -75,6 +75,33 @@ describe('constela CLI', () => {
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('compile');
     });
+
+    it('should list dev command in help output', () => {
+      // Arrange & Act
+      const result = runCli(['--help']);
+
+      // Assert
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('dev');
+    });
+
+    it('should list build command in help output', () => {
+      // Arrange & Act
+      const result = runCli(['--help']);
+
+      // Assert
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('build');
+    });
+
+    it('should list start command in help output', () => {
+      // Arrange & Act
+      const result = runCli(['--help']);
+
+      // Assert
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('start');
+    });
   });
 
   // ==================== Version Display ====================

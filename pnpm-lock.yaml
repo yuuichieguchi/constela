@@ -54,6 +54,9 @@ importers:
       '@constela/core':
         specifier: workspace:*
         version: link:../core
+      '@constela/start':
+        specifier: workspace:*
+        version: link:../start
       commander:
         specifier: ^12.0.0
         version: 12.1.0

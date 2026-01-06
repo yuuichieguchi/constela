@@ -28,6 +28,7 @@
   "dependencies": {
     "@constela/core": "workspace:*",
     "@constela/compiler": "workspace:*",
+    "@constela/start": "workspace:*",
     "commander": "^12.0.0"
   },
   "devDependencies": {
