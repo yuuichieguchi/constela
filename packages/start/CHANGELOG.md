@@ -1,5 +1,11 @@
 # @constela/start
 
+## 0.3.0
+
+### Minor Changes
+
+- Add static file serving from public/ directory
+
 ## 0.2.0
 
 ### Minor Changes
