@@ -19,6 +19,7 @@ import { mkdir, writeFile, rm, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ScannedRoute, PageModule, StaticPathsResult } from '../../src/types.js';
+import type { StaticPathsProvider } from '../../src/build/ssg.js';
 import type { CompiledProgram } from '@constela/compiler';
 
 // ==================== Test Fixtures ====================
@@ -62,6 +63,36 @@ function createMockPageModule(
     module.getStaticPaths = getStaticPaths;
   }
   return module;
+}
+
+/**
+ * Test static paths data for dynamic routes
+ */
+const testStaticPaths: Record<string, StaticPathsResult> = {
+  '/users/:id': {
+    paths: [{ params: { id: '1' } }, { params: { id: '2' } }],
+  },
+  '/posts/:slug': {
+    paths: [{ params: { slug: 'hello-world' } }],
+  },
+  '/posts/:year/:month': {
+    paths: [{ params: { year: '2024', month: '01' } }],
+  },
+};
+
+/**
+ * Create a staticPathsProvider for testing
+ */
+function createTestStaticPathsProvider(): StaticPathsProvider {
+  const consumedPatterns = new Set<string>();
+  return (pattern: string) => {
+    const testData = testStaticPaths[pattern];
+    if (testData && !consumedPatterns.has(pattern)) {
+      consumedPatterns.add(pattern);
+      return testData;
+    }
+    return null;
+  };
 }
 
 // ==================== build Tests ====================
@@ -336,10 +367,10 @@ describe('generateStaticPages', () => {
           params: ['id'],
         },
       ];
-      // getStaticPaths should return { paths: [{ params: { id: '1' } }, { params: { id: '2' } }] }
+      const staticPathsProvider = createTestStaticPathsProvider();
 
       // Act
-      const generatedPaths = await generateStaticPages(routes, outDir);
+      const generatedPaths = await generateStaticPages(routes, outDir, { staticPathsProvider });
 
       // Assert
       expect(generatedPaths.length).toBeGreaterThanOrEqual(2);
@@ -358,10 +389,10 @@ describe('generateStaticPages', () => {
           params: ['slug'],
         },
       ];
-      // getStaticPaths returns { paths: [{ params: { slug: 'hello-world' } }] }
+      const staticPathsProvider = createTestStaticPathsProvider();
 
       // Act
-      const generatedPaths = await generateStaticPages(routes, outDir);
+      const generatedPaths = await generateStaticPages(routes, outDir, { staticPathsProvider });
 
       // Assert
       // Should create /posts/hello-world/index.html or /posts/hello-world.html
@@ -369,7 +400,7 @@ describe('generateStaticPages', () => {
       expect(postPath).toBeDefined();
     });
 
-    it('should skip dynamic route without getStaticPaths', async () => {
+    it('should skip dynamic route without getStaticPaths or provider', async () => {
       // Arrange
       const { generateStaticPages } = await import('../../src/build/ssg.js');
       const routes: ScannedRoute[] = [
@@ -380,13 +411,13 @@ describe('generateStaticPages', () => {
           params: ['id'],
         },
       ];
-      // Module without getStaticPaths
+      // No module getStaticPaths and no provider
 
       // Act
       const generatedPaths = await generateStaticPages(routes, outDir);
 
       // Assert
-      // Should not generate any files for dynamic routes without getStaticPaths
+      // Should not generate any files for dynamic routes without getStaticPaths or provider
       expect(generatedPaths).toHaveLength(0);
     });
 
@@ -401,10 +432,10 @@ describe('generateStaticPages', () => {
           params: ['year', 'month'],
         },
       ];
-      // getStaticPaths returns { paths: [{ params: { year: '2024', month: '01' } }] }
+      const staticPathsProvider = createTestStaticPathsProvider();
 
       // Act
-      const generatedPaths = await generateStaticPages(routes, outDir);
+      const generatedPaths = await generateStaticPages(routes, outDir, { staticPathsProvider });
 
       // Assert
       expect(generatedPaths.length).toBeGreaterThanOrEqual(1);

@@ -1,5 +1,4 @@
 import type { ScannedRoute, APIModule, APIContext, PageModule } from '../types.js';
-import type { CompiledProgram } from '@constela/compiler';
 import { matchRoute } from '@constela/router';
 import {
   renderPage,
@@ -7,6 +6,7 @@ import {
   wrapHtml,
 } from '../runtime/entry-server.js';
 import { createAPIHandler } from '../api/handler.js';
+import { resolvePageExport } from '../utils/resolve-page.js';
 
 // ==================== Type Definitions ====================
 
@@ -122,7 +122,7 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
       } else {
         // Page route handling (SSR)
         const pageModule = module as PageModule;
-        const program: CompiledProgram = pageModule.default;
+        const program = await resolvePageExport(pageModule.default, matchedParams, matchedRoute.params);
 
         const content = await renderPage(program, {
           url: request.url,

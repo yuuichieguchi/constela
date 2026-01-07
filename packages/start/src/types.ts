@@ -48,10 +48,24 @@ export type Middleware = (
 ) => Promise<Response> | Response;
 
 /**
+ * Function-form page export that receives route params.
+ *
+ * @example
+ * // pages/users/[id].ts
+ * export default async function(params: Record<string, string>) {
+ *   const user = await fetchUser(params.id);
+ *   return createUserPage(user);
+ * }
+ */
+export type PageExportFunction = (
+  params: Record<string, string>
+) => Promise<CompiledProgram> | CompiledProgram;
+
+/**
  * Page module with Constela program
  */
 export interface PageModule {
-  default: CompiledProgram;
+  default: CompiledProgram | PageExportFunction;
   getStaticPaths?: () => Promise<StaticPathsResult> | StaticPathsResult;
 }
 

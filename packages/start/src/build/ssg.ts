@@ -8,6 +8,26 @@ import {
   wrapHtml,
   type SSRContext,
 } from '../runtime/entry-server.js';
+import { resolvePageExport } from '../utils/resolve-page.js';
+
+/**
+ * Provider function for static paths when getStaticPaths is not available in the module.
+ * Used for dependency injection in tests.
+ */
+export type StaticPathsProvider = (
+  pattern: string
+) => StaticPathsResult | null | Promise<StaticPathsResult | null>;
+
+/**
+ * Options for generateStaticPages function
+ */
+export interface GenerateStaticPagesOptions {
+  /**
+   * Optional provider for static paths when module doesn't export getStaticPaths.
+   * Primarily used for testing purposes.
+   */
+  staticPathsProvider?: StaticPathsProvider;
+}
 
 /**
  * Default program used when module cannot be loaded
@@ -23,29 +43,6 @@ const defaultProgram: CompiledProgram = {
     children: [{ kind: 'text', value: { expr: 'lit', value: '' } }],
   },
 };
-
-/**
- * Test data for dynamic routes when getStaticPaths is not available in tests
- * Maps route patterns to their expected static paths
- * This is consumed (deleted) after first use to allow testing "skip" behavior
- */
-const testStaticPaths: Record<string, StaticPathsResult> = {
-  '/users/:id': {
-    paths: [{ params: { id: '1' } }, { params: { id: '2' } }],
-  },
-  '/posts/:slug': {
-    paths: [{ params: { slug: 'hello-world' } }],
-  },
-  '/posts/:year/:month': {
-    paths: [{ params: { year: '2024', month: '01' } }],
-  },
-};
-
-/**
- * Track which test patterns have been consumed
- * This allows testing both "with getStaticPaths" and "without getStaticPaths" scenarios
- */
-const consumedPatterns = new Set<string>();
 
 /**
  * Generate output file path from route pattern
@@ -102,11 +99,13 @@ async function tryLoadModule(filePath: string): Promise<PageModule | null> {
  *
  * @param route - The scanned route
  * @param module - The loaded page module (if available)
+ * @param staticPathsProvider - Optional provider for static paths (used in tests)
  * @returns StaticPathsResult or null if not available
  */
 async function getStaticPathsForRoute(
   route: ScannedRoute,
-  module: PageModule | null
+  module: PageModule | null,
+  staticPathsProvider?: StaticPathsProvider
 ): Promise<StaticPathsResult | null> {
   // First, try to use getStaticPaths from the module
   if (module?.getStaticPaths) {
@@ -114,13 +113,9 @@ async function getStaticPathsForRoute(
     return result;
   }
 
-  // Fall back to test data for development/testing
-  // Only use if pattern has not been consumed yet
-  const testData = testStaticPaths[route.pattern];
-  if (testData && !consumedPatterns.has(route.pattern)) {
-    // Mark pattern as consumed so subsequent tests with same pattern will skip
-    consumedPatterns.add(route.pattern);
-    return testData;
+  // Fall back to provider if available (for testing/DI)
+  if (staticPathsProvider) {
+    return await staticPathsProvider(route.pattern);
   }
 
   return null;
@@ -174,12 +169,15 @@ async function generateSinglePage(
  *
  * @param routes - Array of scanned routes
  * @param outDir - Output directory for generated HTML files
+ * @param options - Optional configuration including staticPathsProvider for DI
  * @returns Array of generated file paths
  */
 export async function generateStaticPages(
   routes: ScannedRoute[],
-  outDir: string
+  outDir: string,
+  options: GenerateStaticPagesOptions = {}
 ): Promise<string[]> {
+  const { staticPathsProvider } = options;
   const generatedPaths: string[] = [];
 
   // Filter to only page routes (skip api and middleware)
@@ -191,12 +189,12 @@ export async function generateStaticPages(
     // Try to load the module
     const module = await tryLoadModule(route.file);
 
-    // Get the program from the module or use default
-    const program = module?.default ?? defaultProgram;
+    // Get the page export (could be static program or function)
+    const pageExport = module?.default ?? defaultProgram;
 
     if (isDynamic) {
       // Dynamic route: requires getStaticPaths
-      const staticPaths = await getStaticPathsForRoute(route, module);
+      const staticPaths = await getStaticPathsForRoute(route, module, staticPathsProvider);
 
       if (!staticPaths) {
         // Skip dynamic routes without getStaticPaths
@@ -205,6 +203,8 @@ export async function generateStaticPages(
 
       // Generate a page for each path
       for (const pathData of staticPaths.paths) {
+        // Resolve the program with params (handles both static and function exports)
+        const program = await resolvePageExport(pageExport, pathData.params, route.params);
         const resolvedPattern = resolvePattern(route.pattern, pathData.params);
         const filePath = await generateSinglePage(
           resolvedPattern,
@@ -215,7 +215,8 @@ export async function generateStaticPages(
         generatedPaths.push(filePath);
       }
     } else {
-      // Static route: generate directly
+      // Static route: generate directly (with empty params)
+      const program = await resolvePageExport(pageExport, {});
       const filePath = await generateSinglePage(route.pattern, outDir, program);
       generatedPaths.push(filePath);
     }

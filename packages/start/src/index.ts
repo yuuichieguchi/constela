@@ -7,6 +7,7 @@ export type {
   MiddlewareNext,
   Middleware,
   PageModule,
+  PageExportFunction,
   StaticPathsResult,
   ConstelaConfig,
   DevServerOptions,
@@ -29,7 +30,11 @@ export {
 
 // Build
 export { build } from './build/index.js';
-export { generateStaticPages } from './build/ssg.js';
+export {
+  generateStaticPages,
+  type StaticPathsProvider,
+  type GenerateStaticPagesOptions,
+} from './build/ssg.js';
 
 // API
 export { createAPIHandler } from './api/handler.js';
@@ -39,3 +44,6 @@ export { createMiddlewareChain } from './middleware/index.js';
 
 // Edge adapter
 export { createAdapter } from './edge/adapter.js';
+
+// Page utilities
+export { isPageExportFunction, resolvePageExport } from './utils/resolve-page.js';
