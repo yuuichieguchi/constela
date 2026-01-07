@@ -1,5 +1,11 @@
 # @constela/start
 
+## 0.3.1
+
+### Patch Changes
+
+- Fix CLI handlers to actually start dev server and run build
+
 ## 0.3.0
 
 ### Minor Changes
