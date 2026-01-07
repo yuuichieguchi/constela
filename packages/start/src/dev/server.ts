@@ -1,6 +1,9 @@
 import { createServer, type Server } from 'node:http';
+import { createReadStream } from 'node:fs';
+import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { DevServerOptions } from '../types.js';
+import { resolveStaticFile } from '../static/index.js';
 
 // ==================== Types ====================
 
@@ -20,6 +23,7 @@ export interface DevServer {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = 'localhost';
+const DEFAULT_PUBLIC_DIR = 'public';
 
 // ==================== DevServer Implementation ====================
 
@@ -41,6 +45,7 @@ export async function createDevServer(
     port = DEFAULT_PORT,
     host = DEFAULT_HOST,
     routesDir: _routesDir = 'src/routes',
+    publicDir = join(process.cwd(), DEFAULT_PUBLIC_DIR),
   } = options;
 
   let httpServer: Server | null = null;
@@ -53,8 +58,44 @@ export async function createDevServer(
 
     async listen(): Promise<void> {
       return new Promise((resolve, reject) => {
-        httpServer = createServer((_req, res) => {
-          // Basic placeholder response
+        httpServer = createServer((req, res) => {
+          // Parse URL pathname
+          const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+          const pathname = url.pathname;
+
+          // Try to serve static file
+          const staticResult = resolveStaticFile(pathname, publicDir);
+
+          // If security error detected (path_traversal or outside_public), return 403
+          if (staticResult.error === 'path_traversal' || staticResult.error === 'outside_public') {
+            res.writeHead(403, { 'Content-Type': 'text/plain' });
+            res.end('Forbidden');
+            return;
+          }
+
+          // If file exists, stream it
+          if (staticResult.exists && staticResult.filePath && staticResult.mimeType) {
+            res.writeHead(200, { 'Content-Type': staticResult.mimeType });
+            const stream = createReadStream(staticResult.filePath);
+            stream.pipe(res);
+            stream.on('error', () => {
+              // Only send error response if headers haven't been sent yet
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+              }
+              res.end('Internal Server Error');
+            });
+            return;
+          }
+
+          // If file doesn't exist but static path was attempted, return 404
+          if (staticResult.filePath && !staticResult.exists) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not Found');
+            return;
+          }
+
+          // Basic placeholder response for non-static routes
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end('<html><body>Constela Dev Server</body></html>');
         });

@@ -19,6 +19,14 @@ export { scanRoutes, filePathToPattern } from './router/file-router.js';
 // Dev server
 export { createDevServer } from './dev/server.js';
 
+// Static file utilities
+export {
+  isPathSafe,
+  getMimeType,
+  resolveStaticFile,
+  type StaticFileResult,
+} from './static/index.js';
+
 // Build
 export { build } from './build/index.js';
 export { generateStaticPages } from './build/ssg.js';

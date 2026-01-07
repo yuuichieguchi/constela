@@ -78,6 +78,7 @@ export interface DevServerOptions {
   port?: number;
   host?: string;
   routesDir?: string;
+  publicDir?: string;
 }
 
 /**

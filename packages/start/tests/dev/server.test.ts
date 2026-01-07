@@ -643,4 +643,136 @@ describe('Dev Server Integration', () => {
       expect(html).toContain('hydrateApp');
     });
   });
+
+  // ==================== Static File Serving ====================
+
+  describe('static file serving', () => {
+    it('should serve static files from public directory', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/favicon.ico`);
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('image/x-icon');
+    });
+
+    it('should return 404 for non-existent static files', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/nonexistent.png`);
+
+      // Assert
+      expect(response.status).toBe(404);
+    });
+
+    it('should serve nested static files with correct path', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/images/logo.png`);
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('image/png');
+    });
+
+    it('should set correct Content-Type header based on file extension', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const icoResponse = await fetch(`http://localhost:${server.port}/favicon.ico`);
+      const pngResponse = await fetch(`http://localhost:${server.port}/images/logo.png`);
+
+      // Assert
+      expect(icoResponse.headers.get('Content-Type')).toBe('image/x-icon');
+      expect(pngResponse.headers.get('Content-Type')).toBe('image/png');
+    });
+
+    it('should protect against path traversal attacks with 403 or 404', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(
+        `http://localhost:${server.port}/../../../etc/passwd`
+      );
+
+      // Assert
+      // Should return either 403 (Forbidden) or 404 (Not Found) for security
+      expect([403, 404]).toContain(response.status);
+    });
+
+    it('should reject URL-encoded path traversal attempts', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(
+        `http://localhost:${server.port}/%2e%2e/%2e%2e/etc/passwd`
+      );
+
+      // Assert
+      expect([403, 404]).toContain(response.status);
+    });
+
+    it('should not expose hidden files starting with dot', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/public', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        publicDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/.htaccess`);
+
+      // Assert
+      expect([403, 404]).toContain(response.status);
+    });
+  });
 });
