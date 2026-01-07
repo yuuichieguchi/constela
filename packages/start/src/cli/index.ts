@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import { createDevServer } from '../dev/server.js';
+import { build } from '../build/index.js';
 
 // ==================== Handler Type Definitions ====================
 
@@ -9,17 +11,40 @@ type StartHandler = (options: { port: string }) => Promise<{ port: number }>;
 // ==================== Handler Storage ====================
 
 let devHandler: DevHandler = async (options) => {
-  console.log('Development server not yet implemented');
-  return { port: Number(options.port) };
+  const port = parseInt(options.port, 10);
+  const host = options.host ?? 'localhost';
+  const server = await createDevServer({ port, host });
+  await server.listen();
+  console.log(`Development server running at http://${host}:${server.port}`);
+
+  process.on('SIGINT', async () => {
+    console.log('\nShutting down server...');
+    await server.close();
+    process.exit(0);
+  });
+
+  return { port: server.port };
 };
 
-let buildHandler: BuildHandler = async () => {
-  console.log('Build not yet implemented');
+let buildHandler: BuildHandler = async (options) => {
+  console.log('Building for production...');
+  await build(options.outDir ? { outDir: options.outDir } : {});
+  console.log('Build complete');
 };
 
 let startHandler: StartHandler = async (options) => {
-  console.log('Production server not yet implemented');
-  return { port: Number(options.port) };
+  const port = parseInt(options.port, 10);
+  const server = await createDevServer({ port, host: '0.0.0.0' });
+  await server.listen();
+  console.log(`Production server running at http://0.0.0.0:${server.port}`);
+
+  process.on('SIGINT', async () => {
+    console.log('\nShutting down server...');
+    await server.close();
+    process.exit(0);
+  });
+
+  return { port: server.port };
 };
 
 // ==================== Handler Injection Functions ====================
