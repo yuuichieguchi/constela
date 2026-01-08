@@ -79,7 +79,7 @@ function parseYaml(content: string): Record<string, unknown> {
           }
           arr.push(newObj);
           // Push this object for subsequent nested properties
-          stack.push({ indent, obj: newObj, key: k, isArray: true });
+          stack.push({ indent, obj: newObj, key: k!, isArray: true });
         } else if (rest?.trim()) {
           arr.push(parseValue(rest.trim()));
         }
@@ -120,7 +120,7 @@ function parseYaml(content: string): Record<string, unknown> {
       // This is a parent key (will have children)
       const newObj: Record<string, unknown> = {};
       targetObj[key!] = newObj;
-      stack.push({ indent, obj: targetObj, key: key });
+      stack.push({ indent, obj: targetObj, key: key! });
     } else {
       targetObj[key!] = parseValue(value);
     }
