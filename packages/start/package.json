@@ -38,6 +38,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "@constela/core": "workspace:*",
     "@constela/compiler": "workspace:*",
     "@constela/runtime": "workspace:*",
     "@constela/server": "workspace:*",

@@ -47,6 +47,12 @@ const VOID_ELEMENTS = new Set([
 interface SSRContext {
   state: Map<string, unknown>;
   locals: Record<string, unknown>;
+  route?: {
+    params: Record<string, string>;
+    query: Record<string, string>;
+    path: string;
+  };
+  imports?: Record<string, unknown>;
 }
 
 // ==================== Type Guards ====================
@@ -139,11 +145,74 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return value;
     }
 
+    case 'route': {
+      const source = expr.source ?? 'param';
+      const routeCtx = ctx.route;
+      if (!routeCtx) return '';
+      switch (source) {
+        case 'param':
+          return routeCtx.params[expr.name] ?? '';
+        case 'query':
+          return routeCtx.query[expr.name] ?? '';
+        case 'path':
+          return routeCtx.path;
+      }
+    }
+
+    case 'import': {
+      const importData = ctx.imports?.[expr.name];
+      if (importData === undefined) return undefined;
+      if (expr.path) {
+        return getNestedValue(importData, expr.path);
+      }
+      return importData;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
     }
   }
+}
+
+/**
+ * Gets a nested value from an object using a dot-separated path
+ * Handles both object keys and array indices (numeric strings)
+ * Includes prototype pollution prevention
+ */
+function getNestedValue(obj: unknown, path: string): unknown {
+  const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+  const parts = path.split('.');
+
+  let value: unknown = obj;
+
+  for (const part of parts) {
+    // Prototype pollution prevention
+    if (forbiddenKeys.has(part)) {
+      return undefined;
+    }
+
+    if (value == null) {
+      return undefined;
+    }
+
+    // Handle array access with numeric indices
+    if (Array.isArray(value)) {
+      const index = Number(part);
+      if (Number.isInteger(index) && index >= 0) {
+        value = value[index];
+      } else {
+        // Non-numeric key on array, try as object property
+        value = (value as unknown as Record<string, unknown>)[part];
+      }
+    } else if (typeof value === 'object') {
+      value = (value as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return value;
 }
 
 /**

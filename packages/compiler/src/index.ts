@@ -22,6 +22,8 @@ export type { AnalyzePassResult, AnalyzePassSuccess, AnalyzePassFailure, Analysi
 export { transformPass } from './passes/transform.js';
 export type {
   CompiledProgram,
+  CompiledRouteDefinition,
+  CompiledLifecycleHooks,
   CompiledNode,
   CompiledElementNode,
   CompiledTextNode,
@@ -30,10 +32,27 @@ export type {
   CompiledMarkdownNode,
   CompiledCodeNode,
   CompiledExpression,
+  CompiledRouteExpr,
+  CompiledImportExpr,
   CompiledAction,
   CompiledActionStep,
   CompiledSetStep,
   CompiledUpdateStep,
   CompiledFetchStep,
+  CompiledStorageStep,
+  CompiledClipboardStep,
+  CompiledNavigateStep,
   CompiledEventHandler,
 } from './passes/transform.js';
+
+// Layout passes
+export { analyzeLayoutPass } from './passes/analyze-layout.js';
+export type {
+  LayoutAnalysisContext,
+  LayoutAnalysisResult,
+  LayoutAnalysisSuccess,
+  LayoutAnalysisFailure,
+} from './passes/analyze-layout.js';
+
+export { transformLayoutPass, composeLayoutWithPage } from './passes/transform-layout.js';
+export type { CompiledLayoutProgram } from './passes/transform-layout.js';

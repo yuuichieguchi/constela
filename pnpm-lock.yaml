@@ -208,6 +208,9 @@ importers:
       '@constela/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@constela/core':
+        specifier: workspace:*
+        version: link:../core
       '@constela/router':
         specifier: workspace:*
         version: link:../router

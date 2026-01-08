@@ -24,7 +24,30 @@ export type ErrorCode =
   | 'OPERATION_UNKNOWN'
   | 'EXPR_INVALID_BASE'
   | 'EXPR_INVALID_CONDITION'
-  | 'EXPR_COND_ELSE_REQUIRED';
+  | 'EXPR_COND_ELSE_REQUIRED'
+  | 'UNDEFINED_ROUTE_PARAM'
+  | 'ROUTE_NOT_DEFINED'
+  | 'UNDEFINED_IMPORT'
+  | 'IMPORTS_NOT_DEFINED'
+  // Layout-related error codes
+  | 'LAYOUT_MISSING_SLOT'
+  | 'LAYOUT_NOT_FOUND'
+  | 'INVALID_SLOT_NAME'
+  | 'DUPLICATE_SLOT_NAME'
+  | 'DUPLICATE_DEFAULT_SLOT'
+  | 'SLOT_IN_LOOP'
+  // Data source-related error codes
+  | 'INVALID_DATA_SOURCE'
+  | 'UNDEFINED_DATA_SOURCE'
+  | 'DATA_NOT_DEFINED'
+  | 'UNDEFINED_DATA'
+  // Browser action-related error codes
+  | 'INVALID_STORAGE_OPERATION'
+  | 'INVALID_STORAGE_TYPE'
+  | 'STORAGE_SET_MISSING_VALUE'
+  | 'INVALID_CLIPBOARD_OPERATION'
+  | 'CLIPBOARD_WRITE_MISSING_VALUE'
+  | 'INVALID_NAVIGATE_TARGET';
 
 // ==================== ConstelaError Class ====================
 
@@ -246,6 +269,232 @@ export function createCondElseRequiredError(path?: string): ConstelaError {
   return new ConstelaError(
     'EXPR_COND_ELSE_REQUIRED',
     `Cond expression requires 'else' field`,
+    path
+  );
+}
+
+/**
+ * Creates an undefined route param error
+ */
+export function createUndefinedRouteParamError(paramName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_ROUTE_PARAM',
+    `Undefined route param reference: '${paramName}' is not defined in route path`,
+    path
+  );
+}
+
+/**
+ * Creates a route not defined error
+ */
+export function createRouteNotDefinedError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'ROUTE_NOT_DEFINED',
+    `Route expression used but no route is defined in the program`,
+    path
+  );
+}
+
+/**
+ * Creates an undefined import reference error
+ */
+export function createUndefinedImportError(importName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_IMPORT',
+    `Undefined import reference: '${importName}' is not defined in imports`,
+    path
+  );
+}
+
+/**
+ * Creates an imports not defined error
+ */
+export function createImportsNotDefinedError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'IMPORTS_NOT_DEFINED',
+    `Import expression used but no imports are defined in the program`,
+    path
+  );
+}
+
+// ==================== Layout Error Factory Functions ====================
+
+/**
+ * Creates a layout missing slot error
+ */
+export function createLayoutMissingSlotError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'LAYOUT_MISSING_SLOT',
+    `Layout must contain at least one slot node for page content`,
+    path
+  );
+}
+
+/**
+ * Creates a layout not found error
+ */
+export function createLayoutNotFoundError(layoutName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'LAYOUT_NOT_FOUND',
+    `Layout '${layoutName}' is not found`,
+    path
+  );
+}
+
+/**
+ * Creates an invalid slot name error
+ */
+export function createInvalidSlotNameError(slotName: string, layoutName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_SLOT_NAME',
+    `Named slot '${slotName}' does not exist in layout '${layoutName}'`,
+    path
+  );
+}
+
+/**
+ * Creates a duplicate slot name error
+ */
+export function createDuplicateSlotNameError(slotName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'DUPLICATE_SLOT_NAME',
+    `Duplicate named slot '${slotName}' found in layout`,
+    path
+  );
+}
+
+/**
+ * Creates a duplicate default slot error
+ */
+export function createDuplicateDefaultSlotError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'DUPLICATE_DEFAULT_SLOT',
+    `Layout contains multiple default (unnamed) slots`,
+    path
+  );
+}
+
+/**
+ * Creates a slot in loop error
+ */
+export function createSlotInLoopError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'SLOT_IN_LOOP',
+    `Slot cannot be placed inside a loop (each node) as it would render multiple times`,
+    path
+  );
+}
+
+// ==================== Data Source Error Factory Functions ====================
+
+/**
+ * Creates an invalid data source error
+ */
+export function createInvalidDataSourceError(dataName: string, reason: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_DATA_SOURCE',
+    `Invalid data source '${dataName}': ${reason}`,
+    path
+  );
+}
+
+/**
+ * Creates an undefined data source error (for getStaticPaths)
+ */
+export function createUndefinedDataSourceError(sourceName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_DATA_SOURCE',
+    `Undefined data source reference: '${sourceName}' is not defined in data`,
+    path
+  );
+}
+
+/**
+ * Creates a data not defined error (for data or getStaticPaths used without data field)
+ */
+export function createDataNotDefinedError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'DATA_NOT_DEFINED',
+    `Data expression or getStaticPaths used but no data is defined in the program`,
+    path
+  );
+}
+
+/**
+ * Creates an undefined data error (for DataExpr references)
+ */
+export function createUndefinedDataError(dataName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_DATA',
+    `Undefined data reference: '${dataName}' is not defined in data`,
+    path
+  );
+}
+
+// ==================== Browser Action Error Factory Functions ====================
+
+/**
+ * Creates an invalid storage operation error
+ */
+export function createInvalidStorageOperationError(operation: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_STORAGE_OPERATION',
+    `Invalid storage operation: '${operation}'. Valid operations are: get, set, remove`,
+    path
+  );
+}
+
+/**
+ * Creates an invalid storage type error
+ */
+export function createInvalidStorageTypeError(storageType: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_STORAGE_TYPE',
+    `Invalid storage type: '${storageType}'. Valid types are: local, session`,
+    path
+  );
+}
+
+/**
+ * Creates a storage set missing value error
+ */
+export function createStorageSetMissingValueError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'STORAGE_SET_MISSING_VALUE',
+    `Storage 'set' operation requires a 'value' field`,
+    path
+  );
+}
+
+/**
+ * Creates an invalid clipboard operation error
+ */
+export function createInvalidClipboardOperationError(operation: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_CLIPBOARD_OPERATION',
+    `Invalid clipboard operation: '${operation}'. Valid operations are: write, read`,
+    path
+  );
+}
+
+/**
+ * Creates a clipboard write missing value error
+ */
+export function createClipboardWriteMissingValueError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'CLIPBOARD_WRITE_MISSING_VALUE',
+    `Clipboard 'write' operation requires a 'value' field`,
+    path
+  );
+}
+
+/**
+ * Creates an invalid navigate target error
+ */
+export function createInvalidNavigateTargetError(target: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'INVALID_NAVIGATE_TARGET',
+    `Invalid navigate target: '${target}'. Valid targets are: _self, _blank`,
     path
   );
 }

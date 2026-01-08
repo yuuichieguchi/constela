@@ -47,3 +47,25 @@ export { createAdapter } from './edge/adapter.js';
 
 // Page utilities
 export { isPageExportFunction, resolvePageExport } from './utils/resolve-page.js';
+
+// Layout utilities
+export {
+  scanLayouts,
+  resolveLayout,
+  loadLayout,
+  LayoutResolver,
+} from './layout/resolver.js';
+export type { ScannedLayout, LayoutInfo } from './layout/resolver.js';
+
+// Data loader utilities
+export {
+  loadGlob,
+  loadFile,
+  loadApi,
+  transformMdx,
+  transformYaml,
+  transformCsv,
+  generateStaticPaths,
+  DataLoader,
+} from './data/loader.js';
+export type { GlobResult, StaticPath } from './data/loader.js';

@@ -11,6 +11,12 @@ export type {
   UpdateOperation,
   HttpMethod,
   ParamType,
+  DataTransform,
+  DataSourceType,
+  StorageOperation,
+  StorageType,
+  ClipboardOperation,
+  NavigateTarget,
   // Expressions
   Expression,
   LitExpr,
@@ -21,6 +27,9 @@ export type {
   ParamExpr,
   CondExpr,
   GetExpr,
+  RouteExpr,
+  ImportExpr,
+  DataExpr,
   // State Fields
   StateField,
   NumberField,
@@ -33,6 +42,9 @@ export type {
   SetStep,
   UpdateStep,
   FetchStep,
+  StorageStep,
+  ClipboardStep,
+  NavigateStep,
   // Event Handler
   EventHandler,
   // Action Definition
@@ -50,9 +62,19 @@ export type {
   // Component Definition
   ParamDef,
   ComponentDef,
+  // Data Source Types
+  DataSource,
+  StaticPathsDefinition,
+  // Route Definition
+  RouteDefinition,
+  // Lifecycle Hooks
+  LifecycleHooks,
   // Program
   Program,
   ConstelaAst,
+  // Layout Program
+  LayoutProgram,
+  ConstelaProgram,
 } from './types/ast.js';
 
 export {
@@ -60,6 +82,12 @@ export {
   UPDATE_OPERATIONS,
   HTTP_METHODS,
   PARAM_TYPES,
+  DATA_TRANSFORMS,
+  DATA_SOURCE_TYPES,
+  STORAGE_OPERATIONS,
+  STORAGE_TYPES,
+  CLIPBOARD_OPERATIONS,
+  NAVIGATE_TARGETS,
 } from './types/ast.js';
 
 // ==================== Type Guards ====================
@@ -73,7 +101,15 @@ export {
   isParamExpr,
   isCondExpr,
   isGetExpr,
+  isRouteExpr,
+  isImportExpr,
+  isDataExpr,
   isExpression,
+  // Route Definition type guard
+  isRouteDefinition,
+  // Data source type guards
+  isDataSource,
+  isStaticPathsDefinition,
   // ViewNode type guards
   isElementNode,
   isTextNode,
@@ -88,6 +124,9 @@ export {
   isSetStep,
   isUpdateStep,
   isFetchStep,
+  isStorageStep,
+  isClipboardStep,
+  isNavigateStep,
   isActionStep,
   // StateField type guards
   isNumberField,
@@ -98,6 +137,11 @@ export {
   isStateField,
   // EventHandler type guard
   isEventHandler,
+  // Layout type guards
+  isLayoutProgram,
+  isNamedSlotNode,
+  // Lifecycle type guard
+  isLifecycleHooks,
 } from './types/guards.js';
 
 // ==================== Error Types ====================
@@ -121,6 +165,29 @@ export {
   createOperationMissingFieldError,
   createOperationUnknownError,
   createCondElseRequiredError,
+  createUndefinedRouteParamError,
+  createRouteNotDefinedError,
+  createUndefinedImportError,
+  createImportsNotDefinedError,
+  // Layout error factories
+  createLayoutMissingSlotError,
+  createLayoutNotFoundError,
+  createInvalidSlotNameError,
+  createDuplicateSlotNameError,
+  createDuplicateDefaultSlotError,
+  createSlotInLoopError,
+  // Data source error factories
+  createInvalidDataSourceError,
+  createUndefinedDataSourceError,
+  createDataNotDefinedError,
+  createUndefinedDataError,
+  // Browser action error factories
+  createInvalidStorageOperationError,
+  createInvalidStorageTypeError,
+  createStorageSetMissingValueError,
+  createInvalidClipboardOperationError,
+  createClipboardWriteMissingValueError,
+  createInvalidNavigateTargetError,
 } from './types/error.js';
 
 // ==================== Validator ====================

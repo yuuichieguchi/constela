@@ -8,6 +8,12 @@ import {
   BINARY_OPERATORS,
   UPDATE_OPERATIONS,
   HTTP_METHODS,
+  DATA_SOURCE_TYPES,
+  DATA_TRANSFORMS,
+  STORAGE_OPERATIONS,
+  STORAGE_TYPES,
+  CLIPBOARD_OPERATIONS,
+  NAVIGATE_TARGETS,
   type Expression,
   type LitExpr,
   type StateExpr,
@@ -17,6 +23,13 @@ import {
   type ParamExpr,
   type CondExpr,
   type GetExpr,
+  type RouteExpr,
+  type ImportExpr,
+  type DataExpr,
+  type DataSource,
+  type StaticPathsDefinition,
+  type RouteDefinition,
+  type LifecycleHooks,
   type ViewNode,
   type ElementNode,
   type TextNode,
@@ -30,6 +43,13 @@ import {
   type SetStep,
   type UpdateStep,
   type FetchStep,
+  type StorageStep,
+  type ClipboardStep,
+  type NavigateStep,
+  type StorageOperation,
+  type StorageType,
+  type ClipboardOperation,
+  type NavigateTarget,
   type StateField,
   type NumberField,
   type StringField,
@@ -37,6 +57,7 @@ import {
   type BooleanField,
   type ObjectField,
   type EventHandler,
+  type LayoutProgram,
 } from './ast.js';
 
 // ==================== Helper Functions ====================
@@ -157,6 +178,107 @@ export function isGetExpr(value: unknown): value is GetExpr {
 }
 
 /**
+ * Checks if value is a route expression
+ */
+export function isRouteExpr(value: unknown): value is RouteExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'route') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate source if present
+  if ('source' in value && value['source'] !== undefined) {
+    const validSources = ['param', 'query', 'path'];
+    if (!validSources.includes(value['source'] as string)) return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if value is an import expression
+ */
+export function isImportExpr(value: unknown): value is ImportExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'import') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate path if present
+  if ('path' in value && value['path'] !== undefined) {
+    if (typeof value['path'] !== 'string') return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if value is a data expression
+ */
+export function isDataExpr(value: unknown): value is DataExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'data') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate path if present
+  if ('path' in value && value['path'] !== undefined) {
+    if (typeof value['path'] !== 'string') return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if value is a data source
+ */
+export function isDataSource(value: unknown): value is DataSource {
+  if (!isObject(value)) return false;
+
+  // Check type field is valid
+  const type = value['type'];
+  if (!DATA_SOURCE_TYPES.includes(type as typeof DATA_SOURCE_TYPES[number])) {
+    return false;
+  }
+
+  // Validate transform if present
+  if ('transform' in value && value['transform'] !== undefined) {
+    if (!DATA_TRANSFORMS.includes(value['transform'] as typeof DATA_TRANSFORMS[number])) {
+      return false;
+    }
+  }
+
+  // Type-specific validation
+  switch (type) {
+    case 'glob':
+      // Glob requires pattern
+      if (typeof value['pattern'] !== 'string') return false;
+      break;
+    case 'file':
+      // File requires path
+      if (typeof value['path'] !== 'string') return false;
+      break;
+    case 'api':
+      // API requires url
+      if (typeof value['url'] !== 'string') return false;
+      break;
+  }
+
+  return true;
+}
+
+/**
+ * Checks if value is a static paths definition
+ */
+export function isStaticPathsDefinition(value: unknown): value is StaticPathsDefinition {
+  if (!isObject(value)) return false;
+  if (typeof value['source'] !== 'string') return false;
+  if (!('params' in value) || !isObject(value['params'])) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a route definition
+ */
+export function isRouteDefinition(value: unknown): value is RouteDefinition {
+  if (!isObject(value)) return false;
+  if (typeof value['path'] !== 'string') return false;
+  // title, layout, meta are optional - no further validation needed for type guard
+  return true;
+}
+
+/**
  * Checks if value is any valid expression
  */
 export function isExpression(value: unknown): value is Expression {
@@ -168,7 +290,10 @@ export function isExpression(value: unknown): value is Expression {
     isNotExpr(value) ||
     isParamExpr(value) ||
     isCondExpr(value) ||
-    isGetExpr(value)
+    isGetExpr(value) ||
+    isRouteExpr(value) ||
+    isImportExpr(value) ||
+    isDataExpr(value)
   );
 }
 
@@ -320,10 +445,61 @@ export function isFetchStep(value: unknown): value is FetchStep {
 }
 
 /**
+ * Checks if value is a storage step
+ */
+export function isStorageStep(value: unknown): value is StorageStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'storage') return false;
+  if (!STORAGE_OPERATIONS.includes(value['operation'] as StorageOperation)) {
+    return false;
+  }
+  if (!STORAGE_TYPES.includes(value['storage'] as StorageType)) {
+    return false;
+  }
+  if (!('key' in value)) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a clipboard step
+ */
+export function isClipboardStep(value: unknown): value is ClipboardStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'clipboard') return false;
+  if (!CLIPBOARD_OPERATIONS.includes(value['operation'] as ClipboardOperation)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if value is a navigate step
+ */
+export function isNavigateStep(value: unknown): value is NavigateStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'navigate') return false;
+  if (!('url' in value)) return false;
+  // Validate target if present
+  if ('target' in value && value['target'] !== undefined) {
+    if (!NAVIGATE_TARGETS.includes(value['target'] as NavigateTarget)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Checks if value is any valid action step
  */
 export function isActionStep(value: unknown): value is ActionStep {
-  return isSetStep(value) || isUpdateStep(value) || isFetchStep(value);
+  return (
+    isSetStep(value) ||
+    isUpdateStep(value) ||
+    isFetchStep(value) ||
+    isStorageStep(value) ||
+    isClipboardStep(value) ||
+    isNavigateStep(value)
+  );
 }
 
 // ==================== StateField Type Guards ====================
@@ -395,5 +571,61 @@ export function isEventHandler(value: unknown): value is EventHandler {
   if (!isObject(value)) return false;
   if (!('event' in value) || typeof value['event'] !== 'string') return false;
   if (!('action' in value) || typeof value['action'] !== 'string') return false;
+  return true;
+}
+
+// ==================== Layout Program Type Guards ====================
+
+/**
+ * Checks if value is a layout program
+ */
+export function isLayoutProgram(value: unknown): value is LayoutProgram {
+  if (!isObject(value)) return false;
+  if (value['version'] !== '1.0') return false;
+  if (value['type'] !== 'layout') return false;
+  if (!('view' in value)) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a named slot node (slot with a name property)
+ */
+export function isNamedSlotNode(value: unknown): value is SlotNode & { name: string } {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'slot') return false;
+  if (typeof value['name'] !== 'string') return false;
+  return true;
+}
+
+// ==================== Lifecycle Hooks Type Guard ====================
+
+/**
+ * Checks if value is a lifecycle hooks object
+ *
+ * Lifecycle hooks are permissive - they allow unknown properties for extensibility.
+ * Only known properties are validated to be strings.
+ */
+export function isLifecycleHooks(value: unknown): value is LifecycleHooks {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  const knownFields = ['onMount', 'onUnmount', 'onRouteEnter', 'onRouteLeave'];
+
+  // Validate known fields if present - they must be strings
+  for (const key of knownFields) {
+    if (key in obj && obj[key] !== undefined) {
+      if (typeof obj[key] !== 'string') return false;
+    }
+  }
+
+  // Allow unknown properties for extensibility - only validate their type is string
+  for (const key of Object.keys(obj)) {
+    if (!knownFields.includes(key)) {
+      // Unknown properties must also be strings (action names)
+      if (typeof obj[key] !== 'string') return false;
+    }
+  }
+
   return true;
 }

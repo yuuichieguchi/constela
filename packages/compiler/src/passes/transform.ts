@@ -14,6 +14,7 @@ import type {
   StateField,
   EventHandler,
   ComponentDef,
+  LifecycleHooks,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -28,11 +29,29 @@ interface TransformContext {
 
 // ==================== Compiled Program Types ====================
 
+export interface CompiledRouteDefinition {
+  path: string;
+  params: string[];
+  title?: CompiledExpression;
+  layout?: string;
+  meta?: Record<string, CompiledExpression>;
+}
+
+export interface CompiledLifecycleHooks {
+  onMount?: string;
+  onUnmount?: string;
+  onRouteEnter?: string;
+  onRouteLeave?: string;
+}
+
 export interface CompiledProgram {
   version: '1.0';
+  route?: CompiledRouteDefinition;
+  lifecycle?: CompiledLifecycleHooks;
   state: Record<string, { type: string; initial: unknown }>;
   actions: Record<string, CompiledAction>;
   view: CompiledNode;
+  importData?: Record<string, unknown>;  // Resolved import data
 }
 
 export interface CompiledAction {
@@ -40,7 +59,13 @@ export interface CompiledAction {
   steps: CompiledActionStep[];
 }
 
-export type CompiledActionStep = CompiledSetStep | CompiledUpdateStep | CompiledFetchStep;
+export type CompiledActionStep =
+  | CompiledSetStep
+  | CompiledUpdateStep
+  | CompiledFetchStep
+  | CompiledStorageStep
+  | CompiledClipboardStep
+  | CompiledNavigateStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -65,6 +90,33 @@ export interface CompiledFetchStep {
   result?: string;
   onSuccess?: CompiledActionStep[];
   onError?: CompiledActionStep[];
+}
+
+export interface CompiledStorageStep {
+  do: 'storage';
+  operation: 'get' | 'set' | 'remove';
+  key: CompiledExpression;
+  value?: CompiledExpression;      // Required for 'set'
+  storage: 'local' | 'session';
+  result?: string;                 // Variable name for 'get' result
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+export interface CompiledClipboardStep {
+  do: 'clipboard';
+  operation: 'write' | 'read';
+  value?: CompiledExpression;      // Required for 'write'
+  result?: string;                 // Variable name for 'read' result
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+export interface CompiledNavigateStep {
+  do: 'navigate';
+  url: CompiledExpression;
+  target?: '_self' | '_blank';     // Default: '_self'
+  replace?: boolean;               // Use history.replaceState
 }
 
 // ==================== Compiled View Node Types ====================
@@ -125,7 +177,9 @@ export type CompiledExpression =
   | CompiledBinExpr
   | CompiledNotExpr
   | CompiledCondExpr
-  | CompiledGetExpr;
+  | CompiledGetExpr
+  | CompiledRouteExpr
+  | CompiledImportExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -166,6 +220,18 @@ export interface CompiledGetExpr {
   expr: 'get';
   base: CompiledExpression;
   path: string;
+}
+
+export interface CompiledRouteExpr {
+  expr: 'route';
+  name: string;
+  source: 'param' | 'query' | 'path';
+}
+
+export interface CompiledImportExpr {
+  expr: 'import';
+  name: string;
+  path?: string;
 }
 
 // ==================== Compiled Event Handler ====================
@@ -277,6 +343,37 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         base: transformExpression(expr.base, ctx),
         path: expr.path,
       };
+
+    case 'route':
+      return {
+        expr: 'route',
+        name: expr.name,
+        source: expr.source ?? 'param',
+      };
+
+    case 'import': {
+      const importExpr: CompiledImportExpr = {
+        expr: 'import',
+        name: expr.name,
+      };
+      if (expr.path) {
+        importExpr.path = expr.path;
+      }
+      return importExpr;
+    }
+
+    case 'data': {
+      // Data expressions are similar to import expressions
+      // They are resolved at build time and treated like imports
+      const dataExpr: CompiledImportExpr = {
+        expr: 'import',
+        name: expr.name,
+      };
+      if (expr.path) {
+        dataExpr.path = expr.path;
+      }
+      return dataExpr;
+    }
   }
 }
 
@@ -353,6 +450,65 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         fetchStep.onError = step.onError.map(transformActionStep);
       }
       return fetchStep;
+    }
+
+    case 'storage': {
+      const storageStep = step as import('@constela/core').StorageStep;
+      const compiledStorageStep: CompiledStorageStep = {
+        do: 'storage',
+        operation: storageStep.operation,
+        key: transformExpression(storageStep.key, emptyContext),
+        storage: storageStep.storage,
+      };
+      if (storageStep.value) {
+        compiledStorageStep.value = transformExpression(storageStep.value, emptyContext);
+      }
+      if (storageStep.result) {
+        compiledStorageStep.result = storageStep.result;
+      }
+      if (storageStep.onSuccess) {
+        compiledStorageStep.onSuccess = storageStep.onSuccess.map(transformActionStep);
+      }
+      if (storageStep.onError) {
+        compiledStorageStep.onError = storageStep.onError.map(transformActionStep);
+      }
+      return compiledStorageStep;
+    }
+
+    case 'clipboard': {
+      const clipboardStep = step as import('@constela/core').ClipboardStep;
+      const compiledClipboardStep: CompiledClipboardStep = {
+        do: 'clipboard',
+        operation: clipboardStep.operation,
+      };
+      if (clipboardStep.value) {
+        compiledClipboardStep.value = transformExpression(clipboardStep.value, emptyContext);
+      }
+      if (clipboardStep.result) {
+        compiledClipboardStep.result = clipboardStep.result;
+      }
+      if (clipboardStep.onSuccess) {
+        compiledClipboardStep.onSuccess = clipboardStep.onSuccess.map(transformActionStep);
+      }
+      if (clipboardStep.onError) {
+        compiledClipboardStep.onError = clipboardStep.onError.map(transformActionStep);
+      }
+      return compiledClipboardStep;
+    }
+
+    case 'navigate': {
+      const navigateStep = step as import('@constela/core').NavigateStep;
+      const compiledNavigateStep: CompiledNavigateStep = {
+        do: 'navigate',
+        url: transformExpression(navigateStep.url, emptyContext),
+      };
+      if (navigateStep.target) {
+        compiledNavigateStep.target = navigateStep.target;
+      }
+      if (navigateStep.replace !== undefined) {
+        compiledNavigateStep.replace = navigateStep.replace;
+      }
+      return compiledNavigateStep;
     }
   }
 }
@@ -559,6 +715,86 @@ function transformActions(actions: ActionDefinition[]): Record<string, CompiledA
   return compiledActions;
 }
 
+// ==================== Route Definition Transformation ====================
+
+/**
+ * Extracts route params from a path pattern
+ * e.g., "/users/:id/posts/:postId" -> ["id", "postId"]
+ */
+function extractRouteParams(path: string): string[] {
+  const params: string[] = [];
+  const segments = path.split('/');
+  for (const segment of segments) {
+    if (segment.startsWith(':')) {
+      params.push(segment.slice(1));
+    }
+  }
+  return params;
+}
+
+/**
+ * Transforms AST RouteDefinition into CompiledRouteDefinition
+ */
+function transformRouteDefinition(
+  route: { path: string; title?: Expression; layout?: string; meta?: Record<string, Expression> },
+  ctx: TransformContext
+): CompiledRouteDefinition {
+  const compiled: CompiledRouteDefinition = {
+    path: route.path,
+    params: extractRouteParams(route.path),
+  };
+
+  if (route.title) {
+    compiled.title = transformExpression(route.title, ctx);
+  }
+
+  if (route.layout) {
+    compiled.layout = route.layout;
+  }
+
+  if (route.meta) {
+    compiled.meta = {};
+    for (const [key, value] of Object.entries(route.meta)) {
+      compiled.meta[key] = transformExpression(value, ctx);
+    }
+  }
+
+  return compiled;
+}
+
+// ==================== Lifecycle Hooks Transformation ====================
+
+/**
+ * Transforms AST LifecycleHooks into CompiledLifecycleHooks
+ */
+function transformLifecycleHooks(
+  lifecycle: LifecycleHooks | undefined
+): CompiledLifecycleHooks | undefined {
+  if (!lifecycle) return undefined;
+
+  // Check if all hooks are undefined - return undefined for empty object
+  const hasAnyHook = lifecycle.onMount || lifecycle.onUnmount ||
+                     lifecycle.onRouteEnter || lifecycle.onRouteLeave;
+  if (!hasAnyHook) return undefined;
+
+  const result: CompiledLifecycleHooks = {};
+
+  if (lifecycle.onMount) {
+    result.onMount = lifecycle.onMount;
+  }
+  if (lifecycle.onUnmount) {
+    result.onUnmount = lifecycle.onUnmount;
+  }
+  if (lifecycle.onRouteEnter) {
+    result.onRouteEnter = lifecycle.onRouteEnter;
+  }
+  if (lifecycle.onRouteLeave) {
+    result.onRouteLeave = lifecycle.onRouteLeave;
+  }
+
+  return result;
+}
+
 // ==================== Main Transform Function ====================
 
 /**
@@ -566,17 +802,39 @@ function transformActions(actions: ActionDefinition[]): Record<string, CompiledA
  *
  * @param ast - Validated AST from validate pass
  * @param _context - Analysis context from analyze pass (unused in current implementation)
+ * @param importData - Optional resolved import data to include in the compiled program
  * @returns CompiledProgram
  */
-export function transformPass(ast: Program, _context: AnalysisContext): CompiledProgram {
+export function transformPass(
+  ast: Program,
+  _context: AnalysisContext,
+  importData?: Record<string, unknown>
+): CompiledProgram {
   const ctx: TransformContext = {
     components: ast.components || {},
   };
 
-  return {
+  const result: CompiledProgram = {
     version: '1.0',
     state: transformState(ast.state),
     actions: transformActions(ast.actions),
     view: transformViewNode(ast.view, ctx),
   };
+
+  if (ast.route) {
+    result.route = transformRouteDefinition(ast.route, ctx);
+  }
+
+  // Transform lifecycle hooks
+  const lifecycle = transformLifecycleHooks(ast.lifecycle);
+  if (lifecycle) {
+    result.lifecycle = lifecycle;
+  }
+
+  // Include import data if provided and non-empty
+  if (importData && Object.keys(importData).length > 0) {
+    result.importData = importData;
+  }
+
+  return result;
 }

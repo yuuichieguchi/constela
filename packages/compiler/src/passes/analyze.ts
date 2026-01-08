@@ -16,6 +16,10 @@ import type {
   Expression,
   ActionStep,
   ComponentDef,
+  RouteDefinition,
+  DataSource,
+  StaticPathsDefinition,
+  LifecycleHooks,
 } from '@constela/core';
 import {
   createUndefinedStateError,
@@ -29,7 +33,28 @@ import {
   createSchemaError,
   createOperationInvalidForTypeError,
   createOperationMissingFieldError,
+  createUndefinedRouteParamError,
+  createRouteNotDefinedError,
+  createUndefinedImportError,
+  createImportsNotDefinedError,
+  createInvalidDataSourceError,
+  createUndefinedDataSourceError,
+  createDataNotDefinedError,
+  createUndefinedDataError,
+  createInvalidStorageOperationError,
+  createInvalidStorageTypeError,
+  createStorageSetMissingValueError,
+  createInvalidClipboardOperationError,
+  createClipboardWriteMissingValueError,
+  createInvalidNavigateTargetError,
   isEventHandler,
+  isDataSource,
+  DATA_SOURCE_TYPES,
+  DATA_TRANSFORMS,
+  STORAGE_OPERATIONS,
+  STORAGE_TYPES,
+  CLIPBOARD_OPERATIONS,
+  NAVIGATE_TARGETS,
 } from '@constela/core';
 
 // ==================== Types ====================
@@ -38,6 +63,9 @@ export interface AnalysisContext {
   stateNames: Set<string>;
   actionNames: Set<string>;
   componentNames: Set<string>;
+  routeParams: Set<string>;
+  importNames: Set<string>;
+  dataNames: Set<string>;
 }
 
 /**
@@ -73,10 +101,25 @@ function buildPath(base: string, ...segments: (string | number)[]): string {
   return segments.reduce<string>((p, s) => `${p}/${s}`, base);
 }
 
+/**
+ * Extracts route params from a path pattern
+ * e.g., "/users/:id/posts/:postId" -> ["id", "postId"]
+ */
+function extractRouteParams(path: string): string[] {
+  const params: string[] = [];
+  const segments = path.split('/');
+  for (const segment of segments) {
+    if (segment.startsWith(':')) {
+      params.push(segment.slice(1));
+    }
+  }
+  return params;
+}
+
 // ==================== Context Collection ====================
 
 /**
- * Collects state, action, and component names from the AST
+ * Collects state, action, component names, route params, import names, and data names from the AST
  */
 function collectContext(ast: Program): AnalysisContext {
   const stateNames = new Set<string>(Object.keys(ast.state));
@@ -84,8 +127,17 @@ function collectContext(ast: Program): AnalysisContext {
   const componentNames = new Set<string>(
     ast.components ? Object.keys(ast.components) : []
   );
+  const routeParams = new Set<string>(
+    ast.route ? extractRouteParams(ast.route.path) : []
+  );
+  const importNames = new Set<string>(
+    ast.imports ? Object.keys(ast.imports) : []
+  );
+  const dataNames = new Set<string>(
+    ast.data ? Object.keys(ast.data) : []
+  );
 
-  return { stateNames, actionNames, componentNames };
+  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames };
 }
 
 // ==================== Duplicate Action Detection ====================
@@ -141,6 +193,43 @@ function validateExpression(
         errors.push(createUndefinedParamError(expr.name, path));
       }
       break;
+
+    case 'route': {
+      // Check if route is defined in the program
+      if (!hasRoute) {
+        errors.push(createRouteNotDefinedError(path));
+      } else {
+        // For 'param' source (default), validate that the param is defined in the route path
+        // For 'query' and 'path' sources, no validation needed (runtime values)
+        const source = expr.source ?? 'param';
+        if (source === 'param' && !context.routeParams.has(expr.name)) {
+          errors.push(createUndefinedRouteParamError(expr.name, path));
+        }
+      }
+      break;
+    }
+
+    case 'import': {
+      // Check if imports are defined in the program
+      if (!hasImports) {
+        errors.push(createImportsNotDefinedError(path));
+      } else if (!context.importNames.has(expr.name)) {
+        // Check if the import name is defined
+        errors.push(createUndefinedImportError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'data': {
+      // Check if data is defined in the program
+      if (!hasData) {
+        errors.push(createDataNotDefinedError(path));
+      } else if (!context.dataNames.has(expr.name)) {
+        // Check if the data name is defined
+        errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
 
     case 'bin':
       errors.push(...validateExpression(expr.left, buildPath(path, 'left'), context, scope, paramScope));
@@ -277,6 +366,103 @@ function validateActionStep(
         }
       }
       break;
+
+    case 'storage': {
+      const storageStep = step as import('@constela/core').StorageStep;
+      // Validate operation
+      if (!STORAGE_OPERATIONS.includes(storageStep.operation as typeof STORAGE_OPERATIONS[number])) {
+        errors.push(createInvalidStorageOperationError(storageStep.operation, path));
+      }
+      // Validate storage type
+      if (!STORAGE_TYPES.includes(storageStep.storage as typeof STORAGE_TYPES[number])) {
+        errors.push(createInvalidStorageTypeError(storageStep.storage, path));
+      }
+      // Validate key expression
+      errors.push(
+        ...validateExpressionStateOnly(storageStep.key, buildPath(path, 'key'), context)
+      );
+      // set operation requires value
+      if (storageStep.operation === 'set' && !storageStep.value) {
+        errors.push(createStorageSetMissingValueError(path));
+      }
+      // Validate value expression if present
+      if (storageStep.value) {
+        errors.push(
+          ...validateExpressionStateOnly(storageStep.value, buildPath(path, 'value'), context)
+        );
+      }
+      // Validate onSuccess and onError callbacks
+      if (storageStep.onSuccess) {
+        for (let i = 0; i < storageStep.onSuccess.length; i++) {
+          const successStep = storageStep.onSuccess[i];
+          if (successStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(successStep, buildPath(path, 'onSuccess', i), context)
+          );
+        }
+      }
+      if (storageStep.onError) {
+        for (let i = 0; i < storageStep.onError.length; i++) {
+          const errorStep = storageStep.onError[i];
+          if (errorStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(errorStep, buildPath(path, 'onError', i), context)
+          );
+        }
+      }
+      break;
+    }
+
+    case 'clipboard': {
+      const clipboardStep = step as import('@constela/core').ClipboardStep;
+      // Validate operation
+      if (!CLIPBOARD_OPERATIONS.includes(clipboardStep.operation as typeof CLIPBOARD_OPERATIONS[number])) {
+        errors.push(createInvalidClipboardOperationError(clipboardStep.operation, path));
+      }
+      // write operation requires value
+      if (clipboardStep.operation === 'write' && !clipboardStep.value) {
+        errors.push(createClipboardWriteMissingValueError(path));
+      }
+      // Validate value expression if present
+      if (clipboardStep.value) {
+        errors.push(
+          ...validateExpressionStateOnly(clipboardStep.value, buildPath(path, 'value'), context)
+        );
+      }
+      // Validate onSuccess and onError callbacks
+      if (clipboardStep.onSuccess) {
+        for (let i = 0; i < clipboardStep.onSuccess.length; i++) {
+          const successStep = clipboardStep.onSuccess[i];
+          if (successStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(successStep, buildPath(path, 'onSuccess', i), context)
+          );
+        }
+      }
+      if (clipboardStep.onError) {
+        for (let i = 0; i < clipboardStep.onError.length; i++) {
+          const errorStep = clipboardStep.onError[i];
+          if (errorStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(errorStep, buildPath(path, 'onError', i), context)
+          );
+        }
+      }
+      break;
+    }
+
+    case 'navigate': {
+      const navigateStep = step as import('@constela/core').NavigateStep;
+      // Validate url expression
+      errors.push(
+        ...validateExpressionStateOnly(navigateStep.url, buildPath(path, 'url'), context)
+      );
+      // Validate target if present
+      if (navigateStep.target !== undefined && !NAVIGATE_TARGETS.includes(navigateStep.target as typeof NAVIGATE_TARGETS[number])) {
+        errors.push(createInvalidNavigateTargetError(navigateStep.target, path));
+      }
+      break;
+    }
   }
 
   return errors;
@@ -303,6 +489,39 @@ function validateExpressionStateOnly(
     case 'var':
       // Skip var validation - these are runtime-provided in actions
       break;
+
+    case 'route': {
+      // Route expressions in actions need route definition validation
+      if (!hasRoute) {
+        errors.push(createRouteNotDefinedError(path));
+      } else {
+        const source = expr.source ?? 'param';
+        if (source === 'param' && !context.routeParams.has(expr.name)) {
+          errors.push(createUndefinedRouteParamError(expr.name, path));
+        }
+      }
+      break;
+    }
+
+    case 'import': {
+      // Import expressions in actions need import definition validation
+      if (!hasImports) {
+        errors.push(createImportsNotDefinedError(path));
+      } else if (!context.importNames.has(expr.name)) {
+        errors.push(createUndefinedImportError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'data': {
+      // Data expressions in actions need data definition validation
+      if (!hasData) {
+        errors.push(createDataNotDefinedError(path));
+      } else if (!context.dataNames.has(expr.name)) {
+        errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
 
     case 'bin':
       errors.push(...validateExpressionStateOnly(expr.left, buildPath(path, 'left'), context));
@@ -364,6 +583,39 @@ function validateExpressionInEventPayload(
       // since they can reference both scope variables and DOM event properties.
       break;
 
+    case 'route': {
+      // Route expressions in event payloads need route definition validation
+      if (!hasRoute) {
+        errors.push(createRouteNotDefinedError(path));
+      } else {
+        const source = expr.source ?? 'param';
+        if (source === 'param' && !context.routeParams.has(expr.name)) {
+          errors.push(createUndefinedRouteParamError(expr.name, path));
+        }
+      }
+      break;
+    }
+
+    case 'import': {
+      // Import expressions in event payloads need import definition validation
+      if (!hasImports) {
+        errors.push(createImportsNotDefinedError(path));
+      } else if (!context.importNames.has(expr.name)) {
+        errors.push(createUndefinedImportError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'data': {
+      // Data expressions in event payloads need data definition validation
+      if (!hasData) {
+        errors.push(createDataNotDefinedError(path));
+      } else if (!context.dataNames.has(expr.name)) {
+        errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
+
     case 'bin':
       errors.push(
         ...validateExpressionInEventPayload(expr.left, buildPath(path, 'left'), context, scope)
@@ -417,6 +669,7 @@ function validateExpressionInEventPayload(
  */
 interface ViewNodeValidationOptions {
   insideComponent: boolean;
+  insideLayout?: boolean;  // If true, slots are allowed at any level
   paramScope?: ParamScope;
 }
 
@@ -431,7 +684,7 @@ function validateViewNode(
   options: ViewNodeValidationOptions = { insideComponent: false }
 ): ConstelaError[] {
   const errors: ConstelaError[] = [];
-  const { insideComponent, paramScope } = options;
+  const { insideComponent, insideLayout, paramScope } = options;
 
   switch (node.kind) {
     case 'element':
@@ -537,10 +790,10 @@ function validateViewNode(
     }
 
     case 'slot':
-      // Slot is only valid inside component definitions
-      if (!insideComponent) {
+      // Slot is valid inside component definitions or layouts
+      if (!insideComponent && !insideLayout) {
         errors.push(
-          createSchemaError(`Slot can only be used inside component definitions`, path)
+          createSchemaError(`Slot can only be used inside component definitions or layouts`, path)
         );
       }
       break;
@@ -586,6 +839,46 @@ function validateComponentProps(
 
 // Reference to AST for component lookup (set in analyzePass)
 let ast: Program;
+
+// Flag indicating whether route is defined (set in analyzePass)
+let hasRoute: boolean;
+
+// Flag indicating whether imports are defined (set in analyzePass)
+let hasImports: boolean;
+
+// Flag indicating whether data is defined (set in analyzePass)
+let hasData: boolean;
+
+// ==================== Route Definition Validation ====================
+
+/**
+ * Validates expressions in route definition (title, meta)
+ */
+function validateRouteDefinition(
+  route: RouteDefinition,
+  context: AnalysisContext
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+  const emptyScope = new Set<string>();
+
+  // Validate title expression if present
+  if (route.title) {
+    errors.push(
+      ...validateExpression(route.title, '/route/title', context, emptyScope)
+    );
+  }
+
+  // Validate meta expressions if present
+  if (route.meta) {
+    for (const [key, value] of Object.entries(route.meta)) {
+      errors.push(
+        ...validateExpression(value, `/route/meta/${key}`, context, emptyScope)
+      );
+    }
+  }
+
+  return errors;
+}
 
 // ==================== Component Cycle Detection ====================
 
@@ -737,6 +1030,30 @@ function validateComponents(
   return errors;
 }
 
+// ==================== Lifecycle Hooks Validation ====================
+
+/**
+ * Validates lifecycle hooks reference valid actions
+ */
+function validateLifecycleHooks(
+  lifecycle: LifecycleHooks | undefined,
+  context: AnalysisContext
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  if (!lifecycle) return errors;
+
+  const hooks = ['onMount', 'onUnmount', 'onRouteEnter', 'onRouteLeave'] as const;
+  for (const hook of hooks) {
+    const actionName = lifecycle[hook];
+    if (actionName && !context.actionNames.has(actionName)) {
+      errors.push(createUndefinedActionError(actionName, `/lifecycle/${hook}`));
+    }
+  }
+
+  return errors;
+}
+
 // ==================== Action Validation ====================
 
 /**
@@ -762,6 +1079,90 @@ function validateActions(programAst: Program, context: AnalysisContext): Constel
 
 // ==================== Main Analyze Function ====================
 
+// ==================== Data Source Validation ====================
+
+/**
+ * Validates data sources in the program
+ */
+function validateDataSources(programAst: Program, context: AnalysisContext): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  if (!programAst.data) return errors;
+
+  for (const [name, source] of Object.entries(programAst.data)) {
+    const path = `/data/${name}`;
+
+    // Validate type field
+    if (!DATA_SOURCE_TYPES.includes(source.type as typeof DATA_SOURCE_TYPES[number])) {
+      errors.push(createInvalidDataSourceError(name, `invalid type '${source.type}'`, path));
+      continue;
+    }
+
+    // Validate transform field if present
+    if (source.transform !== undefined) {
+      if (!DATA_TRANSFORMS.includes(source.transform as typeof DATA_TRANSFORMS[number])) {
+        errors.push(createInvalidDataSourceError(name, `invalid transform '${source.transform}'`, path));
+      }
+    }
+
+    // Type-specific validation
+    switch (source.type) {
+      case 'glob':
+        if (typeof source.pattern !== 'string') {
+          errors.push(createInvalidDataSourceError(name, `glob type requires 'pattern' field`, path));
+        }
+        break;
+      case 'file':
+        if (typeof source.path !== 'string') {
+          errors.push(createInvalidDataSourceError(name, `file type requires 'path' field`, path));
+        }
+        break;
+      case 'api':
+        if (typeof source.url !== 'string') {
+          errors.push(createInvalidDataSourceError(name, `api type requires 'url' field`, path));
+        }
+        break;
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validates getStaticPaths in the route definition
+ */
+function validateGetStaticPaths(
+  programAst: Program,
+  context: AnalysisContext
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+  const getStaticPaths = programAst.route?.getStaticPaths;
+
+  if (!getStaticPaths) return errors;
+
+  const path = '/route/getStaticPaths';
+
+  // Check if data is defined when getStaticPaths is used
+  if (!programAst.data) {
+    errors.push(createDataNotDefinedError(path));
+    return errors;
+  }
+
+  // Check if the source is defined in data
+  if (!context.dataNames.has(getStaticPaths.source)) {
+    errors.push(createUndefinedDataSourceError(getStaticPaths.source, path));
+  }
+
+  // Validate param expressions
+  for (const [paramName, paramExpr] of Object.entries(getStaticPaths.params)) {
+    errors.push(
+      ...validateExpressionStateOnly(paramExpr, `${path}/params/${paramName}`, context)
+    );
+  }
+
+  return errors;
+}
+
 /**
  * Performs static analysis on the validated AST
  *
@@ -774,6 +1175,7 @@ function validateActions(programAst: Program, context: AnalysisContext): Constel
  * - Validates component references and props
  * - Detects component cycles
  * - Validates param references in component definitions
+ * - Validates data sources and getStaticPaths
  *
  * @param programAst - Validated AST from validate pass
  * @returns AnalyzePassResult
@@ -782,14 +1184,35 @@ export function analyzePass(programAst: Program): AnalyzePassResult {
   // Set module-level ast for component lookup in validateViewNode
   ast = programAst;
 
+  // Set module-level hasRoute flag for route expression validation
+  hasRoute = !!programAst.route;
+
+  // Set module-level hasImports flag for import expression validation
+  hasImports = !!programAst.imports;
+
+  // Set module-level hasData flag for data expression validation
+  hasData = !!programAst.data;
+
+  // Check if this is a layout program (has type: 'layout')
+  const isLayout = (programAst as unknown as { type?: string }).type === 'layout';
+
   const context = collectContext(programAst);
   const errors: ConstelaError[] = [];
 
   // Check for duplicate action names
   errors.push(...checkDuplicateActions(programAst));
 
+  // Validate data sources
+  errors.push(...validateDataSources(programAst, context));
+
+  // Validate getStaticPaths
+  errors.push(...validateGetStaticPaths(programAst, context));
+
   // Validate actions
   errors.push(...validateActions(programAst, context));
+
+  // Validate lifecycle hooks
+  errors.push(...validateLifecycleHooks(programAst.lifecycle, context));
 
   // Detect component cycles
   errors.push(...detectComponentCycles(programAst, context));
@@ -797,10 +1220,17 @@ export function analyzePass(programAst: Program): AnalyzePassResult {
   // Validate component definitions (params, slot usage inside components)
   errors.push(...validateComponents(programAst, context));
 
-  // Validate view with empty initial scope (insideComponent = false)
+  // Validate route definition expressions (title, meta)
+  if (programAst.route) {
+    errors.push(...validateRouteDefinition(programAst.route, context));
+  }
+
+  // Validate view with empty initial scope
+  // For layouts, slots are allowed at any level
   errors.push(
     ...validateViewNode(programAst.view, '/view', context, new Set<string>(), {
       insideComponent: false,
+      insideLayout: isLayout,
     })
   );
 

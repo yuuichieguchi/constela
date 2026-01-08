@@ -47,6 +47,24 @@ export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const;
 
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
+// ==================== Storage Operations ====================
+
+export const STORAGE_OPERATIONS = ['get', 'set', 'remove'] as const;
+export type StorageOperation = (typeof STORAGE_OPERATIONS)[number];
+
+export const STORAGE_TYPES = ['local', 'session'] as const;
+export type StorageType = (typeof STORAGE_TYPES)[number];
+
+// ==================== Clipboard Operations ====================
+
+export const CLIPBOARD_OPERATIONS = ['write', 'read'] as const;
+export type ClipboardOperation = (typeof CLIPBOARD_OPERATIONS)[number];
+
+// ==================== Navigate Targets ====================
+
+export const NAVIGATE_TARGETS = ['_self', '_blank'] as const;
+export type NavigateTarget = (typeof NAVIGATE_TARGETS)[number];
+
 // ==================== Param Types ====================
 
 export const PARAM_TYPES = ['string', 'number', 'boolean', 'json'] as const;
@@ -132,7 +150,34 @@ export interface GetExpr {
   path: string;
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr;
+/**
+ * Route expression - references route parameters
+ */
+export interface RouteExpr {
+  expr: 'route';
+  name: string;
+  source?: 'param' | 'query' | 'path';  // defaults to 'param'
+}
+
+/**
+ * Import expression - references imported external data
+ */
+export interface ImportExpr {
+  expr: 'import';
+  name: string;        // The import name defined in imports field
+  path?: string;       // Optional path for nested access (e.g., "items.0.title")
+}
+
+/**
+ * Data expression - references loaded data from data sources
+ */
+export interface DataExpr {
+  expr: 'data';
+  name: string;        // The data source name defined in data field
+  path?: string;       // Optional path for nested access (e.g., "settings.theme")
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr;
 
 // ==================== State Fields ====================
 
@@ -231,7 +276,43 @@ export interface FetchStep {
   onError?: ActionStep[];
 }
 
-export type ActionStep = SetStep | UpdateStep | FetchStep;
+/**
+ * Storage step - localStorage/sessionStorage operations
+ */
+export interface StorageStep {
+  do: 'storage';
+  operation: StorageOperation;
+  key: Expression;
+  value?: Expression;      // Required for 'set'
+  storage: StorageType;
+  result?: string;         // Variable name for 'get' result
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+/**
+ * Clipboard step - clipboard API operations
+ */
+export interface ClipboardStep {
+  do: 'clipboard';
+  operation: ClipboardOperation;
+  value?: Expression;      // Required for 'write'
+  result?: string;         // Variable name for 'read' result
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+/**
+ * Navigate step - page navigation
+ */
+export interface NavigateStep {
+  do: 'navigate';
+  url: Expression;
+  target?: NavigateTarget;  // Default: '_self'
+  replace?: boolean;        // Use history.replaceState
+}
+
+export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep;
 
 // ==================== Event Handler ====================
 
@@ -308,9 +389,11 @@ export interface ComponentNode {
 
 /**
  * Slot node - placeholder for children in component definition
+ * For layouts, can have an optional name for named slots
  */
 export interface SlotNode {
   kind: 'slot';
+  name?: string;  // Optional: for named slots like "header", "sidebar"
 }
 
 /**
@@ -339,6 +422,64 @@ export interface ComponentDef {
   view: ViewNode;
 }
 
+// ==================== Data Source Types ====================
+
+/**
+ * Data transform types for build-time content loading
+ */
+export const DATA_TRANSFORMS = ['mdx', 'yaml', 'csv'] as const;
+export type DataTransform = (typeof DATA_TRANSFORMS)[number];
+
+/**
+ * Data source types
+ */
+export const DATA_SOURCE_TYPES = ['glob', 'file', 'api'] as const;
+export type DataSourceType = (typeof DATA_SOURCE_TYPES)[number];
+
+/**
+ * Data source for build-time content loading
+ */
+export interface DataSource {
+  type: DataSourceType;
+  pattern?: string;    // For glob: "content/blog/*.mdx"
+  path?: string;       // For file: "data/config.json"
+  url?: string;        // For api: "https://api.example.com/posts"
+  transform?: DataTransform;
+}
+
+/**
+ * Static paths definition for SSG
+ */
+export interface StaticPathsDefinition {
+  source: string;      // Reference to data source name
+  params: Record<string, Expression>;
+}
+
+// ==================== Route Definition ====================
+
+/**
+ * Route definition for a page
+ */
+export interface RouteDefinition {
+  path: string;
+  title?: Expression;
+  layout?: string;
+  meta?: Record<string, Expression>;
+  getStaticPaths?: StaticPathsDefinition;
+}
+
+// ==================== Lifecycle Hooks ====================
+
+/**
+ * Lifecycle hooks for component/page lifecycle events
+ */
+export interface LifecycleHooks {
+  onMount?: string;       // Action name to run when component mounts
+  onUnmount?: string;     // Action name to run when component unmounts
+  onRouteEnter?: string;  // Action name to run when route is entered
+  onRouteLeave?: string;  // Action name to run when leaving route
+}
+
 // ==================== Program (Root) ====================
 
 /**
@@ -346,6 +487,10 @@ export interface ComponentDef {
  */
 export interface Program {
   version: '1.0';
+  route?: RouteDefinition;
+  imports?: Record<string, string>;  // External data references (e.g., { "navigation": "./data/nav.json" })
+  data?: Record<string, DataSource>; // Build-time data sources
+  lifecycle?: LifecycleHooks;        // Lifecycle hooks for component/page events
   state: Record<string, StateField>;
   actions: ActionDefinition[];
   view: ViewNode;
@@ -354,3 +499,23 @@ export interface Program {
 
 // Re-export for convenience
 export type ConstelaAst = Program;
+
+// ==================== Layout Program ====================
+
+/**
+ * Layout program - a special type of program that wraps page content
+ * Must contain at least one SlotNode in the view tree
+ */
+export interface LayoutProgram {
+  version: '1.0';
+  type: 'layout';
+  state?: Record<string, StateField>;
+  actions?: ActionDefinition[];
+  view: ViewNode;  // Must contain at least one SlotNode
+  components?: Record<string, ComponentDef>;
+}
+
+/**
+ * Union type for both regular Program and LayoutProgram
+ */
+export type ConstelaProgram = Program | LayoutProgram;

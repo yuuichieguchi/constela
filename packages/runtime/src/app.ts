@@ -1,12 +1,13 @@
 /**
  * App - Main entry point for creating Constela applications
- * 
+ *
  * Creates a reactive application from a CompiledProgram and mounts it to the DOM.
  */
 
 import type { CompiledProgram, CompiledAction } from '@constela/compiler';
 import { createStateStore } from './state/store.js';
 import { render, type RenderContext } from './renderer/index.js';
+import { executeAction } from './action/executor.js';
 
 export interface AppInstance {
   destroy(): void;
@@ -43,6 +44,22 @@ export function createApp(
     cleanups,
   };
 
+  // Create action context for lifecycle hooks
+  const actionCtx = {
+    state,
+    actions,
+    locals: {},
+  };
+
+  // Execute onMount lifecycle hook
+  if (program.lifecycle?.onMount) {
+    const onMountAction = actions[program.lifecycle.onMount];
+    if (onMountAction) {
+      // Execute synchronously for immediate state updates
+      void executeAction(onMountAction, actionCtx);
+    }
+  }
+
   // Render view
   const rootNode = render(program.view, ctx);
   mount.appendChild(rootNode);
@@ -53,6 +70,14 @@ export function createApp(
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
+
+      // Execute onUnmount lifecycle hook before cleanup
+      if (program.lifecycle?.onUnmount) {
+        const onUnmountAction = actions[program.lifecycle.onUnmount];
+        if (onUnmountAction) {
+          void executeAction(onUnmountAction, actionCtx);
+        }
+      }
 
       // Cleanup all effects
       for (const cleanup of cleanups) {
