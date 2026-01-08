@@ -1,5 +1,16 @@
 # @constela/compiler
 
+## 0.5.0
+
+### Minor Changes
+
+- @constela/core (minor)
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
