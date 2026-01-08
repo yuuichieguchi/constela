@@ -726,6 +726,41 @@ document.querySelectorAll('a[href]').forEach(a => bindLink(router, a));
 
 **Note:** Route params are now accessible in DSL expressions via `{ "expr": "route", "name": "id" }` when using the `route` field in your program.
 
+## Dynamic Routes (via @constela/start)
+
+For SSG with dynamic routes, export a function that receives route params:
+
+```typescript
+// pages/docs/[...slug].ts
+import type { PageExportFunction, StaticPathsResult } from '@constela/start';
+
+export const getStaticPaths = async (): Promise<StaticPathsResult> => ({
+  paths: [
+    { params: { slug: 'getting-started' } },
+    { params: { slug: 'api/components' } },
+  ]
+});
+
+const page: PageExportFunction = async (params) => {
+  const content = await loadMarkdown(`docs/${params.slug}.md`);
+  return compileToProgram(content);
+};
+
+export default page;
+```
+
+Static `CompiledProgram` exports continue to work for non-dynamic routes:
+
+```typescript
+// pages/about.ts
+export default {
+  version: '1.0',
+  state: {},
+  actions: {},
+  view: { kind: 'element', tag: 'div', ... }
+};
+```
+
 ## Packages
 
 | Package | Description |
@@ -734,7 +769,7 @@ document.querySelectorAll('a[href]').forEach(a => bindLink(router, a));
 | `@constela/compiler` | AST → CompiledProgram transformation |
 | `@constela/runtime` | DOM renderer with fine-grained reactivity |
 | `@constela/server` | Server-side rendering |
-| `@constela/start` | Build tools, dev server, SSG, data loading |
+| `@constela/start` | Build tools, dev server, SSG, dynamic routes |
 | `@constela/cli` | Command-line tools |
 | `@constela/router` | Client-side routing (add-on) |
 
