@@ -234,11 +234,18 @@ Constela programs are JSON documents with this structure:
 ```json
 {
   "version": "1.0",
+  "route": { ... },
+  "imports": { ... },
+  "data": { ... },
+  "lifecycle": { ... },
   "state": { ... },
   "actions": [ ... ],
-  "view": { ... }
+  "view": { ... },
+  "components": { ... }
 }
 ```
+
+All fields except `version`, `state`, `actions`, and `view` are optional.
 
 ### State
 
@@ -301,9 +308,20 @@ Constrained expression system (no arbitrary JavaScript):
 
 // Property access
 { "expr": "get", "base": { "expr": "state", "name": "user" }, "path": "address.city" }
+
+// Route parameter (requires route definition)
+{ "expr": "route", "name": "id", "source": "param" }
+
+// Imported data reference (requires imports field)
+{ "expr": "import", "name": "navigation", "path": "items" }
+
+// Build-time data reference (requires data field)
+{ "expr": "data", "name": "posts", "path": "0.title" }
 ```
 
 **Binary operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
+
+**Route sources:** `param` (default), `query`, `path`
 
 ### Actions
 
@@ -333,6 +351,9 @@ Named actions with declarative steps:
 - `set` - Set state value
 - `update` - Update with operation (see below)
 - `fetch` - HTTP request with `onSuccess`/`onError` handlers
+- `storage` - localStorage/sessionStorage operations
+- `clipboard` - Clipboard read/write
+- `navigate` - Page navigation
 
 **Update operations:**
 
@@ -365,6 +386,39 @@ Named actions with declarative steps:
 // Splice (delete 2 items at index 1, insert new items)
 { "do": "update", "target": "items", "operation": "splice", "index": { "expr": "lit", "value": 1 }, "deleteCount": { "expr": "lit", "value": 2 }, "value": { "expr": "lit", "value": ["a", "b"] } }
 ```
+
+### Browser Actions
+
+```json
+// Storage (localStorage/sessionStorage)
+{
+  "do": "storage",
+  "operation": "get",
+  "key": { "expr": "lit", "value": "theme" },
+  "storage": "local",
+  "result": "savedTheme",
+  "onSuccess": [
+    { "do": "set", "target": "theme", "value": { "expr": "var", "name": "savedTheme" } }
+  ]
+}
+
+{ "do": "storage", "operation": "set", "key": { "expr": "lit", "value": "theme" }, "value": { "expr": "state", "name": "theme" }, "storage": "local" }
+{ "do": "storage", "operation": "remove", "key": { "expr": "lit", "value": "theme" }, "storage": "local" }
+
+// Clipboard
+{ "do": "clipboard", "operation": "write", "value": { "expr": "state", "name": "textToCopy" } }
+{ "do": "clipboard", "operation": "read", "result": "clipboardText" }
+
+// Navigate
+{ "do": "navigate", "url": { "expr": "lit", "value": "/about" } }
+{ "do": "navigate", "url": { "expr": "lit", "value": "https://example.com" }, "target": "_blank" }
+{ "do": "navigate", "url": { "expr": "state", "name": "redirectUrl" }, "replace": true }
+```
+
+**Storage operations:** `get`, `set`, `remove`
+**Storage types:** `local`, `session`
+**Clipboard operations:** `write`, `read`
+**Navigate targets:** `_self` (default), `_blank`
 
 ### Components
 
@@ -445,6 +499,135 @@ For input events with payload:
     "onInput": { "event": "input", "action": "setQuery", "payload": { "expr": "var", "name": "value" } }
   }
 }
+```
+
+### Route Definition
+
+Define page routes with path, layout, and metadata:
+
+```json
+{
+  "route": {
+    "path": "/users/:id",
+    "title": { "expr": "bin", "op": "+", "left": { "expr": "lit", "value": "User: " }, "right": { "expr": "route", "name": "id" } },
+    "layout": "MainLayout",
+    "meta": {
+      "description": { "expr": "lit", "value": "User profile page" }
+    }
+  }
+}
+```
+
+Access route params in expressions with `{ "expr": "route", "name": "id" }`.
+
+### Imports
+
+Import external JSON data files:
+
+```json
+{
+  "imports": {
+    "navigation": "./data/navigation.json",
+    "config": "./data/site-config.json"
+  }
+}
+```
+
+Access imported data with `{ "expr": "import", "name": "navigation", "path": "items" }`.
+
+### Data Sources
+
+Load data at build time for static site generation:
+
+```json
+{
+  "data": {
+    "posts": {
+      "type": "glob",
+      "pattern": "content/blog/*.mdx",
+      "transform": "mdx"
+    },
+    "config": {
+      "type": "file",
+      "path": "data/config.json"
+    },
+    "users": {
+      "type": "api",
+      "url": "https://api.example.com/users"
+    }
+  },
+  "route": {
+    "path": "/posts/:slug",
+    "getStaticPaths": {
+      "source": "posts",
+      "params": {
+        "slug": { "expr": "get", "base": { "expr": "var", "name": "item" }, "path": "slug" }
+      }
+    }
+  }
+}
+```
+
+**Data source types:** `glob`, `file`, `api`
+**Transforms:** `mdx`, `yaml`, `csv`
+
+### Lifecycle Hooks
+
+Execute actions on component lifecycle events:
+
+```json
+{
+  "lifecycle": {
+    "onMount": "loadTheme",
+    "onUnmount": "saveState",
+    "onRouteEnter": "fetchData",
+    "onRouteLeave": "cleanup"
+  },
+  "actions": [
+    {
+      "name": "loadTheme",
+      "steps": [
+        {
+          "do": "storage",
+          "operation": "get",
+          "key": { "expr": "lit", "value": "theme" },
+          "storage": "local",
+          "result": "savedTheme",
+          "onSuccess": [
+            { "do": "set", "target": "theme", "value": { "expr": "var", "name": "savedTheme" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Layouts
+
+Define reusable page layouts with slots:
+
+```json
+{
+  "version": "1.0",
+  "type": "layout",
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      { "kind": "component", "name": "Header" },
+      { "kind": "element", "tag": "main", "children": [{ "kind": "slot" }] },
+      { "kind": "component", "name": "Footer" }
+    ]
+  }
+}
+```
+
+Pages reference layouts via `route.layout`. The page's view is inserted at the `slot` node.
+
+Named slots are supported for multi-slot layouts:
+```json
+{ "kind": "slot", "name": "sidebar" }
 ```
 
 ## Example: Counter
@@ -541,16 +724,17 @@ document.querySelectorAll('a[href]').forEach(a => bindLink(router, a));
 }
 ```
 
-**Limitation:** Route params/query are NOT accessible inside DSL expressions in the current version.
-Use `onRouteChange` callback to pass route data to your app via state updates.
+**Note:** Route params are now accessible in DSL expressions via `{ "expr": "route", "name": "id" }` when using the `route` field in your program.
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
-| `@constela/core` | AST types, JSON Schema, validator |
+| `@constela/core` | AST types, JSON Schema, validator, type guards |
 | `@constela/compiler` | AST → CompiledProgram transformation |
 | `@constela/runtime` | DOM renderer with fine-grained reactivity |
+| `@constela/server` | Server-side rendering |
+| `@constela/start` | Build tools, dev server, SSG, data loading |
 | `@constela/cli` | Command-line tools |
 | `@constela/router` | Client-side routing (add-on) |
 
@@ -617,6 +801,11 @@ All errors include structured information:
 - `OPERATION_INVALID_FOR_TYPE` - Update operation incompatible with state type
 - `OPERATION_MISSING_FIELD` - Required field missing for update operation
 - `EXPR_COND_ELSE_REQUIRED` - Cond expression requires else field
+- `UNDEFINED_ROUTE_PARAM` - Route expression references undefined route param
+- `UNDEFINED_IMPORT` - Import expression references undefined import
+- `UNDEFINED_DATA` - Data expression references undefined data source
+- `LAYOUT_MISSING_SLOT` - Layout program has no slot node
+- `LAYOUT_NOT_FOUND` - Referenced layout not found
 
 ## Running Examples
 
@@ -661,7 +850,13 @@ pnpm test
 
 ## Roadmap
 
-- [ ] SSR (Server-Side Rendering)
+- [x] SSR (Server-Side Rendering) - `@constela/server`
+- [x] Route definition in DSL
+- [x] Layout composition
+- [x] Build-time data loading
+- [x] Browser actions (storage, clipboard, navigate)
+- [x] Lifecycle hooks
+- [ ] External library integration (dynamic import, event subscription)
 - [ ] Style system integration
 - [ ] TypeScript builder API
 
