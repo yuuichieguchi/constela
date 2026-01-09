@@ -1,5 +1,11 @@
 # @constela/compiler
 
+## 0.7.0
+
+### Minor Changes
+
+- feat: Add MDX component param substitution for PropsTable/Callout with kind:each and expr:param support
+
 ## 0.6.1
 
 ### Patch Changes

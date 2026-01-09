@@ -1,5 +1,12 @@
 # @constela/server
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.7.0
+
 ## 2.0.0
 
 ### Patch Changes

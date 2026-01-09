@@ -17,7 +17,20 @@ import type {
   CompiledTextNode,
   CompiledCodeNode,
   CompiledExpression,
+  CompiledEachNode,
+  CompiledIfNode,
+  CompiledBinExpr,
+  CompiledNotExpr,
+  CompiledCondExpr,
+  CompiledGetExpr,
 } from '@constela/compiler';
+
+// Internal expression type for param (used during component substitution, not in final output)
+interface CompiledParamExpr {
+  expr: 'param';
+  name: string;
+  path?: string;
+}
 import type { Root, Content, PhrasingContent } from 'mdast';
 
 // ==================== Type Definitions ====================
@@ -78,7 +91,7 @@ interface MdxTextExpression {
 /**
  * Creates a literal expression
  */
-function lit(value: string | number | boolean | null): CompiledExpression {
+function lit(value: string | number | boolean | null | unknown[]): CompiledExpression {
   return { expr: 'lit', value };
 }
 
@@ -140,6 +153,63 @@ function isCustomComponent(name: string | null): boolean {
 }
 
 /**
+ * Patterns that are disallowed in JavaScript literal evaluation for security.
+ * These patterns could potentially execute arbitrary code.
+ */
+const DISALLOWED_PATTERNS = [
+  /\bfunction\b/i,
+  /\b(eval|Function|setTimeout|setInterval)\b/,
+  /\bimport\b/,
+  /\brequire\b/,
+  /\bfetch\b/,
+  /\bwindow\b/,
+  /\bdocument\b/,
+  /\bglobal\b/,
+  /\bprocess\b/,
+  /\b__proto__\b/,
+  /\bconstructor\b/,
+  /\bprototype\b/,
+];
+
+/**
+ * Check if a string contains only safe literal syntax (no code execution)
+ */
+function isSafeLiteral(value: string): boolean {
+  return !DISALLOWED_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * Safely evaluate JavaScript literal expressions (arrays/objects)
+ * Only allows simple literal values, no function calls or side effects
+ *
+ * @param value - The string to evaluate as a JavaScript literal
+ * @returns The parsed value, or null if parsing fails or value is unsafe
+ */
+function safeEvalLiteral(value: string): unknown {
+  // First try JSON parsing (fastest and safest)
+  try {
+    return JSON.parse(value);
+  } catch {
+    // Not valid JSON, continue
+  }
+
+  // Security check: reject potentially dangerous patterns
+  if (!isSafeLiteral(value)) {
+    return null;
+  }
+
+  // For JavaScript object literal syntax (unquoted keys), use Function constructor
+  // This is safer than eval() as it doesn't have access to local scope
+  try {
+    // Wrap in parentheses to handle object literals correctly
+    const fn = new Function(`return (${value});`);
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parse JSX attribute value
  */
 function parseAttributeValue(
@@ -161,6 +231,13 @@ function parseAttributeValue(
     if (exprValue === 'null') return lit(null);
     const num = Number(exprValue);
     if (!Number.isNaN(num)) return lit(num);
+    // Try to parse as JavaScript literal (arrays/objects)
+    if (exprValue.startsWith('[') || exprValue.startsWith('{')) {
+      const parsed = safeEvalLiteral(exprValue);
+      if (parsed !== null && parsed !== undefined) {
+        return lit(parsed as string | number | boolean | null | unknown[]);
+      }
+    }
     // For now, treat as string
     return lit(exprValue);
   }
@@ -365,6 +442,98 @@ function transformJsxElement(
 }
 
 /**
+ * Substitutes param expressions with actual prop values in a compiled expression.
+ * Recursively handles binary, conditional, not, and get expressions.
+ *
+ * @param expr - The compiled expression to substitute
+ * @param props - Map of param names to their actual values
+ * @returns The expression with all param references substituted
+ *
+ * @example
+ * const expr = { expr: 'param', name: 'type' };
+ * const props = { type: { expr: 'lit', value: 'warning' } };
+ * substituteExpression(expr, props); // { expr: 'lit', value: 'warning' }
+ *
+ * @example
+ * // Binary expression with param
+ * const expr = { expr: 'bin', op: '+', left: { expr: 'lit', value: 'callout-' }, right: { expr: 'param', name: 'type' } };
+ * const props = { type: { expr: 'lit', value: 'warning' } };
+ * substituteExpression(expr, props); // { expr: 'bin', op: '+', left: { expr: 'lit', value: 'callout-' }, right: { expr: 'lit', value: 'warning' } }
+ */
+export function substituteExpression(
+  expr: CompiledExpression,
+  props: Record<string, CompiledExpression>
+): CompiledExpression {
+  // Handle param expressions (cast to unknown first as 'param' is not in CompiledExpression type)
+  const exprAny = expr as unknown as { expr: string };
+  if (exprAny.expr === 'param') {
+    const paramExpr = expr as unknown as CompiledParamExpr;
+    const propValue = props[paramExpr.name];
+
+    if (!propValue) {
+      // Return null literal when param is not found
+      return { expr: 'lit', value: null };
+    }
+
+    // If param has a path, combine with the prop value
+    if (paramExpr.path && propValue.expr === 'var') {
+      const varExpr = propValue as { expr: 'var'; name: string; path?: string };
+      return {
+        expr: 'var',
+        name: varExpr.name,
+        path: paramExpr.path,
+      };
+    }
+
+    return propValue;
+  }
+
+  // Handle binary expressions
+  if (expr.expr === 'bin') {
+    const binExpr = expr as CompiledBinExpr;
+    return {
+      expr: 'bin',
+      op: binExpr.op,
+      left: substituteExpression(binExpr.left, props),
+      right: substituteExpression(binExpr.right, props),
+    };
+  }
+
+  // Handle not expressions
+  if (expr.expr === 'not') {
+    const notExpr = expr as CompiledNotExpr;
+    return {
+      expr: 'not',
+      operand: substituteExpression(notExpr.operand, props),
+    };
+  }
+
+  // Handle conditional expressions
+  if (expr.expr === 'cond') {
+    const condExpr = expr as CompiledCondExpr;
+    return {
+      expr: 'cond',
+      if: substituteExpression(condExpr.if, props),
+      then: substituteExpression(condExpr.then, props),
+      else: substituteExpression(condExpr.else, props),
+    };
+  }
+
+  // Handle get expressions
+  if (expr.expr === 'get') {
+    const getExpr = expr as CompiledGetExpr;
+    return {
+      expr: 'get',
+      base: substituteExpression(getExpr.base, props),
+      path: getExpr.path,
+    } as CompiledGetExpr as unknown as CompiledExpression;
+  }
+
+  // For other expression types (lit, state, var, route, import, ref), return as-is
+  return expr;
+}
+
+/**
  * Apply component view with props and children
  */
 function applyComponentView(
@@ -377,47 +546,122 @@ function applyComponentView(
 }
 
 /**
- * Substitute props and slot in a compiled node
+ * Substitutes props and slot in a compiled node.
+ * Recursively processes element, text, each, and if nodes.
+ *
+ * @param node - The compiled node to process
+ * @param props - Map of param names to their actual expression values
+ * @param children - Child nodes to insert at slot positions
+ * @returns The node with all param references substituted and slots replaced
+ *
+ * @example
+ * // Element with param in props
+ * const node = {
+ *   kind: 'element',
+ *   tag: 'div',
+ *   props: { class: { expr: 'param', name: 'type' } }
+ * };
+ * const props = { type: { expr: 'lit', value: 'warning' } };
+ * substituteInNode(node, props, []);
+ * // { kind: 'element', tag: 'div', props: { class: { expr: 'lit', value: 'warning' } } }
+ *
+ * @example
+ * // Each node with items param
+ * const node = {
+ *   kind: 'each',
+ *   items: { expr: 'param', name: 'items' },
+ *   as: 'item',
+ *   body: { kind: 'element', tag: 'li' }
+ * };
+ * const props = { items: { expr: 'lit', value: ['a', 'b'] } };
+ * substituteInNode(node, props, []);
+ * // { kind: 'each', items: { expr: 'lit', value: ['a', 'b'] }, as: 'item', body: ... }
  */
-function substituteInNode(
+export function substituteInNode(
   node: CompiledNode,
   props: Record<string, CompiledExpression>,
   children: CompiledNode[]
 ): CompiledNode {
-  if (node.kind === 'element') {
-    const elem = node as CompiledElementNode;
-
-    // Merge props
-    const newProps = elem.props ? { ...elem.props } : {};
-    for (const [key, value] of Object.entries(props)) {
-      if (!(key in newProps)) {
-        newProps[key] = value;
+  switch (node.kind) {
+    case 'each': {
+      const eachNode = node as CompiledEachNode;
+      const result: CompiledEachNode = {
+        kind: 'each',
+        items: substituteExpression(eachNode.items, props),
+        as: eachNode.as,
+        body: substituteInNode(eachNode.body, props, children),
+      };
+      if (eachNode.index) {
+        result.index = eachNode.index;
       }
+      if (eachNode.key) {
+        result.key = substituteExpression(eachNode.key, props);
+      }
+      return result;
     }
 
-    // Process children, replacing slots
-    let newChildren: CompiledNode[] | undefined;
-    if (elem.children) {
-      newChildren = [];
-      for (const child of elem.children) {
-        if ((child as { kind: string }).kind === 'slot') {
-          // Replace slot with provided children
-          newChildren.push(...children);
-        } else {
-          newChildren.push(substituteInNode(child, props, children));
+    case 'text': {
+      const textNode = node as CompiledTextNode;
+      return {
+        kind: 'text',
+        value: substituteExpression(textNode.value, props),
+      };
+    }
+
+    case 'if': {
+      const ifNode = node as CompiledIfNode;
+      const result: CompiledIfNode = {
+        kind: 'if',
+        condition: substituteExpression(ifNode.condition, props),
+        then: substituteInNode(ifNode.then, props, children),
+      };
+      if (ifNode.else) {
+        result.else = substituteInNode(ifNode.else, props, children);
+      }
+      return result;
+    }
+
+    case 'element': {
+      const elem = node as CompiledElementNode;
+
+      // Substitute expressions in existing props
+      const newProps: Record<string, CompiledExpression> = {};
+      if (elem.props) {
+        for (const [key, value] of Object.entries(elem.props)) {
+          newProps[key] = substituteExpression(value as CompiledExpression, props);
         }
       }
+
+      // Process children, replacing slots
+      let newChildren: CompiledNode[] | undefined;
+      if (elem.children) {
+        newChildren = [];
+        for (const child of elem.children) {
+          if ((child as { kind: string }).kind === 'slot') {
+            // Replace slot with provided children
+            newChildren.push(...children);
+          } else {
+            newChildren.push(substituteInNode(child, props, children));
+          }
+        }
+      }
+
+      return elementNode(
+        elem.tag,
+        Object.keys(newProps).length > 0 ? newProps : undefined,
+        newChildren && newChildren.length > 0 ? newChildren : undefined
+      );
     }
 
-    return elementNode(
-      elem.tag,
-      Object.keys(newProps).length > 0 ? newProps as Record<string, CompiledExpression> : undefined,
-      newChildren && newChildren.length > 0 ? newChildren : undefined
-    );
-  }
+    case 'markdown':
+    case 'code':
+      // These node types don't contain param expressions, return as-is
+      return node;
 
-  // For other node types, return as-is
-  return node;
+    default:
+      // Unknown node type - return as-is for forward compatibility
+      return node;
+  }
 }
 
 /**
