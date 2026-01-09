@@ -67,5 +67,11 @@ export {
   transformCsv,
   generateStaticPaths,
   DataLoader,
+  loadComponentDefinitions,
+  mdxContentToNode,
 } from './data/loader.js';
-export type { GlobResult, StaticPath } from './data/loader.js';
+export type { GlobResult, MdxGlobResult, StaticPath } from './data/loader.js';
+
+// MDX transformation
+export { mdxToConstela } from './build/mdx.js';
+export type { ComponentDef, MDXToConstelaOptions } from './build/mdx.js';

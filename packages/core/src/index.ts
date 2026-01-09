@@ -69,6 +69,7 @@ export type {
   ComponentDef,
   // Data Source Types
   DataSource,
+  ComponentsRef,
   StaticPathsDefinition,
   // Route Definition
   RouteDefinition,

@@ -206,8 +206,8 @@ function transformNode(
       const props: Record<string, CompiledExpression> = {
         href: lit(node.url),
       };
-      if (node.title) {
-        props.title = lit(node.title);
+      if (node['title']) {
+        props['title'] = lit(node['title']);
       }
       return elementNode('a', props, transformChildren(node.children, ctx));
     }
@@ -259,11 +259,11 @@ function transformNode(
       const props: Record<string, CompiledExpression> = {
         src: lit(node.url),
       };
-      if (node.alt) {
-        props.alt = lit(node.alt);
+      if (node['alt']) {
+        props['alt'] = lit(node['alt']);
       }
-      if (node.title) {
-        props.title = lit(node.title);
+      if (node['title']) {
+        props['title'] = lit(node['title']);
       }
       return elementNode('img', props);
     }
@@ -411,7 +411,7 @@ function substituteInNode(
 
     return elementNode(
       elem.tag,
-      Object.keys(newProps).length > 0 ? newProps : undefined,
+      Object.keys(newProps).length > 0 ? newProps as Record<string, CompiledExpression> : undefined,
       newChildren && newChildren.length > 0 ? newChildren : undefined
     );
   }
@@ -488,4 +488,30 @@ export async function mdxToConstela(
     actions: {},
     view,
   };
+}
+
+/**
+ * Transform MDX content (without frontmatter) to CompiledNode
+ * For use when frontmatter has already been extracted
+ *
+ * @param content - MDX content string (frontmatter already removed)
+ * @param options - Transformation options
+ * @returns CompiledNode
+ */
+export async function mdxContentToNode(
+  content: string,
+  options?: MDXToConstelaOptions
+): Promise<CompiledNode> {
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkMdx);
+
+  const tree = processor.parse(content);
+
+  const ctx: TransformContext = {
+    components: options?.components ?? {},
+  };
+
+  return transformRoot(tree as Root, ctx);
 }

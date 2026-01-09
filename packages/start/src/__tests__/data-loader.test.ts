@@ -329,44 +329,43 @@ describe('transformMdx', () => {
   // ==================== MDX Transformation ====================
 
   describe('MDX transformation', () => {
-    it('should parse frontmatter from MDX content', () => {
+    it('should parse frontmatter from MDX content', async () => {
       // Arrange
       const content = '---\ntitle: Test Post\nauthor: John\n---\n\n# Hello';
 
       // Act
-      const result = transformMdx(content);
+      const result = await transformMdx(content, 'test.mdx');
 
       // Assert
       expect(result.frontmatter.title).toBe('Test Post');
       expect(result.frontmatter.author).toBe('John');
     });
 
-    it('should extract content without frontmatter', () => {
+    it('should compile content to CompiledNode', async () => {
       // Arrange
       const content = '---\ntitle: Test\n---\n\n# Hello World\n\nParagraph text.';
 
       // Act
-      const result = transformMdx(content);
+      const result = await transformMdx(content, 'test.mdx');
 
       // Assert
-      expect(result.content).toContain('# Hello World');
-      expect(result.content).toContain('Paragraph text.');
-      expect(result.content).not.toContain('title:');
+      expect(result.content).toHaveProperty('kind');
+      expect(result.content.kind).toBe('element');
     });
 
-    it('should handle content without frontmatter', () => {
+    it('should handle content without frontmatter', async () => {
       // Arrange
       const content = '# No Frontmatter\n\nJust content.';
 
       // Act
-      const result = transformMdx(content);
+      const result = await transformMdx(content, 'test.mdx');
 
       // Assert
       expect(result.frontmatter).toEqual({});
-      expect(result.content).toContain('# No Frontmatter');
+      expect(result.content).toHaveProperty('kind');
     });
 
-    it('should handle complex frontmatter with arrays and objects', () => {
+    it('should handle complex frontmatter with arrays and objects', async () => {
       // Arrange
       const content = `---
 title: Complex Post
@@ -381,11 +380,33 @@ author:
 # Content`;
 
       // Act
-      const result = transformMdx(content);
+      const result = await transformMdx(content, 'test.mdx');
 
       // Assert
       expect(result.frontmatter.tags).toEqual(['javascript', 'typescript']);
-      expect(result.frontmatter.author.name).toBe('John Doe');
+      expect((result.frontmatter.author as Record<string, string>).name).toBe('John Doe');
+    });
+
+    it('should generate slug from filename', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'my-post.mdx');
+
+      // Assert
+      expect(result.slug).toBe('my-post');
+    });
+
+    it('should use frontmatter slug when present', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\nslug: custom-slug\n---\n\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'my-post.mdx');
+
+      // Assert
+      expect(result.slug).toBe('custom-slug');
     });
   });
 });

@@ -10,9 +10,11 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import fg from 'fast-glob';
-import type { DataSource, StaticPathsDefinition, Expression } from '@constela/core';
+import type { CompiledNode } from '@constela/compiler';
+import type { DataSource, StaticPathsDefinition, Expression, ComponentsRef } from '@constela/core';
+import { mdxContentToNode as mdxContentToNodeImpl } from '../build/mdx.js';
 
 // ==================== Types ====================
 
@@ -22,6 +24,21 @@ export interface GlobResult {
   frontmatter?: Record<string, unknown>;
   content?: string;
 }
+
+export interface MdxGlobResult {
+  file: string;
+  raw: string;
+  frontmatter: Record<string, unknown>;
+  content: CompiledNode;
+  slug: string;
+}
+
+interface ComponentDef {
+  params?: Record<string, { type: string; required?: boolean }>;
+  view: CompiledNode;
+}
+
+export const mdxContentToNode = mdxContentToNodeImpl;
 
 export interface StaticPath {
   params: Record<string, string>;
@@ -156,19 +173,78 @@ function parseValue(value: string): unknown {
   return trimmed;
 }
 
+// ==================== Component Definitions ====================
+
+/**
+ * Load component definitions from a JSON file
+ */
+export function loadComponentDefinitions(
+  baseDir: string,
+  componentsPath: string
+): Record<string, ComponentDef> {
+  const fullPath = join(baseDir, componentsPath);
+
+  // Path traversal protection: ensure resolved path is within baseDir
+  const resolvedBase = join(baseDir, '');
+  const resolvedPath = join(fullPath, '');
+  if (!resolvedPath.startsWith(resolvedBase)) {
+    throw new Error(`Invalid component path: path traversal detected`);
+  }
+
+  if (!existsSync(fullPath)) {
+    throw new Error(`MDX components file not found: ${fullPath}`);
+  }
+
+  const content = readFileSync(fullPath, 'utf-8');
+
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new Error(`Invalid JSON in MDX components file: ${fullPath}`);
+  }
+}
+
 // ==================== Transform Functions ====================
 
 /**
- * Transform MDX content - parse frontmatter and content
+ * Transform MDX content - parse frontmatter and compile content to CompiledNode
  */
-export function transformMdx(content: string): { frontmatter: Record<string, unknown>; content: string } {
+export async function transformMdx(
+  content: string,
+  file: string,
+  options?: { components?: Record<string, ComponentDef> }
+): Promise<MdxGlobResult> {
+  // Parse frontmatter using existing pattern
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if (!match) {
-    return { frontmatter: {}, content: content.trim() };
+  let frontmatter: Record<string, unknown> = {};
+  let mdxContent: string;
+
+  if (match) {
+    frontmatter = parseYaml(match[1]!);
+    mdxContent = match[2]!.trim();
+  } else {
+    mdxContent = content.trim();
   }
 
-  const frontmatter = parseYaml(match[1]!);
-  return { frontmatter, content: match[2]!.trim() };
+  // Transform MDX to CompiledNode
+  const compiledContent = await mdxContentToNodeImpl(
+    mdxContent,
+    options?.components ? { components: options.components } : undefined
+  );
+
+  // Generate slug (frontmatter priority)
+  const fmSlug = frontmatter['slug'];
+  const slug = typeof fmSlug === 'string'
+    ? fmSlug
+    : basename(file, extname(file));
+
+  return {
+    file,
+    raw: content,
+    frontmatter,
+    content: compiledContent,
+    slug,
+  };
 }
 
 /**
@@ -230,6 +306,7 @@ function parseCSVLine(line: string): string[] {
 
 /**
  * Apply transform to content based on transform type
+ * Note: MDX transform is handled separately via loadGlob with async transformMdx
  */
 function applyTransform(content: string, transform: string | undefined, filename: string): unknown {
   if (!transform) {
@@ -242,7 +319,9 @@ function applyTransform(content: string, transform: string | undefined, filename
 
   switch (transform) {
     case 'mdx':
-      return transformMdx(content);
+      // MDX transform is async and requires file path for slug generation
+      // Use loadGlob for MDX files instead
+      throw new Error('MDX transform for single files is not supported via loadFile. Use loadGlob instead.');
     case 'yaml':
       return transformYaml(content);
     case 'csv':
@@ -260,31 +339,31 @@ function applyTransform(content: string, transform: string | undefined, filename
 export async function loadGlob(
   baseDir: string,
   pattern: string,
-  transform?: string
-): Promise<GlobResult[]> {
+  transform?: string,
+  options?: { components?: Record<string, ComponentDef> }
+): Promise<GlobResult[] | MdxGlobResult[]> {
   const files = await fg(pattern, { cwd: baseDir });
-  const results: GlobResult[] = [];
 
+  if (transform === 'mdx') {
+    const results: MdxGlobResult[] = [];
+    for (const file of files) {
+      const fullPath = join(baseDir, file);
+      const content = readFileSync(fullPath, 'utf-8');
+      const transformed = await transformMdx(content, file, options);
+      results.push(transformed);
+    }
+    return results;
+  }
+
+  const results: GlobResult[] = [];
   for (const file of files) {
     const fullPath = join(baseDir, file);
     const content = readFileSync(fullPath, 'utf-8');
-
-    if (transform === 'mdx') {
-      const transformed = transformMdx(content);
-      results.push({
-        file,
-        raw: content,
-        frontmatter: transformed.frontmatter,
-        content: transformed.content,
-      });
-    } else {
-      results.push({
-        file,
-        raw: content,
-      });
-    }
+    results.push({
+      file,
+      raw: content,
+    });
   }
-
   return results;
 }
 
@@ -403,6 +482,7 @@ export async function generateStaticPaths(
  */
 export class DataLoader {
   private cache: Map<string, unknown> = new Map();
+  private componentCache: Map<string, Record<string, ComponentDef>> = new Map();
   private projectRoot: string;
 
   constructor(projectRoot: string) {
@@ -410,12 +490,58 @@ export class DataLoader {
   }
 
   /**
+   * Resolve components from string path or import reference
+   */
+  private resolveComponents(
+    ref: string | ComponentsRef,
+    imports?: Record<string, unknown>
+  ): Record<string, ComponentDef> {
+    // String path
+    if (typeof ref === 'string') {
+      if (this.componentCache.has(ref)) {
+        return this.componentCache.get(ref)!;
+      }
+      const defs = loadComponentDefinitions(this.projectRoot, ref);
+      this.componentCache.set(ref, defs);
+      return defs;
+    }
+
+    // Import expression reference
+    if (ref.expr === 'import') {
+      if (!imports) {
+        throw new Error(`Import context required for component reference "${ref.name}"`);
+      }
+      const imported = imports[ref.name];
+      if (!imported || typeof imported !== 'object') {
+        throw new Error(`Component import "${ref.name}" not found or invalid`);
+      }
+      return imported as Record<string, ComponentDef>;
+    }
+
+    return {};
+  }
+
+  /**
    * Load a single data source
    */
-  async loadDataSource(name: string, dataSource: DataSource): Promise<unknown> {
+  async loadDataSource(
+    name: string,
+    dataSource: DataSource,
+    context?: { imports?: Record<string, unknown> }
+  ): Promise<unknown> {
     // Check cache first
     if (this.cache.has(name)) {
       return this.cache.get(name);
+    }
+
+    let componentDefs: Record<string, ComponentDef> | undefined;
+
+    // Resolve components for MDX transform
+    if (dataSource.transform === 'mdx' && dataSource.components) {
+      componentDefs = this.resolveComponents(
+        dataSource.components as string | ComponentsRef,
+        context?.imports
+      );
     }
 
     let data: unknown;
@@ -425,7 +551,12 @@ export class DataLoader {
         if (!dataSource.pattern) {
           throw new Error(`Glob data source '${name}' requires pattern`);
         }
-        data = await loadGlob(this.projectRoot, dataSource.pattern, dataSource.transform);
+        data = await loadGlob(
+          this.projectRoot,
+          dataSource.pattern,
+          dataSource.transform,
+          componentDefs ? { components: componentDefs } : undefined
+        );
         break;
 
       case 'file':

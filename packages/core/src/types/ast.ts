@@ -489,6 +489,14 @@ export const DATA_SOURCE_TYPES = ['glob', 'file', 'api'] as const;
 export type DataSourceType = (typeof DATA_SOURCE_TYPES)[number];
 
 /**
+ * Reference to imported components for MDX transformation
+ */
+export interface ComponentsRef {
+  expr: 'import';
+  name: string;
+}
+
+/**
  * Data source for build-time content loading
  */
 export interface DataSource {
@@ -497,6 +505,7 @@ export interface DataSource {
   path?: string;       // For file: "data/config.json"
   url?: string;        // For api: "https://api.example.com/posts"
   transform?: DataTransform;
+  components?: string | ComponentsRef;  // For MDX: component mapping
 }
 
 /**
