@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/with-layout",
+    "layout": "main"
+  },
+  "state": {
+    "count": { "type": "number", "initial": 0 }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page Content" } }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/"
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Home Page" } }
+    ]
+  }
+}

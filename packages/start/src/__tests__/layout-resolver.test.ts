@@ -595,6 +595,384 @@ describe('Layout error handling', () => {
   });
 });
 
+// ==================== JSON Layout Support Tests ====================
+// TDD Red Phase: These tests will FAIL with the current implementation
+// because scanLayouts only searches for .ts/.tsx files, not .json files
+
+describe('JSON Layout Support', () => {
+  // ==================== Setup ====================
+
+  beforeEach(async () => {
+    const fs = await import('node:fs');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+  });
+
+  // ==================== scanLayouts JSON Detection ====================
+
+  describe('scanLayouts should detect .json files', () => {
+    it('should include .json files in scanned layouts', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'main.json',
+        'MainLayout.ts',
+      ]);
+
+      // Act
+      const layouts = await scanLayouts(layoutsDir);
+
+      // Assert
+      expect(layouts).toHaveLength(2);
+      expect(layouts.some(l => l.name === 'main')).toBe(true);
+      expect(layouts.some(l => l.file.endsWith('.json'))).toBe(true);
+    });
+
+    it('should extract name from .json filename correctly', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue(['main.json']);
+
+      // Act
+      const layouts = await scanLayouts(layoutsDir);
+
+      // Assert
+      expect(layouts[0]?.name).toBe('main');
+      expect(layouts[0]?.file).toBe(join(layoutsDir, 'main.json'));
+    });
+
+    it('should handle mixed TypeScript and JSON layout files', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'main.json',
+        'AuthLayout.ts',
+        'DashboardLayout.tsx',
+        'docs.json',
+      ]);
+
+      // Act
+      const layouts = await scanLayouts(layoutsDir);
+
+      // Assert
+      expect(layouts).toHaveLength(4);
+      expect(layouts.some(l => l.name === 'main' && l.file.endsWith('.json'))).toBe(true);
+      expect(layouts.some(l => l.name === 'docs' && l.file.endsWith('.json'))).toBe(true);
+      expect(layouts.some(l => l.name === 'AuthLayout' && l.file.endsWith('.ts'))).toBe(true);
+      expect(layouts.some(l => l.name === 'DashboardLayout' && l.file.endsWith('.tsx'))).toBe(true);
+    });
+
+    it('should ignore .json files starting with underscore', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'main.json',
+        '_shared.json', // Should be ignored
+      ]);
+
+      // Act
+      const layouts = await scanLayouts(layoutsDir);
+
+      // Assert
+      expect(layouts).toHaveLength(1);
+      expect(layouts[0]?.name).toBe('main');
+    });
+
+    it('should handle nested JSON layout files', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'main.json',
+        'admin/dashboard.json',
+        'marketing/landing.json',
+      ]);
+
+      // Act
+      const layouts = await scanLayouts(layoutsDir);
+
+      // Assert
+      expect(layouts).toHaveLength(3);
+      expect(layouts.some(l => l.name === 'main')).toBe(true);
+      expect(layouts.some(l => l.name === 'dashboard')).toBe(true);
+      expect(layouts.some(l => l.name === 'landing')).toBe(true);
+    });
+  });
+
+  // ==================== loadLayout JSON Parsing ====================
+
+  describe('loadLayout should parse JSON layout files', () => {
+    it('should parse a valid JSON layout file', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            { kind: 'slot' },
+          ],
+        },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.type).toBe('layout');
+      expect(layout.version).toBe('1.0');
+      expect(layout.view).toBeDefined();
+    });
+
+    it('should throw error for invalid JSON in layout file', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/invalid.json';
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{ invalid json }');
+
+      // Act & Assert
+      await expect(loadLayout(layoutFile)).rejects.toThrow(/invalid json|failed to load/i);
+    });
+
+    it('should throw error when JSON layout has no type: layout field', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/not-layout.json';
+      const invalidLayout = {
+        version: '1.0',
+        // Missing type: 'layout'
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(invalidLayout));
+
+      // Act & Assert
+      await expect(loadLayout(layoutFile)).rejects.toThrow(/not a valid layout/i);
+    });
+
+    it('should handle JSON layout with slot component', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/with-slot.json';
+      const layoutWithSlot = {
+        version: '1.0',
+        type: 'layout',
+        view: {
+          kind: 'element',
+          tag: 'main',
+          children: [
+            {
+              kind: 'element',
+              tag: 'header',
+              children: [{ kind: 'text', value: { expr: 'lit', value: 'Header' } }],
+            },
+            { kind: 'slot' },
+            {
+              kind: 'element',
+              tag: 'footer',
+              children: [{ kind: 'text', value: { expr: 'lit', value: 'Footer' } }],
+            },
+          ],
+        },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(layoutWithSlot));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.type).toBe('layout');
+      // View should contain the slot
+      const view = layout.view as { kind: string; children?: Array<{ kind: string }> };
+      expect(view.children?.some(c => c.kind === 'slot')).toBe(true);
+    });
+  });
+
+  // ==================== LayoutResolver.getLayout with JSON ====================
+
+  describe('LayoutResolver.getLayout should work with JSON layouts', () => {
+    it('should resolve and load a JSON layout by name', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+      };
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue(['main.json']);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      const resolver = new LayoutResolver(layoutsDir);
+      await resolver.initialize();
+
+      // Act
+      const layout = await resolver.getLayout('main');
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout?.type).toBe('layout');
+    });
+
+    it('should cache JSON layouts after first load', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        view: { kind: 'slot' },
+      };
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue(['main.json']);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      const resolver = new LayoutResolver(layoutsDir);
+      await resolver.initialize();
+
+      // Act
+      const layout1 = await resolver.getLayout('main');
+      const layout2 = await resolver.getLayout('main');
+
+      // Assert
+      expect(layout1).toBe(layout2); // Same reference (cached)
+      // readFileSync should be called only once for the layout (caching works)
+    });
+
+    it('should work with mixed TypeScript and JSON layouts', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        view: { kind: 'slot' },
+      };
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'main.json',
+        'AuthLayout.ts',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      const resolver = new LayoutResolver(layoutsDir);
+      await resolver.initialize();
+
+      // Act & Assert
+      expect(resolver.hasLayout('main')).toBe(true);
+      expect(resolver.hasLayout('AuthLayout')).toBe(true);
+
+      const jsonLayoutResult = await resolver.getLayout('main');
+      expect(jsonLayoutResult).toBeDefined();
+      expect(jsonLayoutResult?.type).toBe('layout');
+    });
+  });
+
+  // ==================== composeWithLayout with JSON layouts ====================
+
+  describe('composeWithLayout should work with JSON layouts', () => {
+    it('should compose page with JSON layout', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { className: 'layout' },
+          children: [{ kind: 'slot' }],
+        },
+      };
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue(['main.json']);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      const resolver = new LayoutResolver(layoutsDir);
+      await resolver.initialize();
+
+      const page: Program = {
+        version: '1.0',
+        route: {
+          path: '/test',
+          layout: 'main',
+        },
+        state: {},
+        actions: [],
+        view: { kind: 'element', tag: 'main' },
+      } as unknown as Program;
+
+      // Act
+      const composed = await resolver.composeWithLayout(page);
+
+      // Assert
+      expect(composed).toBeDefined();
+      // The composition should not throw and should return a valid program
+    });
+
+    it('should throw error when JSON layout not found', async () => {
+      // Arrange
+      const layoutsDir = '/project/layouts';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue(['main.json']);
+
+      const resolver = new LayoutResolver(layoutsDir);
+      await resolver.initialize();
+
+      const page: Program = {
+        version: '1.0',
+        route: {
+          path: '/test',
+          layout: 'NonExistentJson',
+        },
+        state: {},
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      } as unknown as Program;
+
+      // Act & Assert
+      await expect(resolver.composeWithLayout(page)).rejects.toThrow(/layout.*not found/i);
+    });
+  });
+});
+
 // Cleanup
 afterEach(() => {
   vi.clearAllMocks();

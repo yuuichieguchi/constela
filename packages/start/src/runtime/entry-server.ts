@@ -14,6 +14,10 @@ export interface SSRContext {
   query: URLSearchParams;
 }
 
+export interface WrapHtmlOptions {
+  theme?: 'dark' | 'light';
+}
+
 // ==================== Render Page ====================
 
 /**
@@ -116,15 +120,18 @@ hydrateApp({
  * @param content - The rendered HTML content
  * @param hydrationScript - The hydration script code
  * @param head - Optional additional head content
+ * @param options - Optional configuration including theme
  * @returns Complete HTML document string
  */
 export function wrapHtml(
   content: string,
   hydrationScript: string,
-  head?: string
+  head?: string,
+  options?: WrapHtmlOptions
 ): string {
+  const htmlClass = options?.theme === 'dark' ? ' class="dark"' : '';
   return `<!DOCTYPE html>
-<html>
+<html${htmlClass}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

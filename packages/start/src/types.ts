@@ -93,6 +93,8 @@ export interface DevServerOptions {
   host?: string;
   routesDir?: string;
   publicDir?: string;
+  /** Layouts directory for layout composition */
+  layoutsDir?: string;
   /** CSS entry point(s) for Vite middleware processing */
   css?: string | string[];
 }

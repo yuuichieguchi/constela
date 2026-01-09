@@ -660,6 +660,274 @@ describe('initClient', () => {
     });
   });
 
+  // ==================== Theme Synchronization ====================
+
+  describe('theme synchronization', () => {
+    /**
+     * Theme synchronization tests for client-side dark mode handling.
+     *
+     * When the program has a `theme` state, the client should:
+     * - Add 'dark' class to document.documentElement when theme is 'dark'
+     * - Remove 'dark' class when theme is 'light'
+     * - Handle programs without theme state gracefully
+     */
+
+    beforeEach(() => {
+      // Ensure clean state - remove dark class from documentElement
+      document.documentElement.classList.remove('dark');
+    });
+
+    afterEach(() => {
+      // Clean up - remove dark class after each test
+      document.documentElement.classList.remove('dark');
+    });
+
+    it('should add dark class to document.documentElement when theme state is set to dark', async () => {
+      // Arrange
+      const mockSetState = vi.fn();
+      const mockGetState = vi.fn((name: string) => {
+        if (name === 'theme') return 'dark';
+        return undefined;
+      });
+      const mockSubscribe = vi.fn((name: string, fn: (value: unknown) => void) => {
+        // Simulate immediate callback with current value
+        if (name === 'theme') {
+          fn('dark');
+        }
+        return vi.fn(); // unsubscribe
+      });
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: mockSetState,
+        getState: mockGetState,
+        subscribe: mockSubscribe,
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          theme: { type: 'string', initial: 'dark' },
+        },
+      });
+
+      // Act
+      initClient({ program, container });
+
+      // Assert
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    it('should remove dark class from document.documentElement when theme state is set to light', async () => {
+      // Arrange - start with dark class
+      document.documentElement.classList.add('dark');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+      let themeCallback: ((value: unknown) => void) | null = null;
+      const mockSubscribe = vi.fn((name: string, fn: (value: unknown) => void) => {
+        if (name === 'theme') {
+          themeCallback = fn;
+          // Initially 'dark'
+          fn('dark');
+        }
+        return vi.fn(); // unsubscribe
+      });
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn((name: string) => name === 'theme' ? 'dark' : undefined),
+        subscribe: mockSubscribe,
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          theme: { type: 'string', initial: 'dark' },
+        },
+      });
+
+      // Act
+      initClient({ program, container });
+
+      // Simulate theme change to 'light'
+      if (themeCallback) {
+        themeCallback('light');
+      }
+
+      // Assert
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('should update document.documentElement.classList when theme state changes dynamically', async () => {
+      // Arrange
+      let themeCallback: ((value: unknown) => void) | null = null;
+      const mockSubscribe = vi.fn((name: string, fn: (value: unknown) => void) => {
+        if (name === 'theme') {
+          themeCallback = fn;
+          fn('light'); // Start with light
+        }
+        return vi.fn(); // unsubscribe
+      });
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn((name: string) => name === 'theme' ? 'light' : undefined),
+        subscribe: mockSubscribe,
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          theme: { type: 'string', initial: 'light' },
+        },
+      });
+
+      // Act - initialize with light theme
+      initClient({ program, container });
+
+      // Initially should not have dark class
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+      // Simulate change to dark
+      if (themeCallback) {
+        themeCallback('dark');
+      }
+
+      // Assert - should now have dark class
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+      // Simulate change back to light
+      if (themeCallback) {
+        themeCallback('light');
+      }
+
+      // Assert - should not have dark class
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('should not throw when program has no theme state', async () => {
+      // Arrange
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn(() => undefined),
+        subscribe: vi.fn(() => vi.fn()),
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          count: { type: 'number', initial: 0 },
+          // No theme state
+        },
+      });
+
+      // Act & Assert - should not throw
+      expect(() => {
+        initClient({ program, container });
+      }).not.toThrow();
+    });
+
+    it('should not modify document.documentElement when program has no theme state', async () => {
+      // Arrange - start with dark class to verify it is not touched
+      document.documentElement.classList.add('dark');
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn(() => undefined),
+        subscribe: vi.fn(() => vi.fn()),
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          count: { type: 'number', initial: 0 },
+          // No theme state
+        },
+      });
+
+      // Act
+      initClient({ program, container });
+
+      // Assert - dark class should remain (not touched by initClient)
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    it('should clean up theme subscription when app is destroyed', async () => {
+      // Arrange
+      const unsubscribeMock = vi.fn();
+      const mockSubscribe = vi.fn((name: string, fn: (value: unknown) => void) => {
+        if (name === 'theme') {
+          fn('dark');
+        }
+        return unsubscribeMock;
+      });
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn((name: string) => name === 'theme' ? 'dark' : undefined),
+        subscribe: mockSubscribe,
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          theme: { type: 'string', initial: 'dark' },
+        },
+      });
+
+      // Act
+      const app = initClient({ program, container });
+      app.destroy();
+
+      // Assert - subscription should be cleaned up
+      expect(unsubscribeMock).toHaveBeenCalled();
+    });
+
+    it('should handle theme value "system" gracefully', async () => {
+      // Arrange
+      const mockSubscribe = vi.fn((name: string, fn: (value: unknown) => void) => {
+        if (name === 'theme') {
+          fn('system');
+        }
+        return vi.fn();
+      });
+
+      const { hydrateApp } = await import('@constela/runtime');
+      (hydrateApp as Mock).mockReturnValue({
+        destroy: vi.fn(),
+        setState: vi.fn(),
+        getState: vi.fn((name: string) => name === 'theme' ? 'system' : undefined),
+        subscribe: mockSubscribe,
+      });
+
+      const { initClient } = await import('../../src/runtime/entry-client.js');
+      const program = createMinimalProgram({
+        state: {
+          theme: { type: 'string', initial: 'system' },
+        },
+      });
+
+      // Act & Assert - should not throw
+      expect(() => {
+        initClient({ program, container });
+      }).not.toThrow();
+
+      // For 'system' value, the implementation should decide behavior
+      // This test just ensures no crash occurs
+    });
+  });
+
   // ==================== Integration ====================
 
   describe('integration', () => {

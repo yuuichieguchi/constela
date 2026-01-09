@@ -8,6 +8,8 @@ import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader } from '../json-page-loader.js';
 import { renderPage, wrapHtml, generateHydrationScript } from '../runtime/entry-server.js';
 import { scanRoutes } from '../router/file-router.js';
+import { LayoutResolver } from '../layout/resolver.js';
+import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
 
 // ==================== Types ====================
 
@@ -181,6 +183,7 @@ export async function createDevServer(
     host = DEFAULT_HOST,
     routesDir = DEFAULT_ROUTES_DIR,
     publicDir = join(process.cwd(), DEFAULT_PUBLIC_DIR),
+    layoutsDir,
     css,
   } = options;
 
@@ -210,6 +213,16 @@ export async function createDevServer(
   } catch {
     // Routes directory may not exist yet - that's okay
     routes = [];
+  }
+
+  // Initialize layout resolver if layoutsDir is provided
+  let layoutResolver: LayoutResolver | null = null;
+  if (layoutsDir) {
+    const absoluteLayoutsDir = isAbsolute(layoutsDir)
+      ? layoutsDir
+      : join(process.cwd(), layoutsDir);
+    layoutResolver = new LayoutResolver(absoluteLayoutsDir);
+    await layoutResolver.initialize();
   }
 
   const devServer: DevServer = {
@@ -284,6 +297,20 @@ export async function createDevServer(
                 params: match.params,
               });
 
+              // Compose with layout if page specifies one and layoutResolver is available
+              let composedProgram = program;
+              if (program.route?.layout && layoutResolver) {
+                const layoutProgram = await layoutResolver.getLayout(program.route.layout);
+                if (layoutProgram) {
+                  const analysis = analyzeLayoutPass(layoutProgram);
+                  if (analysis.ok) {
+                    const compiledLayout = transformLayoutPass(layoutProgram, analysis.context);
+                    // composeLayoutWithPage handles both array and Record formats for actions
+                    composedProgram = composeLayoutWithPage(compiledLayout as unknown as import('@constela/compiler').CompiledProgram, program);
+                  }
+                }
+              }
+
               // Create SSR context
               const ssrContext = {
                 url: pathname,
@@ -292,8 +319,8 @@ export async function createDevServer(
               };
 
               // Render the page
-              const content = await renderPage(program, ssrContext);
-              const hydrationScript = generateHydrationScript(program);
+              const content = await renderPage(composedProgram, ssrContext);
+              const hydrationScript = generateHydrationScript(composedProgram);
 
               // Generate CSS link tags if css option is provided
               const cssHead = css
@@ -302,7 +329,10 @@ export async function createDevServer(
                     .join('\n')
                 : '';
 
-              const html = wrapHtml(content, hydrationScript, cssHead);
+              // Get initial theme from composed program state
+              const themeState = composedProgram.state?.['theme'];
+              const initialTheme = themeState?.initial as 'dark' | 'light' | undefined;
+              const html = wrapHtml(content, hydrationScript, cssHead, initialTheme ? { theme: initialTheme } : undefined);
 
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
               res.end(html);

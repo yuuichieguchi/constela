@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/without-layout"
+  },
+  "state": {
+    "message": { "type": "string", "initial": "Hello" }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "No Layout Page" } }
+    ]
+  }
+}

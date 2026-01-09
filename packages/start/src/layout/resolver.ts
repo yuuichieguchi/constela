@@ -8,7 +8,7 @@
  * - Compose layouts with page content
  */
 
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import fg from 'fast-glob';
 import type { LayoutProgram, Program } from '@constela/core';
@@ -48,8 +48,8 @@ export async function scanLayouts(layoutsDir: string): Promise<ScannedLayout[]> 
     throw new Error(`Path is not a directory: ${layoutsDir}`);
   }
 
-  // Find all TypeScript/TSX files
-  const files = await fg(['**/*.ts', '**/*.tsx'], {
+  // Find all TypeScript/TSX/JSON files
+  const files = await fg(['**/*.ts', '**/*.tsx', '**/*.json'], {
     cwd: layoutsDir,
     ignore: ['**/_*', '**/*.d.ts'],
   });
@@ -63,13 +63,13 @@ export async function scanLayouts(layoutsDir: string): Promise<ScannedLayout[]> 
       if (name.startsWith('_')) return false;
       // Ignore type definition files
       if (name.endsWith('.d.ts')) return false;
-      // Only include .ts and .tsx files
-      if (!name.endsWith('.ts') && !name.endsWith('.tsx')) return false;
+      // Only include .ts, .tsx, and .json files
+      if (!name.endsWith('.ts') && !name.endsWith('.tsx') && !name.endsWith('.json')) return false;
       return true;
     })
     .map(file => {
       // Extract name from filename (without extension)
-      const name = basename(file).replace(/\.(tsx?|ts)$/, '');
+      const name = basename(file).replace(/\.(tsx?|json)$/, '');
       return {
         name,
         file: join(layoutsDir, file),
@@ -106,9 +106,18 @@ export function resolveLayout(
  */
 export async function loadLayout(layoutFile: string): Promise<LayoutProgram> {
   try {
-    // Dynamic import the layout file
-    const module = await import(layoutFile);
-    const exported = module.default || module;
+    let exported: unknown;
+
+    // Handle JSON files differently from TypeScript files
+    if (layoutFile.endsWith('.json')) {
+      // Read and parse JSON file
+      const content = readFileSync(layoutFile, 'utf-8');
+      exported = JSON.parse(content);
+    } else {
+      // Dynamic import for TypeScript files
+      const module = await import(layoutFile);
+      exported = module.default || module;
+    }
 
     // Validate it's a layout program
     if (!isLayoutProgram(exported)) {

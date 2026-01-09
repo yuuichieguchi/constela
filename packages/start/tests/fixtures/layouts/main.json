@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "type": "layout",
+  "state": {
+    "theme": { "type": "string", "initial": "light" }
+  },
+  "actions": [
+    {
+      "name": "toggleTheme",
+      "steps": [
+        {
+          "do": "set",
+          "target": "theme",
+          "value": { "expr": "cond", "if": { "expr": "bin", "op": "==", "left": { "expr": "state", "name": "theme" }, "right": { "expr": "lit", "value": "light" } }, "then": { "expr": "lit", "value": "dark" }, "else": { "expr": "lit", "value": "light" } }
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": { "expr": "lit", "value": "layout-wrapper" }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "header",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Header" } }
+        ]
+      },
+      { "kind": "slot" },
+      {
+        "kind": "element",
+        "tag": "footer",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Footer" } }
+        ]
+      }
+    ]
+  }
+}

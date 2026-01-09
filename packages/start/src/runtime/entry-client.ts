@@ -99,10 +99,33 @@ export function initClient(options: InitClientOptions): AppInstance {
     }
   }
 
-  // Step 5: Track destroy state
+  // Step 5: Theme synchronization effect
+  if (program.state?.['theme']) {
+    const updateThemeClass = (value: unknown) => {
+      if (value === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    // Initial sync from current state
+    const currentTheme = appInstance.getState?.('theme');
+    if (currentTheme) {
+      updateThemeClass(currentTheme);
+    }
+
+    // Subscribe to changes
+    if (appInstance.subscribe) {
+      const unsubscribeTheme = appInstance.subscribe('theme', updateThemeClass);
+      cleanupFns.push(unsubscribeTheme);
+    }
+  }
+
+  // Step 6: Track destroy state
   let destroyed = false;
 
-  // Step 6: Return extended AppInstance
+  // Step 7: Return extended AppInstance
   return {
     destroy(): void {
       if (destroyed) return;

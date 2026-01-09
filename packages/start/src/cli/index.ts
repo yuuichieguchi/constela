@@ -4,7 +4,7 @@ import { build } from '../build/index.js';
 
 // ==================== Handler Type Definitions ====================
 
-type DevHandler = (options: { port: string; host?: string; css?: string }) => Promise<{ port: number }>;
+type DevHandler = (options: { port: string; host?: string; css?: string; layoutsDir?: string }) => Promise<{ port: number }>;
 type BuildHandler = (options: { outDir?: string }) => Promise<void>;
 type StartHandler = (options: { port: string }) => Promise<{ port: number }>;
 
@@ -17,6 +17,7 @@ let devHandler: DevHandler = async (options) => {
     port,
     host,
     ...(options.css ? { css: options.css } : {}),
+    ...(options.layoutsDir ? { layoutsDir: options.layoutsDir } : {}),
   });
   await server.listen();
   console.log(`Development server running at http://${host}:${server.port}`);
@@ -94,7 +95,8 @@ export function createCLI(): Command {
     .option('-p, --port <port>', 'Port number', '3000')
     .option('-h, --host <host>', 'Host address')
     .option('-c, --css <path>', 'CSS entry point for Vite processing')
-    .action(async (options: { port: string; host?: string; css?: string }) => {
+    .option('-l, --layoutsDir <path>', 'Layouts directory for layout composition')
+    .action(async (options: { port: string; host?: string; css?: string; layoutsDir?: string }) => {
       await devHandler(options);
     });
 
