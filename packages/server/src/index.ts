@@ -1,1 +1,1 @@
-export { renderToString } from './renderer.js';
+export { renderToString, type RenderOptions } from './renderer.js';

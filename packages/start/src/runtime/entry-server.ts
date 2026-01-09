@@ -4,7 +4,7 @@
  */
 
 import type { CompiledProgram } from '@constela/compiler';
-import { renderToString } from '@constela/server';
+import { renderToString, type RenderOptions } from '@constela/server';
 
 // ==================== Types ====================
 
@@ -20,14 +20,21 @@ export interface SSRContext {
  * Renders a CompiledProgram to HTML string using @constela/server's renderToString.
  *
  * @param program - The compiled program to render
- * @param _ctx - SSR context (reserved for future use)
+ * @param ctx - SSR context including route params
  * @returns Promise that resolves to HTML string
  */
 export async function renderPage(
   program: CompiledProgram,
-  _ctx: SSRContext
+  ctx: SSRContext
 ): Promise<string> {
-  return await renderToString(program);
+  const options: RenderOptions = {
+    route: {
+      params: ctx.params,
+      query: Object.fromEntries(ctx.query.entries()),
+      path: ctx.url,
+    },
+  };
+  return await renderToString(program, options);
 }
 
 // ==================== Hydration Script Generation ====================

@@ -51,8 +51,8 @@ interface SSRContext {
     params: Record<string, string>;
     query: Record<string, string>;
     path: string;
-  };
-  imports?: Record<string, unknown>;
+  } | undefined;
+  imports?: Record<string, unknown> | undefined;
 }
 
 // ==================== Type Guards ====================
@@ -470,12 +470,28 @@ async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<stri
 // ==================== Main Export ====================
 
 /**
+ * Options for renderToString
+ */
+export interface RenderOptions {
+  route?: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    path?: string;
+  };
+  imports?: Record<string, unknown>;
+}
+
+/**
  * Renders a CompiledProgram to an HTML string.
  *
  * @param program - The compiled program to render
+ * @param options - Optional render options including route context
  * @returns Promise that resolves to HTML string representation
  */
-export async function renderToString(program: CompiledProgram): Promise<string> {
+export async function renderToString(
+  program: CompiledProgram,
+  options?: RenderOptions
+): Promise<string> {
   // Initialize state from program's initial values
   const state = new Map<string, unknown>();
   for (const [name, field] of Object.entries(program.state)) {
@@ -485,6 +501,14 @@ export async function renderToString(program: CompiledProgram): Promise<string> 
   const ctx: SSRContext = {
     state,
     locals: {},
+    route: options?.route
+      ? {
+          params: options.route.params ?? {},
+          query: options.route.query ?? {},
+          path: options.route.path ?? '',
+        }
+      : undefined,
+    imports: options?.imports ?? program.importData,
   };
 
   return await renderNode(program.view, ctx);

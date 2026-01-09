@@ -93,6 +93,8 @@ export interface DevServerOptions {
   host?: string;
   routesDir?: string;
   publicDir?: string;
+  /** CSS entry point(s) for Vite middleware processing */
+  css?: string | string[];
 }
 
 /**
@@ -101,5 +103,7 @@ export interface DevServerOptions {
 export interface BuildOptions {
   outDir?: string;
   routesDir?: string;
+  publicDir?: string;
+  layoutsDir?: string;
   target?: 'node' | 'edge';
 }

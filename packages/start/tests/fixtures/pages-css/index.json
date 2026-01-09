@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "class": { "expr": "lit", "value": "test-class" } },
+    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "CSS Test" } }]
+  }
+}

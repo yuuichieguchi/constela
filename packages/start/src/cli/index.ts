@@ -4,7 +4,7 @@ import { build } from '../build/index.js';
 
 // ==================== Handler Type Definitions ====================
 
-type DevHandler = (options: { port: string; host?: string }) => Promise<{ port: number }>;
+type DevHandler = (options: { port: string; host?: string; css?: string }) => Promise<{ port: number }>;
 type BuildHandler = (options: { outDir?: string }) => Promise<void>;
 type StartHandler = (options: { port: string }) => Promise<{ port: number }>;
 
@@ -13,7 +13,11 @@ type StartHandler = (options: { port: string }) => Promise<{ port: number }>;
 let devHandler: DevHandler = async (options) => {
   const port = parseInt(options.port, 10);
   const host = options.host ?? 'localhost';
-  const server = await createDevServer({ port, host });
+  const server = await createDevServer({
+    port,
+    host,
+    ...(options.css ? { css: options.css } : {}),
+  });
   await server.listen();
   console.log(`Development server running at http://${host}:${server.port}`);
 
@@ -89,7 +93,8 @@ export function createCLI(): Command {
     .description('Start development server')
     .option('-p, --port <port>', 'Port number', '3000')
     .option('-h, --host <host>', 'Host address')
-    .action(async (options: { port: string; host?: string }) => {
+    .option('-c, --css <path>', 'CSS entry point for Vite processing')
+    .action(async (options: { port: string; host?: string; css?: string }) => {
       await devHandler(options);
     });
 

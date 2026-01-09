@@ -1,9 +1,13 @@
 import { createServer, type Server } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { join } from 'node:path';
+import { join, isAbsolute, dirname, basename } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import type { DevServerOptions } from '../types.js';
+import { createServer as createViteServer, type ViteDevServer } from 'vite';
+import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
+import { JsonPageLoader } from '../json-page-loader.js';
+import { renderPage, wrapHtml, generateHydrationScript } from '../runtime/entry-server.js';
+import { scanRoutes } from '../router/file-router.js';
 
 // ==================== Types ====================
 
@@ -24,6 +28,137 @@ export interface DevServer {
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_PUBLIC_DIR = 'public';
+const DEFAULT_ROUTES_DIR = 'src/pages';
+
+// ==================== Route Matching ====================
+
+/**
+ * Match result from route matching
+ */
+interface MatchResult {
+  route: ScannedRoute;
+  params: Record<string, string>;
+}
+
+/**
+ * Match a URL path against scanned routes.
+ *
+ * Supports:
+ * - Static segments: /about matches /about
+ * - Dynamic params: /users/:id matches /users/123
+ * - Catch-all: /docs/* matches /docs/getting-started/intro
+ *
+ * @param url - The URL path to match (e.g., "/docs/getting-started")
+ * @param routes - Array of scanned routes to match against
+ * @returns MatchResult if matched, null otherwise
+ */
+function matchRoute(url: string, routes: ScannedRoute[]): MatchResult | null {
+  // Normalize URL - remove trailing slash except for root
+  const normalizedUrl = url === '/' ? '/' : url.replace(/\/$/, '');
+  const urlSegments = normalizedUrl.split('/').filter(Boolean);
+
+  for (const route of routes) {
+    // Skip non-page routes
+    if (route.type !== 'page') {
+      continue;
+    }
+
+    const patternSegments = route.pattern.split('/').filter(Boolean);
+    const params: Record<string, string> = {};
+
+    // Check for catch-all pattern
+    const hasCatchAll = patternSegments.includes('*');
+
+    if (hasCatchAll) {
+      // Find the index of catch-all segment
+      const catchAllIndex = patternSegments.indexOf('*');
+
+      // Static segments before catch-all must match
+      let matched = true;
+      for (let i = 0; i < catchAllIndex; i++) {
+        const patternSeg = patternSegments[i];
+        const urlSeg = urlSegments[i];
+
+        if (patternSeg === undefined || urlSeg === undefined) {
+          matched = false;
+          break;
+        }
+
+        if (patternSeg.startsWith(':')) {
+          // Dynamic param before catch-all
+          const paramName = patternSeg.slice(1);
+          params[paramName] = urlSeg;
+        } else if (patternSeg !== urlSeg) {
+          matched = false;
+          break;
+        }
+      }
+
+      if (matched && urlSegments.length >= catchAllIndex) {
+        // Capture remaining segments as catch-all param
+        // Extract param name from the route's params array (first catch-all param)
+        const catchAllParamName = route.params.find((p) => {
+          // The param that corresponds to '*' in the pattern
+          // It's typically the last one or named 'slug'
+          return true; // Use the first param for catch-all
+        });
+
+        if (catchAllParamName) {
+          const remainingSegments = urlSegments.slice(catchAllIndex);
+          params[catchAllParamName] = remainingSegments.join('/');
+        }
+
+        return { route, params };
+      }
+    } else {
+      // Exact segment count must match for non-catch-all routes
+      if (patternSegments.length !== urlSegments.length) {
+        continue;
+      }
+
+      let matched = true;
+      for (let i = 0; i < patternSegments.length; i++) {
+        const patternSeg = patternSegments[i];
+        const urlSeg = urlSegments[i];
+
+        if (patternSeg === undefined || urlSeg === undefined) {
+          matched = false;
+          break;
+        }
+
+        if (patternSeg.startsWith(':')) {
+          // Dynamic parameter - extract value
+          const paramName = patternSeg.slice(1);
+          params[paramName] = urlSeg;
+        } else if (patternSeg !== urlSeg) {
+          // Static segment doesn't match
+          matched = false;
+          break;
+        }
+      }
+
+      if (matched) {
+        return { route, params };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ==================== HTML Utilities ====================
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ==================== DevServer Implementation ====================
 
@@ -44,12 +179,38 @@ export async function createDevServer(
   const {
     port = DEFAULT_PORT,
     host = DEFAULT_HOST,
-    routesDir: _routesDir = 'src/routes',
+    routesDir = DEFAULT_ROUTES_DIR,
     publicDir = join(process.cwd(), DEFAULT_PUBLIC_DIR),
+    css,
   } = options;
 
   let httpServer: Server | null = null;
   let actualPort = port;
+  let viteServer: ViteDevServer | null = null;
+
+  // Create Vite server if CSS option is provided
+  if (css) {
+    viteServer = await createViteServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      appType: 'custom',
+      logLevel: 'silent',
+    });
+  }
+
+  // Resolve routes directory to absolute path
+  const absoluteRoutesDir = isAbsolute(routesDir)
+    ? routesDir
+    : join(process.cwd(), routesDir);
+
+  // Scan routes on startup
+  let routes: ScannedRoute[] = [];
+  try {
+    routes = await scanRoutes(absoluteRoutesDir);
+  } catch {
+    // Routes directory may not exist yet - that's okay
+    routes = [];
+  }
 
   const devServer: DevServer = {
     get port(): number {
@@ -58,10 +219,25 @@ export async function createDevServer(
 
     async listen(): Promise<void> {
       return new Promise((resolve, reject) => {
-        httpServer = createServer((req, res) => {
+        httpServer = createServer(async (req, res) => {
           // Parse URL pathname
           const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
           const pathname = url.pathname;
+
+          // Handle Vite middleware first if available
+          if (viteServer) {
+            await new Promise<void>((resolveMiddleware) => {
+              viteServer!.middlewares(req, res, () => {
+                // Vite called next() - request not handled by Vite
+                resolveMiddleware();
+              });
+            });
+
+            // Check if response was already sent by Vite
+            if (res.writableEnded) {
+              return;
+            }
+          }
 
           // Try to serve static file
           const staticResult = resolveStaticFile(pathname, publicDir);
@@ -88,16 +264,93 @@ export async function createDevServer(
             return;
           }
 
-          // If file doesn't exist but static path was attempted, return 404
-          if (staticResult.filePath && !staticResult.exists) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Not Found');
-            return;
+          // Try to match against JSON page routes
+          const match = matchRoute(pathname, routes);
+
+          if (match) {
+            try {
+              // Use project root for JsonPageLoader to allow imports outside routesDir
+              // (e.g., "../data/examples.json" from src/pages/index.json)
+              const projectRoot = process.cwd();
+              const pageLoader = new JsonPageLoader(projectRoot);
+
+              // Get relative path from project root
+              const relativePath = match.route.file.startsWith(projectRoot)
+                ? match.route.file.slice(projectRoot.length + 1)
+                : match.route.file;
+
+              // Compile the page with params
+              const program = await pageLoader.compile(relativePath, {
+                params: match.params,
+              });
+
+              // Create SSR context
+              const ssrContext = {
+                url: pathname,
+                params: match.params,
+                query: url.searchParams,
+              };
+
+              // Render the page
+              const content = await renderPage(program, ssrContext);
+              const hydrationScript = generateHydrationScript(program);
+
+              // Generate CSS link tags if css option is provided
+              const cssHead = css
+                ? (Array.isArray(css) ? css : [css])
+                    .map((p) => `<link rel="stylesheet" href="/${p}">`)
+                    .join('\n')
+                : '';
+
+              const html = wrapHtml(content, hydrationScript, cssHead);
+
+              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+              res.end(html);
+              return;
+            } catch (error) {
+              // In dev mode, return 500 with error message
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : '';
+
+              res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+              res.end(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Server Error</title>
+<style>
+body { font-family: system-ui, sans-serif; padding: 2rem; background: #1a1a1a; color: #fff; }
+h1 { color: #ff6b6b; }
+pre { background: #2d2d2d; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Server Error</h1>
+<p>${escapeHtml(errorMessage)}</p>
+<pre>${escapeHtml(errorStack ?? '')}</pre>
+</body>
+</html>`);
+              return;
+            }
           }
 
-          // Basic placeholder response for non-static routes
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<html><body>Constela Dev Server</body></html>');
+          // No route matched - return 404
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>404 Not Found</title>
+<style>
+body { font-family: system-ui, sans-serif; padding: 2rem; text-align: center; }
+h1 { color: #666; }
+</style>
+</head>
+<body>
+<h1>404 Not Found</h1>
+<p>The page <code>${escapeHtml(pathname)}</code> could not be found.</p>
+</body>
+</html>`);
         });
 
         httpServer.on('error', (err) => {
@@ -116,6 +369,12 @@ export async function createDevServer(
     },
 
     async close(): Promise<void> {
+      // Close Vite server first if it exists
+      if (viteServer) {
+        await viteServer.close();
+        viteServer = null;
+      }
+
       return new Promise((resolve, reject) => {
         if (!httpServer) {
           resolve();

@@ -613,7 +613,7 @@ describe('scanRoutes', () => {
       expect(routes).toEqual([]);
     });
 
-    it('should ignore non-route files (e.g., .css, .json)', async () => {
+    it('should ignore non-route files (e.g., .css) but include .json', async () => {
       // Arrange
       await createRouteFile(tempDir, 'index.ts');
       await writeFile(join(tempDir, 'styles.css'), '/* styles */');
@@ -622,9 +622,10 @@ describe('scanRoutes', () => {
       // Act
       const routes = await scanRoutes(tempDir);
 
-      // Assert
-      expect(routes).toHaveLength(1);
-      expect(routes[0]?.pattern).toBe('/');
+      // Assert - .json files are now valid route files for JSON pages
+      expect(routes).toHaveLength(2);
+      expect(routes.map((r) => r.pattern)).toContain('/');
+      expect(routes.map((r) => r.pattern)).toContain('/data');
     });
 
     it('should ignore files starting with _ (except _middleware)', async () => {
