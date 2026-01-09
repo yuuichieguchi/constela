@@ -1,5 +1,17 @@
 # @constela/runtime
 
+## 0.9.0
+
+### Minor Changes
+
+- Add external library integration: RefExpr, ImportStep, CallStep, SubscribeStep, DisposeStep, and error variable injection in onError callbacks
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.6.0
+  - @constela/core@0.6.0
+
 ## 0.8.0
 
 ### Minor Changes

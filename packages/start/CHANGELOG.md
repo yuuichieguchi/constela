@@ -1,5 +1,16 @@
 # @constela/start
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.6.0
+  - @constela/core@0.6.0
+  - @constela/runtime@0.9.0
+  - @constela/router@6.0.0
+  - @constela/server@2.0.0
+
 ## 0.4.0
 
 ### Minor Changes
