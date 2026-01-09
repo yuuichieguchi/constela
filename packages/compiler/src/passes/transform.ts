@@ -65,7 +65,11 @@ export type CompiledActionStep =
   | CompiledFetchStep
   | CompiledStorageStep
   | CompiledClipboardStep
-  | CompiledNavigateStep;
+  | CompiledNavigateStep
+  | CompiledImportStep
+  | CompiledCallStep
+  | CompiledSubscribeStep
+  | CompiledDisposeStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -119,6 +123,55 @@ export interface CompiledNavigateStep {
   replace?: boolean;               // Use history.replaceState
 }
 
+/**
+ * Compiled ref expression
+ */
+export interface CompiledRefExpr {
+  expr: 'ref';
+  name: string;
+}
+
+/**
+ * Compiled import step
+ */
+export interface CompiledImportStep {
+  do: 'import';
+  module: string;
+  result: string;
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+/**
+ * Compiled call step
+ */
+export interface CompiledCallStep {
+  do: 'call';
+  target: CompiledExpression;
+  args?: CompiledExpression[];
+  result?: string;
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+/**
+ * Compiled subscribe step
+ */
+export interface CompiledSubscribeStep {
+  do: 'subscribe';
+  target: CompiledExpression;
+  event: string;
+  action: string;
+}
+
+/**
+ * Compiled dispose step
+ */
+export interface CompiledDisposeStep {
+  do: 'dispose';
+  target: CompiledExpression;
+}
+
 // ==================== Compiled View Node Types ====================
 
 export type CompiledNode =
@@ -132,6 +185,7 @@ export type CompiledNode =
 export interface CompiledElementNode {
   kind: 'element';
   tag: string;
+  ref?: string;
   props?: Record<string, CompiledExpression | CompiledEventHandler>;
   children?: CompiledNode[];
 }
@@ -179,7 +233,8 @@ export type CompiledExpression =
   | CompiledCondExpr
   | CompiledGetExpr
   | CompiledRouteExpr
-  | CompiledImportExpr;
+  | CompiledImportExpr
+  | CompiledRefExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -374,6 +429,9 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
       }
       return dataExpr;
     }
+
+    case 'ref':
+      return { expr: 'ref', name: expr.name };
   }
 }
 
@@ -510,6 +568,61 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       }
       return compiledNavigateStep;
     }
+
+    case 'import': {
+      const importStep = step as import('@constela/core').ImportStep;
+      const compiledImportStep: CompiledImportStep = {
+        do: 'import',
+        module: importStep.module,
+        result: importStep.result,
+      };
+      if (importStep.onSuccess) {
+        compiledImportStep.onSuccess = importStep.onSuccess.map(transformActionStep);
+      }
+      if (importStep.onError) {
+        compiledImportStep.onError = importStep.onError.map(transformActionStep);
+      }
+      return compiledImportStep;
+    }
+
+    case 'call': {
+      const callStep = step as import('@constela/core').CallStep;
+      const compiledCallStep: CompiledCallStep = {
+        do: 'call',
+        target: transformExpression(callStep.target, emptyContext),
+      };
+      if (callStep.args) {
+        compiledCallStep.args = callStep.args.map(arg => transformExpression(arg, emptyContext));
+      }
+      if (callStep.result) {
+        compiledCallStep.result = callStep.result;
+      }
+      if (callStep.onSuccess) {
+        compiledCallStep.onSuccess = callStep.onSuccess.map(transformActionStep);
+      }
+      if (callStep.onError) {
+        compiledCallStep.onError = callStep.onError.map(transformActionStep);
+      }
+      return compiledCallStep;
+    }
+
+    case 'subscribe': {
+      const subscribeStep = step as import('@constela/core').SubscribeStep;
+      return {
+        do: 'subscribe',
+        target: transformExpression(subscribeStep.target, emptyContext),
+        event: subscribeStep.event,
+        action: subscribeStep.action,
+      } as CompiledSubscribeStep;
+    }
+
+    case 'dispose': {
+      const disposeStep = step as import('@constela/core').DisposeStep;
+      return {
+        do: 'dispose',
+        target: transformExpression(disposeStep.target, emptyContext),
+      } as CompiledDisposeStep;
+    }
   }
 }
 
@@ -547,6 +660,10 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         kind: 'element',
         tag: node.tag,
       };
+
+      if (node.ref) {
+        compiledElement.ref = node.ref;
+      }
 
       if (node.props) {
         compiledElement.props = {};

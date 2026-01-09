@@ -42,6 +42,11 @@ export type {
   CompiledStorageStep,
   CompiledClipboardStep,
   CompiledNavigateStep,
+  CompiledImportStep,
+  CompiledCallStep,
+  CompiledSubscribeStep,
+  CompiledDisposeStep,
+  CompiledRefExpr,
   CompiledEventHandler,
 } from './passes/transform.js';
 

@@ -41,6 +41,8 @@ export type ErrorCode =
   | 'UNDEFINED_DATA_SOURCE'
   | 'DATA_NOT_DEFINED'
   | 'UNDEFINED_DATA'
+  // External library integration error codes
+  | 'UNDEFINED_REF'
   // Browser action-related error codes
   | 'INVALID_STORAGE_OPERATION'
   | 'INVALID_STORAGE_TYPE'
@@ -427,6 +429,19 @@ export function createUndefinedDataError(dataName: string, path?: string): Const
   return new ConstelaError(
     'UNDEFINED_DATA',
     `Undefined data reference: '${dataName}' is not defined in data`,
+    path
+  );
+}
+
+// ==================== External Library Error Factory Functions ====================
+
+/**
+ * Creates an undefined ref error
+ */
+export function createUndefinedRefError(refName: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_REF',
+    `Undefined ref reference: '${refName}' is not defined in view elements`,
     path
   );
 }

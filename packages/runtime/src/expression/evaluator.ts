@@ -23,6 +23,7 @@ export interface EvaluationContext {
     path: string;
   };
   imports?: Record<string, unknown>;
+  refs?: Record<string, Element>;  // DOM element refs
 }
 
 export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unknown {
@@ -115,6 +116,9 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       }
       return importData;
     }
+
+    case 'ref':
+      return ctx.refs?.[expr.name] ?? null;
 
     default: {
       const _exhaustiveCheck: never = expr;

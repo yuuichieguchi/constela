@@ -19,6 +19,10 @@ import type {
   CompiledStorageStep,
   CompiledClipboardStep,
   CompiledNavigateStep,
+  CompiledImportStep,
+  CompiledCallStep,
+  CompiledSubscribeStep,
+  CompiledDisposeStep,
 } from '@constela/compiler';
 import { evaluate } from '../expression/evaluator.js';
 
@@ -27,6 +31,8 @@ export interface ActionContext {
   actions: Record<string, CompiledAction>;
   locals: Record<string, unknown>;
   eventPayload?: unknown;
+  refs?: Record<string, Element>;          // DOM element refs
+  subscriptions?: (() => void)[];          // Collected subscriptions for auto-disposal
 }
 
 export async function executeAction(
@@ -203,6 +209,22 @@ async function executeStep(
     case 'navigate':
       await executeNavigateStep(step, ctx);
       break;
+
+    case 'import':
+      await executeImportStep(step, ctx);
+      break;
+
+    case 'call':
+      await executeCallStep(step, ctx);
+      break;
+
+    case 'subscribe':
+      await executeSubscribeStep(step, ctx);
+      break;
+
+    case 'dispose':
+      await executeDisposeStep(step, ctx);
+      break;
   }
 }
 
@@ -364,6 +386,11 @@ async function executeFetchStep(
         }
       }
     } else {
+      // Inject error variable for non-ok response
+      ctx.locals['error'] = {
+        message: `HTTP error: ${response.status} ${response.statusText}`,
+        name: 'HTTPError',
+      };
       // Execute onError steps for non-ok response
       if (step.onError) {
         for (const errorStep of step.onError) {
@@ -371,7 +398,12 @@ async function executeFetchStep(
         }
       }
     }
-  } catch (_error) {
+  } catch (err) {
+    // Inject error variable for network errors
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
     // Execute onError steps for network errors
     if (step.onError) {
       for (const errorStep of step.onError) {
@@ -429,7 +461,12 @@ async function executeStorageStep(
         await executeStep(successStep, ctx);
       }
     }
-  } catch (_error) {
+  } catch (err) {
+    // Inject error variable for storage errors
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
     // Execute onError steps for storage errors
     if (step.onError) {
       for (const errorStep of step.onError) {
@@ -473,7 +510,12 @@ async function executeClipboardStep(
         await executeStep(successStep, ctx);
       }
     }
-  } catch (_error) {
+  } catch (err) {
+    // Inject error variable for clipboard errors
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
     // Execute onError steps for clipboard errors
     if (step.onError) {
       for (const errorStep of step.onError) {
@@ -500,5 +542,134 @@ async function executeNavigateStep(
     window.location.replace(url);
   } else {
     window.location.assign(url);
+  }
+}
+
+/**
+ * Executes an import step (dynamic module import)
+ */
+async function executeImportStep(
+  step: CompiledImportStep,
+  ctx: ActionContext
+): Promise<void> {
+  try {
+    const module = await import(/* @vite-ignore */ step.module);
+    ctx.locals[step.result] = module;
+
+    if (step.onSuccess) {
+      for (const successStep of step.onSuccess) {
+        await executeStep(successStep, ctx);
+      }
+    }
+  } catch (err) {
+    // Inject error variable for import errors
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
+
+    if (step.onError) {
+      for (const errorStep of step.onError) {
+        await executeStep(errorStep, ctx);
+      }
+    }
+  }
+}
+
+/**
+ * Executes a call step (external function call)
+ */
+async function executeCallStep(
+  step: CompiledCallStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+
+  try {
+    const target = evaluate(step.target, evalCtx);
+    const args = step.args?.map(arg => evaluate(arg, evalCtx)) ?? [];
+
+    if (typeof target === 'function') {
+      const result = await target(...args);
+      if (step.result) {
+        ctx.locals[step.result] = result;
+      }
+    } else {
+      throw new Error('Target is not callable');
+    }
+
+    if (step.onSuccess) {
+      for (const successStep of step.onSuccess) {
+        await executeStep(successStep, ctx);
+      }
+    }
+  } catch (err) {
+    // Inject error variable for call errors
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
+
+    if (step.onError) {
+      for (const errorStep of step.onError) {
+        await executeStep(errorStep, ctx);
+      }
+    }
+  }
+}
+
+/**
+ * Executes a subscribe step (event subscription)
+ */
+async function executeSubscribeStep(
+  step: CompiledSubscribeStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+  const target = evaluate(step.target, evalCtx);
+
+  if (target && typeof target === 'object' && step.event in target) {
+    const eventMethod = (target as Record<string, unknown>)[step.event];
+    if (typeof eventMethod === 'function') {
+      const disposable = eventMethod.call(target, async (eventData: unknown) => {
+        const action = ctx.actions[step.action];
+        if (action) {
+          const subscriptionCtx: ActionContext = {
+            ...ctx,
+            locals: { ...ctx.locals, event: eventData },
+          };
+          await executeAction(action, subscriptionCtx);
+        }
+      });
+
+      // Collect subscription for auto-disposal
+      if (ctx.subscriptions) {
+        if (disposable && typeof disposable === 'object' && 'dispose' in disposable && typeof disposable.dispose === 'function') {
+          ctx.subscriptions.push(() => (disposable as { dispose: () => void }).dispose());
+        } else if (typeof disposable === 'function') {
+          ctx.subscriptions.push(disposable as () => void);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Executes a dispose step (resource cleanup)
+ */
+async function executeDisposeStep(
+  step: CompiledDisposeStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+  const target = evaluate(step.target, evalCtx);
+
+  if (target && typeof target === 'object') {
+    const obj = target as Record<string, unknown>;
+    if (typeof obj['dispose'] === 'function') {
+      obj['dispose']();
+    } else if (typeof obj['destroy'] === 'function') {
+      obj['destroy']();
+    }
   }
 }

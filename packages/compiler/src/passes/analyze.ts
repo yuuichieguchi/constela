@@ -47,6 +47,7 @@ import {
   createInvalidClipboardOperationError,
   createClipboardWriteMissingValueError,
   createInvalidNavigateTargetError,
+  createUndefinedRefError,
   isEventHandler,
   isDataSource,
   DATA_SOURCE_TYPES,
@@ -55,6 +56,10 @@ import {
   STORAGE_TYPES,
   CLIPBOARD_OPERATIONS,
   NAVIGATE_TARGETS,
+  type ImportStep,
+  type CallStep,
+  type SubscribeStep,
+  type DisposeStep,
 } from '@constela/core';
 
 // ==================== Types ====================
@@ -66,6 +71,7 @@ export interface AnalysisContext {
   routeParams: Set<string>;
   importNames: Set<string>;
   dataNames: Set<string>;
+  refNames: Set<string>;
 }
 
 /**
@@ -119,25 +125,79 @@ function extractRouteParams(path: string): string[] {
 // ==================== Context Collection ====================
 
 /**
- * Collects state, action, component names, route params, import names, and data names from the AST
+ * Collects all ref names from the view tree
  */
-function collectContext(ast: Program): AnalysisContext {
-  const stateNames = new Set<string>(Object.keys(ast.state));
-  const actionNames = new Set<string>(ast.actions.map((a) => a.name));
+function collectRefs(node: ViewNode): Set<string> {
+  const refs = new Set<string>();
+
+  switch (node.kind) {
+    case 'element':
+      if (node.ref) {
+        refs.add(node.ref);
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          for (const ref of collectRefs(child)) {
+            refs.add(ref);
+          }
+        }
+      }
+      break;
+    case 'if':
+      for (const ref of collectRefs(node.then)) {
+        refs.add(ref);
+      }
+      if (node.else) {
+        for (const ref of collectRefs(node.else)) {
+          refs.add(ref);
+        }
+      }
+      break;
+    case 'each':
+      for (const ref of collectRefs(node.body)) {
+        refs.add(ref);
+      }
+      break;
+    case 'component':
+      // Component children are slot content, also collect refs from them
+      if (node.children) {
+        for (const child of node.children) {
+          for (const ref of collectRefs(child)) {
+            refs.add(ref);
+          }
+        }
+      }
+      break;
+    case 'text':
+    case 'slot':
+      // No refs in text or slot nodes
+      break;
+  }
+
+  return refs;
+}
+
+/**
+ * Collects state, action, component names, route params, import names, data names, and ref names from the AST
+ */
+function collectContext(programAst: Program): AnalysisContext {
+  const stateNames = new Set<string>(Object.keys(programAst.state));
+  const actionNames = new Set<string>(programAst.actions.map((a) => a.name));
   const componentNames = new Set<string>(
-    ast.components ? Object.keys(ast.components) : []
+    programAst.components ? Object.keys(programAst.components) : []
   );
   const routeParams = new Set<string>(
-    ast.route ? extractRouteParams(ast.route.path) : []
+    programAst.route ? extractRouteParams(programAst.route.path) : []
   );
   const importNames = new Set<string>(
-    ast.imports ? Object.keys(ast.imports) : []
+    programAst.imports ? Object.keys(programAst.imports) : []
   );
   const dataNames = new Set<string>(
-    ast.data ? Object.keys(ast.data) : []
+    programAst.data ? Object.keys(programAst.data) : []
   );
+  const refNames = collectRefs(programAst.view);
 
-  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames };
+  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames, refNames };
 }
 
 // ==================== Duplicate Action Detection ====================
@@ -227,6 +287,13 @@ function validateExpression(
       } else if (!context.dataNames.has(expr.name)) {
         // Check if the data name is defined
         errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'ref': {
+      if (!context.refNames.has(expr.name)) {
+        errors.push(createUndefinedRefError(expr.name, path));
       }
       break;
     }
@@ -463,6 +530,90 @@ function validateActionStep(
       }
       break;
     }
+
+    case 'import': {
+      const importStep = step as ImportStep;
+      // Validate onSuccess and onError callbacks
+      if (importStep.onSuccess) {
+        for (let i = 0; i < importStep.onSuccess.length; i++) {
+          const successStep = importStep.onSuccess[i];
+          if (successStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(successStep, buildPath(path, 'onSuccess', i), context)
+          );
+        }
+      }
+      if (importStep.onError) {
+        for (let i = 0; i < importStep.onError.length; i++) {
+          const errorStep = importStep.onError[i];
+          if (errorStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(errorStep, buildPath(path, 'onError', i), context)
+          );
+        }
+      }
+      break;
+    }
+
+    case 'call': {
+      const callStep = step as CallStep;
+      // Validate target expression
+      errors.push(
+        ...validateExpressionStateOnly(callStep.target, buildPath(path, 'target'), context)
+      );
+      // Validate args expressions
+      if (callStep.args) {
+        for (let i = 0; i < callStep.args.length; i++) {
+          const arg = callStep.args[i];
+          if (arg === undefined) continue;
+          errors.push(
+            ...validateExpressionStateOnly(arg, buildPath(path, 'args', i), context)
+          );
+        }
+      }
+      // Validate onSuccess and onError callbacks
+      if (callStep.onSuccess) {
+        for (let i = 0; i < callStep.onSuccess.length; i++) {
+          const successStep = callStep.onSuccess[i];
+          if (successStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(successStep, buildPath(path, 'onSuccess', i), context)
+          );
+        }
+      }
+      if (callStep.onError) {
+        for (let i = 0; i < callStep.onError.length; i++) {
+          const errorStep = callStep.onError[i];
+          if (errorStep === undefined) continue;
+          errors.push(
+            ...validateActionStep(errorStep, buildPath(path, 'onError', i), context)
+          );
+        }
+      }
+      break;
+    }
+
+    case 'subscribe': {
+      const subscribeStep = step as SubscribeStep;
+      // Validate target expression
+      errors.push(
+        ...validateExpressionStateOnly(subscribeStep.target, buildPath(path, 'target'), context)
+      );
+      // Validate action reference
+      if (!context.actionNames.has(subscribeStep.action)) {
+        errors.push(createUndefinedActionError(subscribeStep.action, buildPath(path, 'action')));
+      }
+      break;
+    }
+
+    case 'dispose': {
+      const disposeStep = step as DisposeStep;
+      // Validate target expression
+      errors.push(
+        ...validateExpressionStateOnly(disposeStep.target, buildPath(path, 'target'), context)
+      );
+      break;
+    }
   }
 
   return errors;
@@ -519,6 +670,13 @@ function validateExpressionStateOnly(
         errors.push(createDataNotDefinedError(path));
       } else if (!context.dataNames.has(expr.name)) {
         errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'ref': {
+      if (!context.refNames.has(expr.name)) {
+        errors.push(createUndefinedRefError(expr.name, path));
       }
       break;
     }
@@ -612,6 +770,13 @@ function validateExpressionInEventPayload(
         errors.push(createDataNotDefinedError(path));
       } else if (!context.dataNames.has(expr.name)) {
         errors.push(createUndefinedDataError(expr.name, path));
+      }
+      break;
+    }
+
+    case 'ref': {
+      if (!context.refNames.has(expr.name)) {
+        errors.push(createUndefinedRefError(expr.name, path));
       }
       break;
     }

@@ -30,6 +30,7 @@ export type {
   RouteExpr,
   ImportExpr,
   DataExpr,
+  RefExpr,
   // State Fields
   StateField,
   NumberField,
@@ -45,6 +46,10 @@ export type {
   StorageStep,
   ClipboardStep,
   NavigateStep,
+  ImportStep,
+  CallStep,
+  SubscribeStep,
+  DisposeStep,
   // Event Handler
   EventHandler,
   // Action Definition
@@ -104,6 +109,7 @@ export {
   isRouteExpr,
   isImportExpr,
   isDataExpr,
+  isRefExpr,
   isExpression,
   // Route Definition type guard
   isRouteDefinition,
@@ -127,6 +133,10 @@ export {
   isStorageStep,
   isClipboardStep,
   isNavigateStep,
+  isImportStep,
+  isCallStep,
+  isSubscribeStep,
+  isDisposeStep,
   isActionStep,
   // StateField type guards
   isNumberField,
@@ -181,6 +191,8 @@ export {
   createUndefinedDataSourceError,
   createDataNotDefinedError,
   createUndefinedDataError,
+  // External library error factories
+  createUndefinedRefError,
   // Browser action error factories
   createInvalidStorageOperationError,
   createInvalidStorageTypeError,

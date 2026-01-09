@@ -46,6 +46,11 @@ import {
   type StorageStep,
   type ClipboardStep,
   type NavigateStep,
+  type ImportStep,
+  type CallStep,
+  type SubscribeStep,
+  type DisposeStep,
+  type RefExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
@@ -221,6 +226,15 @@ export function isDataExpr(value: unknown): value is DataExpr {
 }
 
 /**
+ * Checks if value is a ref expression
+ */
+export function isRefExpr(value: unknown): value is RefExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'ref') return false;
+  return typeof value['name'] === 'string';
+}
+
+/**
  * Checks if value is a data source
  */
 export function isDataSource(value: unknown): value is DataSource {
@@ -293,7 +307,8 @@ export function isExpression(value: unknown): value is Expression {
     isGetExpr(value) ||
     isRouteExpr(value) ||
     isImportExpr(value) ||
-    isDataExpr(value)
+    isDataExpr(value) ||
+    isRefExpr(value)
   );
 }
 
@@ -489,6 +504,49 @@ export function isNavigateStep(value: unknown): value is NavigateStep {
 }
 
 /**
+ * Checks if value is an import step
+ */
+export function isImportStep(value: unknown): value is ImportStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'import') return false;
+  if (typeof value['module'] !== 'string') return false;
+  if (typeof value['result'] !== 'string') return false;
+  return true;
+}
+
+/**
+ * Checks if value is a call step
+ */
+export function isCallStep(value: unknown): value is CallStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'call') return false;
+  if (!isObject(value['target'])) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a subscribe step
+ */
+export function isSubscribeStep(value: unknown): value is SubscribeStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'subscribe') return false;
+  if (!isObject(value['target'])) return false;
+  if (typeof value['event'] !== 'string') return false;
+  if (typeof value['action'] !== 'string') return false;
+  return true;
+}
+
+/**
+ * Checks if value is a dispose step
+ */
+export function isDisposeStep(value: unknown): value is DisposeStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'dispose') return false;
+  if (!isObject(value['target'])) return false;
+  return true;
+}
+
+/**
  * Checks if value is any valid action step
  */
 export function isActionStep(value: unknown): value is ActionStep {
@@ -498,7 +556,11 @@ export function isActionStep(value: unknown): value is ActionStep {
     isFetchStep(value) ||
     isStorageStep(value) ||
     isClipboardStep(value) ||
-    isNavigateStep(value)
+    isNavigateStep(value) ||
+    isImportStep(value) ||
+    isCallStep(value) ||
+    isSubscribeStep(value) ||
+    isDisposeStep(value)
   );
 }
 

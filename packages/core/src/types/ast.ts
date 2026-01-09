@@ -177,7 +177,15 @@ export interface DataExpr {
   path?: string;       // Optional path for nested access (e.g., "settings.theme")
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr;
+/**
+ * Ref expression - references a DOM element by ref name
+ */
+export interface RefExpr {
+  expr: 'ref';
+  name: string;  // ref attribute name from view definition
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr;
 
 // ==================== State Fields ====================
 
@@ -312,7 +320,50 @@ export interface NavigateStep {
   replace?: boolean;        // Use history.replaceState
 }
 
-export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep;
+/**
+ * Import step - dynamically imports an external module
+ * Module name must be a static string for bundler optimization
+ */
+export interface ImportStep {
+  do: 'import';
+  module: string;        // Static string only (e.g., "monaco-editor")
+  result: string;        // Variable name for imported module
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+/**
+ * Call step - calls a function on an external library
+ */
+export interface CallStep {
+  do: 'call';
+  target: Expression;    // e.g., { expr: 'var', name: 'monaco', path: 'editor.create' }
+  args?: Expression[];
+  result?: string;       // Optional: store return value
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+/**
+ * Subscribe step - subscribes to an event on an object
+ * Subscription is auto-collected and disposed on lifecycle.onUnmount
+ */
+export interface SubscribeStep {
+  do: 'subscribe';
+  target: Expression;    // Object to subscribe to
+  event: string;         // Event method name (e.g., "onDidChangeModelContent")
+  action: string;        // Action name to execute when event fires
+}
+
+/**
+ * Dispose step - manually disposes a resource
+ */
+export interface DisposeStep {
+  do: 'dispose';
+  target: Expression;    // Object with dispose() method
+}
+
+export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep;
 
 // ==================== Event Handler ====================
 
@@ -343,6 +394,7 @@ export interface ActionDefinition {
 export interface ElementNode {
   kind: 'element';
   tag: string;
+  ref?: string;  // DOM element reference name
   props?: Record<string, Expression | EventHandler>;
   children?: ViewNode[];
 }
