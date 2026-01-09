@@ -24,8 +24,8 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "@constela/compiler": "^0.6.0",
-    "@constela/runtime": "^0.9.0"
+    "@constela/compiler": "^0.6.1",
+    "@constela/runtime": "^0.9.1"
   },
   "devDependencies": {
     "@constela/compiler": "workspace:*",

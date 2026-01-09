@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.7.0
+
+### Minor Changes
+
+- Add ComponentsRef type and components field to DataSource for MDX component support. Add complete MDX DSL integration with breaking change to transformMdx signature
+
 ## 0.6.0
 
 ### Minor Changes
