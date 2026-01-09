@@ -583,7 +583,7 @@ async function executeCallStep(
   step: CompiledCallStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
 
   try {
     const target = evaluate(step.target, evalCtx);
@@ -630,7 +630,7 @@ async function executeSubscribeStep(
   step: CompiledSubscribeStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
   const target = evaluate(step.target, evalCtx);
 
   if (target && typeof target === 'object' && step.event in target) {
@@ -666,7 +666,7 @@ async function executeDisposeStep(
   step: CompiledDisposeStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, refs: ctx.refs };
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
   const target = evaluate(step.target, evalCtx);
 
   if (target && typeof target === 'object') {
