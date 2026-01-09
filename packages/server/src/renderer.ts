@@ -168,6 +168,10 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return importData;
     }
 
+    case 'ref':
+      // SSR context: DOM elements don't exist, return null
+      return null;
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
