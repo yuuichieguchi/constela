@@ -595,7 +595,7 @@ async function executeCallStep(
         ctx.locals[step.result] = result;
       }
     } else {
-      throw new Error('Target is not callable');
+      throw new Error(`Target is not callable: received ${typeof target}`);
     }
 
     if (step.onSuccess) {
@@ -620,6 +620,11 @@ async function executeCallStep(
 
 /**
  * Executes a subscribe step (event subscription)
+ *
+ * The subscription is collected in ctx.subscriptions for automatic disposal
+ * during component unmount (via lifecycle.onUnmount). The collected function
+ * handles both disposable objects ({ dispose: () => void }) and direct
+ * unsubscribe functions (() => void).
  */
 async function executeSubscribeStep(
   step: CompiledSubscribeStep,
@@ -666,6 +671,7 @@ async function executeDisposeStep(
 
   if (target && typeof target === 'object') {
     const obj = target as Record<string, unknown>;
+    // Priority: dispose() is standard, destroy() is fallback for libraries like Chart.js
     if (typeof obj['dispose'] === 'function') {
       obj['dispose']();
     } else if (typeof obj['destroy'] === 'function') {
