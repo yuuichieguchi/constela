@@ -57,6 +57,7 @@ export type {
   CompiledSubscribeStep,
   CompiledDisposeStep,
   CompiledDomStep,
+  CompiledIfStep,
   CompiledRefExpr,
   CompiledEventHandler,
 } from './passes/transform.js';

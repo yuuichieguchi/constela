@@ -33,6 +33,7 @@ export interface RenderContext {
   locals: Record<string, unknown>;
   imports?: Record<string, unknown>;
   cleanups?: (() => void)[];
+  refs?: Record<string, Element>;
 }
 
 // Type guard for event handlers
@@ -66,6 +67,14 @@ export function render(node: CompiledNode, ctx: RenderContext): Node {
 
 function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLElement {
   const el = document.createElement(node.tag);
+
+  // Collect ref if specified
+  if (node.ref && ctx.refs) {
+    if (typeof process !== 'undefined' && process.env?.['NODE_ENV'] !== 'production' && ctx.refs[node.ref]) {
+      console.warn(`Duplicate ref name "${node.ref}" detected. The later element will overwrite the earlier one.`);
+    }
+    ctx.refs[node.ref] = el;
+  }
 
   // Apply props
   if (node.props) {

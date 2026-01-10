@@ -349,7 +349,7 @@ async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> 
     case 'markdown':
       return await renderMarkdown(node, ctx);
     case 'code':
-      return renderCode(node, ctx);
+      return await renderCode(node, ctx);
     case 'slot':
       // Slots should be replaced during layout composition
       // If we reach here, render empty (slot content not provided)
@@ -483,21 +483,24 @@ async function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): Prom
 /**
  * Renders a code node to HTML string
  * Matches the structure of the original React CodePreview component:
- * - group relative wrapper
+ * - group relative wrapper with constela-code class
  * - language badge + copy button in top-right corner
- * - pre/code with appropriate styling (no syntax highlighting)
+ * - pre/code with appropriate styling (with syntax highlighting)
  */
-function renderCode(node: CompiledCodeNode, ctx: SSRContext): string {
+async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<string> {
   const language = formatValue(evaluate(node.language, ctx));
   const content = formatValue(evaluate(node.content, ctx));
 
+  // Get syntax-highlighted code from renderCodeSSR
+  const highlightedCode = await renderCodeSSR(content, language);
+
   const languageBadge = language
-    ? `<span class="rounded bg-muted-foreground/20 px-2 py-0.5 text-xs font-medium text-muted-foreground">${escapeHtml(language)}</span>`
+    ? `<div class="absolute right-12 top-3 z-10 rounded bg-muted-foreground/20 px-2 py-0.5 text-xs font-medium text-muted-foreground">${escapeHtml(language)}</div>`
     : '';
 
-  const copyButton = `<button class="constela-copy-btn flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/80 transition-colors hover:bg-muted" data-code="${escapeHtml(content)}" aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
+  const copyButton = `<button class="constela-copy-btn absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/80 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100" data-copy-target="code" aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
 
-  return `<div class="group relative"><div class="absolute right-3 top-3 z-10 flex items-center gap-2">${languageBadge}${copyButton}</div><pre class="overflow-x-auto rounded-lg border border-border bg-muted p-4 text-sm"><code class="font-mono text-foreground">${escapeHtml(content)}</code></pre></div>`;
+  return `<div class="constela-code" data-code-content="${escapeHtml(content)}"><div class="group relative">${languageBadge}${copyButton}<div class="overflow-x-auto rounded-lg border border-border bg-muted p-4 text-sm [&_pre]:m-0 [&_pre]:p-0 [&_pre]:bg-transparent [&_pre]:border-0">${highlightedCode}</div></div></div>`;
 }
 
 // ==================== Main Export ====================

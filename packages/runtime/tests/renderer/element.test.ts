@@ -807,4 +807,243 @@ describe('render element node', () => {
       expect(result.tagName.toLowerCase()).toBe('svg');
     });
   });
+
+  // ==================== Ref Collection ====================
+
+  describe('ref collection', () => {
+    it('should collect ref when node.ref is specified', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        ref: 'container',
+        props: {
+          id: { expr: 'lit', value: 'my-container' },
+        },
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      const result = render(node, context);
+
+      // Assert
+      expect(refs['container']).toBe(result);
+      expect(refs['container']).toBeInstanceOf(HTMLDivElement);
+    });
+
+    it('should not collect ref when node.ref is not specified', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        props: {
+          id: { expr: 'lit', value: 'no-ref' },
+        },
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      render(node, context);
+
+      // Assert
+      expect(Object.keys(refs).length).toBe(0);
+    });
+
+    it('should collect multiple refs from nested elements', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'form',
+        ref: 'form',
+        children: [
+          {
+            kind: 'element',
+            tag: 'input',
+            ref: 'nameInput',
+            props: { type: { expr: 'lit', value: 'text' } },
+          },
+          {
+            kind: 'element',
+            tag: 'input',
+            ref: 'emailInput',
+            props: { type: { expr: 'lit', value: 'email' } },
+          },
+          {
+            kind: 'element',
+            tag: 'button',
+            ref: 'submitBtn',
+            props: { type: { expr: 'lit', value: 'submit' } },
+          },
+        ],
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      const result = render(node, context);
+
+      // Assert
+      expect(Object.keys(refs).length).toBe(4);
+      expect(refs['form']).toBe(result);
+      expect(refs['nameInput']).toBeInstanceOf(HTMLInputElement);
+      expect(refs['emailInput']).toBeInstanceOf(HTMLInputElement);
+      expect(refs['submitBtn']).toBeInstanceOf(HTMLButtonElement);
+    });
+
+    it('should collect refs from deeply nested elements', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        ref: 'outer',
+        children: [
+          {
+            kind: 'element',
+            tag: 'section',
+            ref: 'middle',
+            children: [
+              {
+                kind: 'element',
+                tag: 'article',
+                ref: 'inner',
+                children: [
+                  { kind: 'text', value: { expr: 'lit', value: 'Content' } },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      render(node, context);
+
+      // Assert
+      expect(refs['outer']).toBeInstanceOf(HTMLDivElement);
+      expect(refs['middle']).toBeInstanceOf(HTMLElement); // section
+      expect(refs['inner']).toBeInstanceOf(HTMLElement); // article
+    });
+
+    it('should handle refs on input elements for focus use case', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'input',
+        ref: 'searchInput',
+        props: {
+          type: { expr: 'lit', value: 'text' },
+          placeholder: { expr: 'lit', value: 'Search...' },
+        },
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      const result = render(node, context) as HTMLInputElement;
+      container.appendChild(result);
+
+      // Assert - ref should be usable for DOM manipulation
+      expect(refs['searchInput']).toBe(result);
+      expect((refs['searchInput'] as HTMLInputElement).type).toBe('text');
+    });
+
+    it('should handle refs on canvas elements for drawing use case', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'canvas',
+        ref: 'chartCanvas',
+        props: {
+          width: { expr: 'lit', value: '400' },
+          height: { expr: 'lit', value: '300' },
+        },
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      render(node, context);
+
+      // Assert
+      expect(refs['chartCanvas']).toBeInstanceOf(HTMLCanvasElement);
+    });
+
+    it('should handle refs on video elements for media control use case', () => {
+      // Arrange
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'video',
+        ref: 'videoPlayer',
+        props: {
+          controls: { expr: 'lit', value: true },
+        },
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      render(node, context);
+
+      // Assert
+      expect(refs['videoPlayer']).toBeInstanceOf(HTMLVideoElement);
+    });
+
+    it('should overwrite ref if same name is used multiple times', () => {
+      // Arrange - This documents the expected behavior when ref names collide
+      const refs: Record<string, Element> = {};
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'element',
+            tag: 'span',
+            ref: 'duplicate',
+            children: [{ kind: 'text', value: { expr: 'lit', value: 'First' } }],
+          },
+          {
+            kind: 'element',
+            tag: 'span',
+            ref: 'duplicate',
+            children: [{ kind: 'text', value: { expr: 'lit', value: 'Second' } }],
+          },
+        ],
+      };
+      const context = createContext();
+      (context as { refs?: Record<string, Element> }).refs = refs;
+
+      // Act
+      render(node, context);
+
+      // Assert - last element with the ref name wins
+      expect(refs['duplicate'].textContent).toBe('Second');
+    });
+
+    it('should work when refs object is not provided in context', () => {
+      // Arrange - refs collection should not break if refs is undefined
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        ref: 'container',
+      };
+      const context = createContext();
+      // Note: not setting context.refs
+
+      // Act & Assert - should not throw
+      expect(() => {
+        render(node, context);
+      }).not.toThrow();
+    });
+  });
 });

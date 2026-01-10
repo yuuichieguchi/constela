@@ -48,6 +48,7 @@ interface HydrateContext {
   locals: Record<string, unknown>;
   cleanups: (() => void)[];
   imports?: Record<string, unknown>;
+  refs?: Record<string, Element>;
   route?: {
     params: Record<string, string>;
     query: Record<string, string>;
@@ -69,6 +70,14 @@ function isEventHandler(value: unknown): value is CompiledEventHandler {
 
 /**
  * Hydrates a server-rendered application.
+ *
+ * Lifecycle order:
+ * 1. State initialization
+ * 2. Refs map creation
+ * 3. DOM hydration (refs populated during hydration)
+ * 4. Copy buttons initialization
+ * 5. onMount execution (refs guaranteed to be available)
+ * 6. App instance returned
  *
  * @param options - Hydration options containing program and container
  * @returns AppInstance for controlling the hydrated application
@@ -93,35 +102,40 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
   // Create cleanups array for tracking all effects
   const cleanups: (() => void)[] = [];
 
+  // Create refs map for collecting element references
+  const refs: Record<string, Element> = {};
+
   // Create hydration context
   const ctx: HydrateContext = {
     state,
     actions,
     locals: {},
     cleanups,
+    refs,
     ...(program.importData && { imports: program.importData }),
     ...(route && { route }),
   };
 
-  // Create action context for lifecycle hooks
+  // Hydrate the existing DOM (before onMount so refs are available)
+  const firstChild = container.firstElementChild;
+  if (firstChild) {
+    hydrate(program.view, firstChild, ctx);
+  }
+
+  // Create action context for lifecycle hooks (after hydration so refs are populated)
   const actionCtx = {
     state,
     actions,
     locals: {},
+    refs,
   };
 
-  // Execute onMount lifecycle hook
+  // Execute onMount lifecycle hook (after hydration so refs are available)
   if (program.lifecycle?.onMount) {
     const onMountAction = actions[program.lifecycle.onMount];
     if (onMountAction) {
       void executeAction(onMountAction, actionCtx);
     }
-  }
-
-  // Hydrate the existing DOM
-  const firstChild = container.firstElementChild;
-  if (firstChild) {
-    hydrate(program.view, firstChild, ctx);
   }
 
   // Initialize copy buttons
@@ -198,6 +212,11 @@ function hydrateElement(
   el: HTMLElement,
   ctx: HydrateContext
 ): void {
+  // Collect ref if specified
+  if (node.ref && ctx.refs) {
+    ctx.refs[node.ref] = el;
+  }
+
   // Apply props and attach event handlers
   if (node.props) {
     for (const [propName, propValue] of Object.entries(node.props)) {
@@ -708,7 +727,9 @@ function initCopyButtons(container: HTMLElement): void {
   const buttons = container.querySelectorAll<HTMLButtonElement>('.constela-copy-btn');
   buttons.forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const code = btn.getAttribute('data-code') || '';
+      // Find the parent .constela-code wrapper and get the code content from it
+      const codeWrapper = btn.closest('.constela-code');
+      const code = codeWrapper?.getAttribute('data-code-content') || '';
       try {
         await navigator.clipboard.writeText(code);
         btn.innerHTML = CHECK_ICON;

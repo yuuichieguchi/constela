@@ -216,6 +216,78 @@ describe('evaluate with Route expressions', () => {
       expect(result).toBe('/users/123/posts');
     });
 
+    it('should evaluate path source ignoring name field', () => {
+      // Arrange
+      // When source is 'path', the name field should be ignored
+      // The path is a single value, not a dictionary like params/query
+      const expr: CompiledExpression = {
+        expr: 'route',
+        name: 'anyNameShouldBeIgnored',
+        source: 'path',
+      };
+
+      const context = createContextWithRoute(
+        {},
+        {},
+        '/blog/my-post-slug'
+      );
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('/blog/my-post-slug');
+    });
+
+    it('should NOT return path when name is "path" but source is not specified', () => {
+      // Arrange
+      // BUG FIX TEST: { expr: 'route', name: 'path' } should NOT return routeCtx.path
+      // It should look for params['path'] since source defaults to 'param'
+      // If users want the path, they MUST specify source: 'path'
+      const expr: CompiledExpression = {
+        expr: 'route',
+        name: 'path',
+        // source is intentionally omitted - defaults to 'param'
+      };
+
+      const context = createContextWithRoute(
+        { path: 'param-value-named-path' }, // A param literally named 'path'
+        {},
+        '/actual/route/path'
+      );
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      // Should return the param value, NOT the route path
+      expect(result).toBe('param-value-named-path');
+    });
+
+    it('should return empty string when name is "path" without source and no path param exists', () => {
+      // Arrange
+      // When { expr: 'route', name: 'path' } is used without source,
+      // it should look for params['path'] which doesn't exist
+      const expr: CompiledExpression = {
+        expr: 'route',
+        name: 'path',
+        // source is intentionally omitted - defaults to 'param'
+      };
+
+      const context = createContextWithRoute(
+        { id: '123' }, // No 'path' param
+        {},
+        '/users/123/profile' // This should NOT be returned
+      );
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      // Should return empty string (missing param), NOT the route path
+      expect(result).toBe('');
+    });
+
     it('should default to param source when not specified', () => {
       // Arrange - with source set to 'param' (the default)
       const expr: CompiledExpression = {

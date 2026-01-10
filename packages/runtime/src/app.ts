@@ -15,6 +15,20 @@ export interface AppInstance {
   getState(name: string): unknown;
 }
 
+/**
+ * Creates a Constela application and mounts it to the DOM.
+ *
+ * Lifecycle order:
+ * 1. State initialization
+ * 2. Refs map creation
+ * 3. View rendering (refs populated during render)
+ * 4. onMount execution (refs guaranteed to be available)
+ * 5. App instance returned
+ *
+ * @param program - The compiled program to execute
+ * @param mount - The DOM element to mount the app to
+ * @returns An AppInstance with destroy, setState, and getState methods
+ */
 export function createApp(
   program: CompiledProgram,
   mount: HTMLElement
@@ -36,22 +50,31 @@ export function createApp(
   // Create cleanups array for tracking all effects
   const cleanups: (() => void)[] = [];
 
+  // Create refs map for collecting element references
+  const refs: Record<string, Element> = {};
+
   // Create render context
   const ctx: RenderContext = {
     state,
     actions,
     locals: {},
     cleanups,
+    refs,
   };
 
-  // Create action context for lifecycle hooks
+  // Render view (before onMount so refs are available)
+  const rootNode = render(program.view, ctx);
+  mount.appendChild(rootNode);
+
+  // Create action context for lifecycle hooks (after render so refs are populated)
   const actionCtx = {
     state,
     actions,
     locals: {},
+    refs,
   };
 
-  // Execute onMount lifecycle hook
+  // Execute onMount lifecycle hook (after render so refs are available)
   if (program.lifecycle?.onMount) {
     const onMountAction = actions[program.lifecycle.onMount];
     if (onMountAction) {
@@ -59,10 +82,6 @@ export function createApp(
       void executeAction(onMountAction, actionCtx);
     }
   }
-
-  // Render view
-  const rootNode = render(program.view, ctx);
-  mount.appendChild(rootNode);
 
   let destroyed = false;
 

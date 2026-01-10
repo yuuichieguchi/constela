@@ -185,7 +185,16 @@ export interface RefExpr {
   name: string;  // ref attribute name from view definition
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr;
+/**
+ * Index expression - dynamic property/array access
+ */
+export interface IndexExpr {
+  expr: 'index';
+  base: Expression;
+  key: Expression;
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr;
 
 // ==================== State Fields ====================
 

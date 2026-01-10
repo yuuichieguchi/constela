@@ -20,7 +20,7 @@ const PRELOAD_LANGS = [
 export async function getHighlighter(): Promise<Highlighter> {
   if (!highlighter) {
     highlighter = await createHighlighter({
-      themes: ['github-dark'],
+      themes: ['github-light', 'github-dark'],
       langs: PRELOAD_LANGS,
     });
   }
@@ -36,7 +36,15 @@ export async function renderCodeSSR(code: string, language: string): Promise<str
       await hl.loadLanguage(language as Parameters<typeof hl.loadLanguage>[0]);
     }
     const langToUse = language || 'text';
-    const html = hl.codeToHtml(code, { lang: langToUse, theme: 'github-dark' });
+    const html = hl.codeToHtml(code, {
+      lang: langToUse,
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark',
+      },
+      defaultColor: false,
+    });
+    // Remove background-color to let CSS handle it
     return html.replace(/background-color:[^;]+;?/g, '');
   } catch {
     const escapedCode = escapeHtml(code);

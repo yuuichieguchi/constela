@@ -45,6 +45,9 @@ export async function executeAction(
     // all state changes complete before returning
     if (step.do === 'set' || step.do === 'update') {
       executeStepSync(step, ctx);
+    } else if (step.do === 'if') {
+      // If steps need special handling to support both sync and async nested steps
+      await executeIfStep(step, ctx);
     } else {
       await executeStep(step, ctx);
     }
@@ -68,12 +71,38 @@ function executeStepSync(
   }
 }
 
+/**
+ * Execute if step - handles both sync and async nested steps
+ *
+ * For sync steps (set, update, if): executes immediately
+ * For async steps (fetch, call, etc.): queues for async execution
+ */
+async function executeIfStep(
+  step: { do: 'if'; condition: CompiledExpression; then: CompiledActionStep[]; else?: CompiledActionStep[] },
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const condition = evaluate(step.condition, evalCtx);
+
+  const stepsToExecute = condition ? step.then : (step.else || []);
+
+  for (const nestedStep of stepsToExecute) {
+    if (nestedStep.do === 'set' || nestedStep.do === 'update') {
+      executeStepSync(nestedStep, ctx);
+    } else if (nestedStep.do === 'if') {
+      await executeIfStep(nestedStep as typeof step, ctx);
+    } else {
+      await executeStep(nestedStep, ctx);
+    }
+  }
+}
+
 function executeSetStepSync(
   target: string,
   value: CompiledExpression,
   ctx: ActionContext
 ): void {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
   const newValue = evaluate(value, evalCtx);
   ctx.state.set(target, newValue);
 }
@@ -83,7 +112,7 @@ function executeUpdateStepSync(
   ctx: ActionContext
 ): void {
   const { target, operation, value } = step;
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
   const currentValue = ctx.state.get(target);
 
   switch (operation) {

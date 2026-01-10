@@ -1122,6 +1122,216 @@ describe('hydrateApp', () => {
         expect(app.getState('destroyCount')).toBe(1);
       });
     });
+
+    describe('refs availability in onMount', () => {
+      it('should have refs available when onMount executes during hydration', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'initWithRef',
+          },
+          state: {
+            refFound: { type: 'boolean', initial: false },
+          },
+          actions: {
+            initWithRef: {
+              name: 'initWithRef',
+              steps: [
+                {
+                  do: 'if',
+                  condition: { expr: 'ref', name: 'container' },
+                  then: [
+                    { do: 'set', target: 'refFound', value: { expr: 'lit', value: true } },
+                  ],
+                },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            ref: 'container',
+            props: {
+              id: { expr: 'lit', value: 'hydrated-container' },
+            },
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert - ref should have been available and found during hydration
+        expect(app.getState('refFound')).toBe(true);
+      });
+
+      it('should run onMount AFTER hydration completes', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'checkHydrationComplete',
+          },
+          state: {
+            hydrationComplete: { type: 'boolean', initial: false },
+          },
+          actions: {
+            checkHydrationComplete: {
+              name: 'checkHydrationComplete',
+              steps: [
+                {
+                  do: 'if',
+                  condition: { expr: 'ref', name: 'content' },
+                  then: [
+                    { do: 'set', target: 'hydrationComplete', value: { expr: 'lit', value: true } },
+                  ],
+                },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'main',
+            ref: 'content',
+            props: {
+              id: { expr: 'lit', value: 'main-content' },
+            },
+            children: [
+              { kind: 'text', value: { expr: 'lit', value: 'Hello SSR' } },
+            ],
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert
+        // 1. DOM should be preserved
+        expect(container.querySelector('#main-content')).not.toBeNull();
+        // 2. onMount should have run after hydration (ref was available)
+        expect(app.getState('hydrationComplete')).toBe(true);
+      });
+
+      it('should collect refs from nested elements during hydration', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'checkNestedRefs',
+          },
+          state: {
+            allRefsFound: { type: 'boolean', initial: false },
+          },
+          actions: {
+            checkNestedRefs: {
+              name: 'checkNestedRefs',
+              steps: [
+                {
+                  do: 'if',
+                  condition: {
+                    expr: 'bin',
+                    op: '&&',
+                    left: { expr: 'ref', name: 'header' },
+                    right: { expr: 'ref', name: 'footer' },
+                  },
+                  then: [
+                    { do: 'set', target: 'allRefsFound', value: { expr: 'lit', value: true } },
+                  ],
+                },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            children: [
+              {
+                kind: 'element',
+                tag: 'header',
+                ref: 'header',
+                props: { id: { expr: 'lit', value: 'page-header' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Header' } }],
+              },
+              {
+                kind: 'element',
+                tag: 'footer',
+                ref: 'footer',
+                props: { id: { expr: 'lit', value: 'page-footer' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Footer' } }],
+              },
+            ],
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert
+        expect(app.getState('allRefsFound')).toBe(true);
+      });
+
+      it('should collect refs for input elements during hydration', async () => {
+        // Arrange - Common use case: focus input on mount
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'focusInput',
+          },
+          state: {
+            inputRefFound: { type: 'boolean', initial: false },
+          },
+          actions: {
+            focusInput: {
+              name: 'focusInput',
+              steps: [
+                {
+                  do: 'if',
+                  condition: { expr: 'ref', name: 'searchInput' },
+                  then: [
+                    { do: 'set', target: 'inputRefFound', value: { expr: 'lit', value: true } },
+                  ],
+                },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'form',
+            children: [
+              {
+                kind: 'element',
+                tag: 'input',
+                ref: 'searchInput',
+                props: {
+                  type: { expr: 'lit', value: 'text' },
+                  id: { expr: 'lit', value: 'search-field' },
+                  placeholder: { expr: 'lit', value: 'Search...' },
+                },
+              },
+            ],
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert
+        expect(container.querySelector('#search-field')).not.toBeNull();
+        expect(app.getState('inputRefFound')).toBe(true);
+      });
+    });
   });
 
   // ==================== Edge Cases ====================

@@ -723,6 +723,284 @@ describe('Lifecycle Hooks Runtime', () => {
     });
   });
 
+  // ==================== Refs Availability in onMount ====================
+
+  describe('refs availability in onMount', () => {
+    it('should have refs available when onMount executes', async () => {
+      // Arrange
+      // This test verifies that refs are collected from elements with node.ref
+      // and available in the onMount action context
+      const program = createMinimalProgram({
+        lifecycle: {
+          onMount: 'initWithRef',
+        },
+        state: {
+          refFound: { type: 'boolean', initial: false },
+        },
+        actions: {
+          initWithRef: {
+            name: 'initWithRef',
+            steps: [
+              // This action should be able to access the 'container' ref
+              // which is set on the div element via node.ref
+              {
+                do: 'if',
+                condition: { expr: 'ref', name: 'container' },
+                then: [
+                  { do: 'set', target: 'refFound', value: { expr: 'lit', value: true } },
+                ],
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          ref: 'container',  // This ref should be collected and available in onMount
+          props: {
+            id: { expr: 'lit', value: 'main-container' },
+          },
+        },
+      });
+
+      // Act
+      const app = createApp(program, container);
+      await Promise.resolve();
+
+      // Assert - ref should have been available and found
+      expect(app.getState('refFound')).toBe(true);
+    });
+
+    it('should have multiple refs available when onMount executes', async () => {
+      // Arrange
+      const program = createMinimalProgram({
+        lifecycle: {
+          onMount: 'initWithRefs',
+        },
+        state: {
+          headerRefFound: { type: 'boolean', initial: false },
+          footerRefFound: { type: 'boolean', initial: false },
+        },
+        actions: {
+          initWithRefs: {
+            name: 'initWithRefs',
+            steps: [
+              {
+                do: 'if',
+                condition: { expr: 'ref', name: 'header' },
+                then: [
+                  { do: 'set', target: 'headerRefFound', value: { expr: 'lit', value: true } },
+                ],
+              },
+              {
+                do: 'if',
+                condition: { expr: 'ref', name: 'footer' },
+                then: [
+                  { do: 'set', target: 'footerRefFound', value: { expr: 'lit', value: true } },
+                ],
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'element',
+              tag: 'header',
+              ref: 'header',
+              props: { id: { expr: 'lit', value: 'page-header' } },
+            },
+            {
+              kind: 'element',
+              tag: 'footer',
+              ref: 'footer',
+              props: { id: { expr: 'lit', value: 'page-footer' } },
+            },
+          ],
+        },
+      });
+
+      // Act
+      const app = createApp(program, container);
+      await Promise.resolve();
+
+      // Assert - both refs should have been found
+      expect(app.getState('headerRefFound')).toBe(true);
+      expect(app.getState('footerRefFound')).toBe(true);
+    });
+
+    it('should run onMount AFTER render completes', async () => {
+      // Arrange
+      // This test verifies that onMount runs after the DOM is rendered
+      // by checking that the rendered element exists in the DOM
+      const program = createMinimalProgram({
+        lifecycle: {
+          onMount: 'checkDomReady',
+        },
+        state: {
+          domReady: { type: 'boolean', initial: false },
+        },
+        actions: {
+          checkDomReady: {
+            name: 'checkDomReady',
+            steps: [
+              // The ref should point to an element that is already in the DOM
+              // If onMount runs before render, the ref would be null
+              {
+                do: 'if',
+                condition: { expr: 'ref', name: 'content' },
+                then: [
+                  { do: 'set', target: 'domReady', value: { expr: 'lit', value: true } },
+                ],
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          ref: 'content',
+          props: {
+            id: { expr: 'lit', value: 'rendered-content' },
+          },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Content' } },
+          ],
+        },
+      });
+
+      // Act
+      const app = createApp(program, container);
+      await Promise.resolve();
+
+      // Assert
+      // 1. DOM should be rendered
+      expect(container.querySelector('#rendered-content')).not.toBeNull();
+      // 2. onMount should have found the ref (meaning it ran after render)
+      expect(app.getState('domReady')).toBe(true);
+    });
+
+    it('should allow onMount to manipulate DOM via refs', async () => {
+      // Arrange
+      // This test verifies that refs in onMount point to actual DOM elements
+      // that can be manipulated (use case: focus input, scroll to element, etc.)
+      const program = createMinimalProgram({
+        lifecycle: {
+          onMount: 'focusInput',
+        },
+        state: {
+          focused: { type: 'boolean', initial: false },
+        },
+        actions: {
+          focusInput: {
+            name: 'focusInput',
+            steps: [
+              // For now, just verify the ref exists and is an element
+              // Real manipulation would require DOM API calls
+              {
+                do: 'if',
+                condition: { expr: 'ref', name: 'inputField' },
+                then: [
+                  { do: 'set', target: 'focused', value: { expr: 'lit', value: true } },
+                ],
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'form',
+          children: [
+            {
+              kind: 'element',
+              tag: 'input',
+              ref: 'inputField',
+              props: {
+                type: { expr: 'lit', value: 'text' },
+                id: { expr: 'lit', value: 'name-input' },
+              },
+            },
+          ],
+        },
+      });
+
+      // Act
+      const app = createApp(program, container);
+      await Promise.resolve();
+
+      // Assert
+      expect(container.querySelector('#name-input')).not.toBeNull();
+      expect(app.getState('focused')).toBe(true);
+    });
+
+    it('should collect refs from nested elements', async () => {
+      // Arrange
+      const program = createMinimalProgram({
+        lifecycle: {
+          onMount: 'checkNestedRefs',
+        },
+        state: {
+          allRefsFound: { type: 'boolean', initial: false },
+        },
+        actions: {
+          checkNestedRefs: {
+            name: 'checkNestedRefs',
+            steps: [
+              {
+                do: 'if',
+                condition: {
+                  expr: 'bin',
+                  op: '&&',
+                  left: {
+                    expr: 'bin',
+                    op: '&&',
+                    left: { expr: 'ref', name: 'outer' },
+                    right: { expr: 'ref', name: 'middle' },
+                  },
+                  right: { expr: 'ref', name: 'inner' },
+                },
+                then: [
+                  { do: 'set', target: 'allRefsFound', value: { expr: 'lit', value: true } },
+                ],
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          ref: 'outer',
+          children: [
+            {
+              kind: 'element',
+              tag: 'section',
+              ref: 'middle',
+              children: [
+                {
+                  kind: 'element',
+                  tag: 'article',
+                  ref: 'inner',
+                  children: [
+                    { kind: 'text', value: { expr: 'lit', value: 'Deeply nested' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      // Act
+      const app = createApp(program, container);
+      await Promise.resolve();
+
+      // Assert
+      expect(app.getState('allRefsFound')).toBe(true);
+    });
+  });
+
   // ==================== Integration with State ====================
 
   describe('integration with state', () => {

@@ -51,6 +51,7 @@ import {
   type SubscribeStep,
   type DisposeStep,
   type RefExpr,
+  type IndexExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
@@ -235,6 +236,23 @@ export function isRefExpr(value: unknown): value is RefExpr {
 }
 
 /**
+ * Checks if value is an index expression
+ *
+ * Note: This performs shallow validation only - it checks that `base` and `key`
+ * are objects but does not recursively validate they are valid Expressions.
+ * This is intentional for performance: deep validation would require traversing
+ * potentially deeply nested expression trees on every type guard call.
+ * Use the AST validator for full recursive validation instead.
+ */
+export function isIndexExpr(value: unknown): value is IndexExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'index') return false;
+  if (!('base' in value)) return false;
+  if (!('key' in value)) return false;
+  return true;
+}
+
+/**
  * Checks if value is a data source
  */
 export function isDataSource(value: unknown): value is DataSource {
@@ -308,7 +326,8 @@ export function isExpression(value: unknown): value is Expression {
     isRouteExpr(value) ||
     isImportExpr(value) ||
     isDataExpr(value) ||
-    isRefExpr(value)
+    isRefExpr(value) ||
+    isIndexExpr(value)
   );
 }
 

@@ -50,6 +50,7 @@ export const astSchema = {
         { $ref: '#/$defs/ParamExpr' },
         { $ref: '#/$defs/CondExpr' },
         { $ref: '#/$defs/GetExpr' },
+        { $ref: '#/$defs/IndexExpr' },
       ],
     },
     LitExpr: {
@@ -140,6 +141,16 @@ export const astSchema = {
         expr: { type: 'string', const: 'get' },
         base: { $ref: '#/$defs/Expression' },
         path: { type: 'string' },
+      },
+    },
+    IndexExpr: {
+      type: 'object',
+      required: ['expr', 'base', 'key'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'index' },
+        base: { $ref: '#/$defs/Expression' },
+        key: { $ref: '#/$defs/Expression' },
       },
     },
 

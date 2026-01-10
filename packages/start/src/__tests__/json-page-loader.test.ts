@@ -1201,6 +1201,252 @@ describe('Integration: Full JSON page workflow', () => {
   });
 });
 
+describe('Component Expansion in convertViewNode', () => {
+  // ==================== Component Expansion Tests ====================
+  // TDD Red Phase: These tests verify that component nodes are expanded
+  // during view conversion. Currently convertViewNode does NOT expand
+  // components, so these tests should FAIL.
+
+  beforeEach(async () => {
+    const fs = await import('node:fs');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+  });
+
+  describe('basic component expansion', () => {
+    it('should expand component node to its view definition', async () => {
+      // Arrange
+      const pageWithComponent: JsonPage = {
+        version: '1.0',
+        components: {
+          MyButton: {
+            params: { label: { type: 'string' } },
+            view: {
+              kind: 'element',
+              tag: 'button',
+              children: [
+                { kind: 'text', value: { expr: 'param', name: 'label' } },
+              ],
+            },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'MyButton',
+          props: { label: { expr: 'lit', value: 'Click me' } },
+        },
+      };
+
+      const pageInfo: PageInfo = {
+        filePath: '/project/src/pages/index.json',
+        page: pageWithComponent,
+        resolvedImports: {},
+        loadedData: {},
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(pageWithComponent));
+
+      // Act
+      const program = await convertToCompiledProgram(pageInfo);
+
+      // Assert - The compiled view should NOT have kind: 'component'
+      // It should be expanded to the button element
+      expect(program.view.kind).not.toBe('component');
+      expect(program.view.kind).toBe('element');
+      expect((program.view as { tag?: string }).tag).toBe('button');
+    });
+
+    it('should substitute param expressions with prop values during expansion', async () => {
+      // Arrange
+      const pageWithComponent: JsonPage = {
+        version: '1.0',
+        components: {
+          Greeting: {
+            params: { name: { type: 'string' } },
+            view: {
+              kind: 'element',
+              tag: 'span',
+              children: [
+                { kind: 'text', value: { expr: 'param', name: 'name' } },
+              ],
+            },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'Greeting',
+          props: { name: { expr: 'lit', value: 'World' } },
+        },
+      };
+
+      const pageInfo: PageInfo = {
+        filePath: '/project/src/pages/index.json',
+        page: pageWithComponent,
+        resolvedImports: {},
+        loadedData: {},
+      };
+
+      // Act
+      const program = await convertToCompiledProgram(pageInfo);
+
+      // Assert - The param expression should be substituted with the prop value
+      expect(program.view.kind).toBe('element');
+      const children = (program.view as { children?: unknown[] }).children;
+      expect(children).toBeDefined();
+      expect(children).toHaveLength(1);
+
+      const textNode = children![0] as { kind: string; value: { expr: string; value?: string } };
+      expect(textNode.kind).toBe('text');
+      // The { expr: 'param', name: 'name' } should be replaced with { expr: 'lit', value: 'World' }
+      expect(textNode.value.expr).toBe('lit');
+      expect(textNode.value.value).toBe('World');
+    });
+
+    it('should expand nested components recursively', async () => {
+      // Arrange
+      const pageWithNestedComponents: JsonPage = {
+        version: '1.0',
+        components: {
+          InnerComponent: {
+            params: { text: { type: 'string' } },
+            view: {
+              kind: 'element',
+              tag: 'span',
+              children: [
+                { kind: 'text', value: { expr: 'param', name: 'text' } },
+              ],
+            },
+          },
+          OuterComponent: {
+            params: { content: { type: 'string' } },
+            view: {
+              kind: 'element',
+              tag: 'div',
+              children: [
+                {
+                  kind: 'component',
+                  name: 'InnerComponent',
+                  props: { text: { expr: 'param', name: 'content' } },
+                },
+              ],
+            },
+          },
+        },
+        view: {
+          kind: 'component',
+          name: 'OuterComponent',
+          props: { content: { expr: 'lit', value: 'Nested content' } },
+        },
+      };
+
+      const pageInfo: PageInfo = {
+        filePath: '/project/src/pages/index.json',
+        page: pageWithNestedComponents,
+        resolvedImports: {},
+        loadedData: {},
+      };
+
+      // Act
+      const program = await convertToCompiledProgram(pageInfo);
+
+      // Assert - Both components should be fully expanded
+      expect(program.view.kind).toBe('element');
+      expect((program.view as { tag?: string }).tag).toBe('div');
+
+      const children = (program.view as { children?: unknown[] }).children;
+      expect(children).toBeDefined();
+      expect(children).toHaveLength(1);
+
+      // The inner component should also be expanded to an element
+      const innerElement = children![0] as { kind: string; tag?: string };
+      expect(innerElement.kind).toBe('element');
+      expect(innerElement.tag).toBe('span');
+    });
+
+    it('should expand components used in children of element nodes', async () => {
+      // Arrange
+      const pageWithComponentInChildren: JsonPage = {
+        version: '1.0',
+        components: {
+          Badge: {
+            params: { label: { type: 'string' } },
+            view: {
+              kind: 'element',
+              tag: 'span',
+              attrs: { class: { expr: 'lit', value: 'badge' } },
+              children: [
+                { kind: 'text', value: { expr: 'param', name: 'label' } },
+              ],
+            },
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Status: ' } },
+            {
+              kind: 'component',
+              name: 'Badge',
+              props: { label: { expr: 'lit', value: 'Active' } },
+            },
+          ],
+        },
+      };
+
+      const pageInfo: PageInfo = {
+        filePath: '/project/src/pages/index.json',
+        page: pageWithComponentInChildren,
+        resolvedImports: {},
+        loadedData: {},
+      };
+
+      // Act
+      const program = await convertToCompiledProgram(pageInfo);
+
+      // Assert
+      expect(program.view.kind).toBe('element');
+      const children = (program.view as { children?: unknown[] }).children;
+      expect(children).toHaveLength(2);
+
+      // First child should be text
+      expect((children![0] as { kind: string }).kind).toBe('text');
+
+      // Second child should be expanded to span element (not component)
+      const expandedBadge = children![1] as { kind: string; tag?: string };
+      expect(expandedBadge.kind).toBe('element');
+      expect(expandedBadge.tag).toBe('span');
+    });
+  });
+
+  describe('error handling for component expansion', () => {
+    it('should throw error when referencing undefined component', async () => {
+      // Arrange
+      const pageWithUndefinedComponent: JsonPage = {
+        version: '1.0',
+        components: {},
+        view: {
+          kind: 'component',
+          name: 'NonExistentComponent',
+          props: {},
+        },
+      };
+
+      const pageInfo: PageInfo = {
+        filePath: '/project/src/pages/index.json',
+        page: pageWithUndefinedComponent,
+        resolvedImports: {},
+        loadedData: {},
+      };
+
+      // Act & Assert
+      await expect(convertToCompiledProgram(pageInfo)).rejects.toThrow(
+        /component.*NonExistentComponent.*not found/i
+      );
+    });
+  });
+});
+
 // Cleanup
 afterEach(() => {
   vi.clearAllMocks();

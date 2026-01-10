@@ -12,7 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { CompiledProgram, CompiledNode, CompiledAction } from '@constela/compiler';
-import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition } from '@constela/core';
+import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition, ComponentDef, ComponentNode, ElementNode, IfNode, EachNode } from '@constela/core';
 import { DataLoader } from './data/loader.js';
 import { resolveImports } from './utils/import-resolver.js';
 
@@ -419,12 +419,250 @@ export async function generateStaticPathsFromPage(
 }
 
 /**
- * Convert view node to compiled format (pass through for JSON pages)
+ * Substitute param expressions with prop values in an expression
  */
-function convertViewNode(node: ViewNode): CompiledNode {
-  // For JSON pages, the view is already in a format close to CompiledNode
-  // We just need to type it correctly
-  return node as unknown as CompiledNode;
+function substituteParamExpr(
+  expr: Expression,
+  props: Record<string, Expression>
+): Expression {
+  if (expr.expr === 'param') {
+    const propValue = props[expr.name];
+    if (propValue) {
+      // If param has a path, wrap propValue in a get expression
+      if (expr.path) {
+        return {
+          expr: 'get',
+          base: propValue,
+          path: expr.path,
+        };
+      }
+      return propValue;
+    }
+    // If no prop value found, return as-is (might be undefined param)
+    return expr;
+  }
+
+  // Recursively substitute in binary expressions
+  if (expr.expr === 'bin') {
+    return {
+      ...expr,
+      left: substituteParamExpr(expr.left, props),
+      right: substituteParamExpr(expr.right, props),
+    };
+  }
+
+  // Recursively substitute in not expressions
+  if (expr.expr === 'not') {
+    return {
+      ...expr,
+      operand: substituteParamExpr(expr.operand, props),
+    };
+  }
+
+  // Recursively substitute in cond expressions
+  if (expr.expr === 'cond') {
+    return {
+      ...expr,
+      if: substituteParamExpr(expr.if, props),
+      then: substituteParamExpr(expr.then, props),
+      else: substituteParamExpr(expr.else, props),
+    };
+  }
+
+  // Recursively substitute in get expressions
+  if (expr.expr === 'get') {
+    return {
+      ...expr,
+      base: substituteParamExpr(expr.base, props),
+    };
+  }
+
+  // Recursively substitute in index expressions
+  if (expr.expr === 'index') {
+    return {
+      ...expr,
+      base: substituteParamExpr(expr.base, props),
+      key: substituteParamExpr(expr.key, props),
+    };
+  }
+
+  // For lit, state, var, route, import, data, ref - return as-is
+  return expr;
+}
+
+/**
+ * Substitute param expressions with prop values in a view node
+ */
+function substituteParamsInNode(
+  node: ViewNode,
+  props: Record<string, Expression>,
+  components: Record<string, ComponentDef>
+): ViewNode {
+  switch (node.kind) {
+    case 'text':
+      return {
+        ...node,
+        value: substituteParamExpr(node.value, props),
+      };
+
+    case 'element': {
+      const elementNode = node as ElementNode;
+      const newProps: Record<string, Expression | { event: string; action: string; payload?: Expression }> | undefined = elementNode.props
+        ? Object.fromEntries(
+            Object.entries(elementNode.props).map(([key, value]) => {
+              // Check if it's an event handler
+              if (value && typeof value === 'object' && 'event' in value) {
+                return [key, value];
+              }
+              return [key, substituteParamExpr(value as Expression, props)];
+            })
+          )
+        : undefined;
+
+      const newChildren = elementNode.children
+        ? elementNode.children.map((child) => substituteParamsInNode(child, props, components))
+        : undefined;
+
+      return {
+        ...elementNode,
+        props: newProps,
+        children: newChildren,
+      } as ViewNode;
+    }
+
+    case 'if': {
+      const ifNode = node as IfNode;
+      const result: IfNode = {
+        kind: 'if',
+        condition: substituteParamExpr(ifNode.condition, props),
+        then: substituteParamsInNode(ifNode.then, props, components),
+      };
+      if (ifNode.else) {
+        result.else = substituteParamsInNode(ifNode.else, props, components);
+      }
+      return result;
+    }
+
+    case 'each': {
+      const eachNode = node as EachNode;
+      const result: EachNode = {
+        kind: 'each',
+        items: substituteParamExpr(eachNode.items, props),
+        as: eachNode.as,
+        body: substituteParamsInNode(eachNode.body, props, components),
+      };
+      if (eachNode.index) {
+        result.index = eachNode.index;
+      }
+      if (eachNode.key) {
+        result.key = substituteParamExpr(eachNode.key, props);
+      }
+      return result;
+    }
+
+    case 'component': {
+      const componentNode = node as ComponentNode;
+      // Substitute props first, then expand the component
+      const substitutedProps = componentNode.props
+        ? Object.fromEntries(
+            Object.entries(componentNode.props).map(([key, value]) => [
+              key,
+              substituteParamExpr(value, props),
+            ])
+          )
+        : {};
+      return expandComponent(
+        { ...componentNode, props: substitutedProps },
+        components
+      );
+    }
+
+    case 'markdown':
+      return {
+        ...node,
+        content: substituteParamExpr(node.content, props),
+      };
+
+    case 'code':
+      return {
+        ...node,
+        language: substituteParamExpr(node.language, props),
+        content: substituteParamExpr(node.content, props),
+      };
+
+    case 'slot':
+      return node;
+
+    default:
+      return node;
+  }
+}
+
+/**
+ * Expand a component node to its view definition
+ */
+function expandComponent(
+  node: ComponentNode,
+  components: Record<string, ComponentDef>
+): ViewNode {
+  const componentDef = components[node.name];
+  if (!componentDef) {
+    throw new Error(`Component "${node.name}" not found in component definitions`);
+  }
+
+  const props = node.props || {};
+
+  // Substitute params and recursively expand nested components
+  return substituteParamsInNode(componentDef.view, props, components);
+}
+
+/**
+ * Convert view node to compiled format with component expansion
+ */
+function convertViewNode(
+  node: ViewNode,
+  components: Record<string, ComponentDef> = {}
+): CompiledNode {
+  switch (node.kind) {
+    case 'component': {
+      // Expand component and then convert the result
+      const expanded = expandComponent(node as ComponentNode, components);
+      return convertViewNode(expanded, components);
+    }
+
+    case 'element': {
+      const elementNode = node as ElementNode;
+      const convertedChildren = elementNode.children
+        ? elementNode.children.map((child) => convertViewNode(child, components))
+        : undefined;
+
+      return {
+        ...elementNode,
+        children: convertedChildren,
+      } as unknown as CompiledNode;
+    }
+
+    case 'if': {
+      const ifNode = node as IfNode;
+      return {
+        ...ifNode,
+        then: convertViewNode(ifNode.then, components),
+        else: ifNode.else ? convertViewNode(ifNode.else, components) : undefined,
+      } as unknown as CompiledNode;
+    }
+
+    case 'each': {
+      const eachNode = node as EachNode;
+      return {
+        ...eachNode,
+        body: convertViewNode(eachNode.body, components),
+      } as unknown as CompiledNode;
+    }
+
+    default:
+      // For text, slot, markdown, code nodes, just return as-is
+      return node as unknown as CompiledNode;
+  }
 }
 
 /**
@@ -494,11 +732,14 @@ function convertState(state: Record<string, unknown> | undefined): Record<string
 export async function convertToCompiledProgram(pageInfo: PageInfo): Promise<CompiledProgram> {
   const { page, resolvedImports, loadedData } = pageInfo;
 
+  // Parse components from page definition
+  const components = (page.components || {}) as Record<string, ComponentDef>;
+
   const program: CompiledProgram = {
     version: '1.0',
     state: convertState(page.state),
     actions: convertActions(page.actions),
-    view: convertViewNode(page.view),
+    view: convertViewNode(page.view, components),
   };
 
   // Add route if present

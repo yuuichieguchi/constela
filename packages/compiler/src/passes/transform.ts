@@ -71,7 +71,8 @@ export type CompiledActionStep =
   | CompiledCallStep
   | CompiledSubscribeStep
   | CompiledDisposeStep
-  | CompiledDomStep;
+  | CompiledDomStep
+  | CompiledIfStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -183,6 +184,13 @@ export interface CompiledDomStep {
   selector: CompiledExpression;  // CSS selector or 'html', 'body'
   value?: CompiledExpression;    // class name or attribute value
   attribute?: string;            // for setAttribute/removeAttribute
+}
+
+export interface CompiledIfStep {
+  do: 'if';
+  condition: CompiledExpression;
+  then: CompiledActionStep[];
+  else?: CompiledActionStep[];
 }
 
 // ==================== Compiled View Node Types ====================
@@ -465,6 +473,13 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
 
     case 'ref':
       return { expr: 'ref', name: expr.name };
+
+    case 'index':
+      return {
+        expr: 'index',
+        base: transformExpression(expr.base, ctx),
+        key: transformExpression(expr.key, ctx),
+      };
   }
 }
 
