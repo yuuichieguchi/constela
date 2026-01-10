@@ -43,12 +43,6 @@ export interface InitClientOptions {
   route?: RouteContext;
 }
 
-/**
- * Extended AppInstance with subscribe support check
- */
-interface ExtendedAppInstance extends AppInstance {
-  subscribe?: (name: string, fn: (value: unknown) => void) => () => void;
-}
 
 /**
  * Initialize the client application with hydration and escape hatch support.
@@ -60,7 +54,7 @@ export function initClient(options: InitClientOptions): AppInstance {
   const { program, container, escapeHandlers = [], route } = options;
 
   // Step 1: Hydrate the application with route context
-  const appInstance = hydrateApp({ program, container, ...(route && { route }) }) as ExtendedAppInstance;
+  const appInstance = hydrateApp({ program, container, ...(route && { route }) });
 
   // Step 2: Find all escape hatch elements
   const escapeElements = container.querySelectorAll<HTMLElement>(
@@ -91,12 +85,7 @@ export function initClient(options: InitClientOptions): AppInstance {
       getState: (name: string) => appInstance.getState(name),
       setState: (name: string, value: unknown) => appInstance.setState(name, value),
       subscribe: (name: string, fn: (value: unknown) => void) => {
-        // Use appInstance.subscribe if available, otherwise return no-op
-        if (typeof appInstance.subscribe === 'function') {
-          return appInstance.subscribe(name, fn);
-        }
-        // Return empty unsubscribe function
-        return () => {};
+        return appInstance.subscribe(name, fn);
       },
     };
 
@@ -126,10 +115,8 @@ export function initClient(options: InitClientOptions): AppInstance {
     }
 
     // Subscribe to changes
-    if (appInstance.subscribe) {
-      const unsubscribeTheme = appInstance.subscribe('theme', updateThemeClass);
-      cleanupFns.push(unsubscribeTheme);
-    }
+    const unsubscribeTheme = appInstance.subscribe('theme', updateThemeClass);
+    cleanupFns.push(unsubscribeTheme);
   }
 
   // Step 6: Track destroy state
@@ -156,6 +143,10 @@ export function initClient(options: InitClientOptions): AppInstance {
 
     getState(name: string): unknown {
       return appInstance.getState(name);
+    },
+
+    subscribe(name: string, fn: (value: unknown) => void): () => void {
+      return appInstance.subscribe(name, fn);
     },
   };
 }
