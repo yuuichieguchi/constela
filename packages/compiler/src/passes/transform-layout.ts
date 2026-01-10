@@ -908,5 +908,10 @@ export function composeLayoutWithPage(
     result.importData = mergedImportData;
   }
 
+  // Preserve page lifecycle
+  if (page.lifecycle) {
+    result.lifecycle = page.lifecycle;
+  }
+
   return result;
 }

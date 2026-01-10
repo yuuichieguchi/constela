@@ -34,6 +34,26 @@ export interface ActionContext {
   eventPayload?: unknown;
   refs?: Record<string, Element>;          // DOM element refs
   subscriptions?: (() => void)[];          // Collected subscriptions for auto-disposal
+  route?: {
+    params: Record<string, string>;
+    query: Record<string, string>;
+    path: string;
+  };
+  imports?: Record<string, unknown>;
+}
+
+/**
+ * Creates an evaluation context from ActionContext
+ * Ensures consistent context creation across all step execution functions
+ */
+function createEvalContext(ctx: ActionContext) {
+  return {
+    state: ctx.state,
+    locals: ctx.locals,
+    ...(ctx.refs && { refs: ctx.refs }),
+    ...(ctx.route && { route: ctx.route }),
+    ...(ctx.imports && { imports: ctx.imports }),
+  };
 }
 
 export async function executeAction(
@@ -81,7 +101,7 @@ async function executeIfStep(
   step: { do: 'if'; condition: CompiledExpression; then: CompiledActionStep[]; else?: CompiledActionStep[] },
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
   const condition = evaluate(step.condition, evalCtx);
 
   const stepsToExecute = condition ? step.then : (step.else || []);
@@ -102,7 +122,7 @@ function executeSetStepSync(
   value: CompiledExpression,
   ctx: ActionContext
 ): void {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
   const newValue = evaluate(value, evalCtx);
   ctx.state.set(target, newValue);
 }
@@ -112,7 +132,7 @@ function executeUpdateStepSync(
   ctx: ActionContext
 ): void {
   const { target, operation, value } = step;
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
   const currentValue = ctx.state.get(target);
 
   switch (operation) {
@@ -267,7 +287,7 @@ async function executeSetStep(
   value: CompiledExpression,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const newValue = evaluate(value, evalCtx);
   ctx.state.set(target, newValue);
 }
@@ -277,7 +297,7 @@ async function executeUpdateStep(
   ctx: ActionContext
 ): Promise<void> {
   const { target, operation, value } = step;
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const currentValue = ctx.state.get(target);
 
   switch (operation) {
@@ -390,7 +410,7 @@ async function executeFetchStep(
   },
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const url = evaluate(step.url, evalCtx) as string;
   const method = step.method ?? 'GET';
   
@@ -454,7 +474,7 @@ async function executeStorageStep(
   step: CompiledStorageStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const key = evaluate(step.key, evalCtx) as string;
 
   // Get the appropriate storage object
@@ -517,7 +537,7 @@ async function executeClipboardStep(
   step: CompiledClipboardStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
 
   try {
     switch (step.operation) {
@@ -566,7 +586,7 @@ async function executeNavigateStep(
   step: CompiledNavigateStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const url = evaluate(step.url, evalCtx) as string;
   const target = step.target ?? '_self';
 
@@ -617,7 +637,7 @@ async function executeCallStep(
   step: CompiledCallStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
 
   try {
     const target = evaluate(step.target, evalCtx);
@@ -664,7 +684,7 @@ async function executeSubscribeStep(
   step: CompiledSubscribeStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
   const target = evaluate(step.target, evalCtx);
 
   if (target && typeof target === 'object' && step.event in target) {
@@ -700,7 +720,7 @@ async function executeDisposeStep(
   step: CompiledDisposeStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }) };
+  const evalCtx = createEvalContext(ctx);
   const target = evaluate(step.target, evalCtx);
 
   if (target && typeof target === 'object') {
@@ -722,7 +742,7 @@ async function executeDomStep(
   step: CompiledDomStep,
   ctx: ActionContext
 ): Promise<void> {
-  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const evalCtx = createEvalContext(ctx);
   const selectorValue = evaluate(step.selector, evalCtx);
   const selector = String(selectorValue);
 

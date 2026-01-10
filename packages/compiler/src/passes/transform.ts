@@ -273,6 +273,7 @@ export interface CompiledLitExpr {
 export interface CompiledStateExpr {
   expr: 'state';
   name: string;
+  path?: string;
 }
 
 export interface CompiledVarExpr {
@@ -358,11 +359,16 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         value: expr.value,
       };
 
-    case 'state':
-      return {
+    case 'state': {
+      const stateExpr: CompiledStateExpr = {
         expr: 'state',
         name: expr.name,
       };
+      if (expr.path) {
+        stateExpr.path = expr.path;
+      }
+      return stateExpr;
+    }
 
     case 'var': {
       const varExpr: CompiledVarExpr = {

@@ -395,6 +395,7 @@ export async function createDevServer(
               const importMap = {
                 '@constela/runtime': '/node_modules/@constela/runtime/dist/index.js',
                 'marked': '/node_modules/marked/lib/marked.esm.js',
+                'monaco-editor': '/node_modules/monaco-editor/esm/vs/editor/editor.api.js',
               };
 
               const html = wrapHtml(content, hydrationScript, cssHead, {

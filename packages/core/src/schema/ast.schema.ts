@@ -77,6 +77,7 @@ export const astSchema = {
       properties: {
         expr: { type: 'string', const: 'state' },
         name: { type: 'string' },
+        path: { type: 'string' },
       },
     },
     VarExpr: {

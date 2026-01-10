@@ -93,6 +93,7 @@ export interface LitExpr {
 export interface StateExpr {
   expr: 'state';
   name: string;
+  path?: string;  // e.g., "setValue" for accessing state.editor.setValue
 }
 
 /**

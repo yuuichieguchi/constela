@@ -129,6 +129,7 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     locals: {},
     refs,
     ...(route && { route }),
+    ...(program.importData && { imports: program.importData }),
   };
 
   // Execute onMount lifecycle hook (after hydration so refs are available)
@@ -262,6 +263,9 @@ function hydrateElement(
               actions: ctx.actions,
               locals: { ...ctx.locals, ...eventLocals, payload },
               eventPayload: payload,
+              ...(ctx.refs && { refs: ctx.refs }),
+              ...(ctx.route && { route: ctx.route }),
+              ...(ctx.imports && { imports: ctx.imports }),
             };
             await executeAction(action, actionCtx);
           }

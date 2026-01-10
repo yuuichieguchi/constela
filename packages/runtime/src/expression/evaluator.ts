@@ -31,8 +31,13 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
     case 'lit':
       return expr.value;
 
-    case 'state':
-      return ctx.state.get(expr.name);
+    case 'state': {
+      const stateValue = ctx.state.get(expr.name);
+      if (expr.path && stateValue != null) {
+        return getNestedValue(stateValue, expr.path);
+      }
+      return stateValue;
+    }
 
     case 'var': {
       let varName = expr.name;
@@ -150,12 +155,14 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
  * Gets a nested value from an object using a dot-separated path
  * Handles both object keys and array indices (numeric strings)
  * Includes prototype pollution prevention
+ * Binds methods to their parent object to preserve 'this' context
  */
 function getNestedValue(obj: unknown, path: string): unknown {
   const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
   const parts = path.split('.');
 
   let value: unknown = obj;
+  let parent: unknown = null;
 
   for (const part of parts) {
     // Prototype pollution prevention
@@ -166,6 +173,8 @@ function getNestedValue(obj: unknown, path: string): unknown {
     if (value == null) {
       return undefined;
     }
+
+    parent = value;
 
     // Handle array access with numeric indices
     if (Array.isArray(value)) {
@@ -181,6 +190,11 @@ function getNestedValue(obj: unknown, path: string): unknown {
     } else {
       return undefined;
     }
+  }
+
+  // Bind methods to their parent object to preserve 'this' context
+  if (typeof value === 'function' && parent != null) {
+    return (value as Function).bind(parent);
   }
 
   return value;

@@ -59,6 +59,10 @@ export interface JsonPage {
   view: ViewNode;
   components?: Record<string, unknown> | undefined;
   widgets?: WidgetDefinition[] | undefined;
+  lifecycle?: {
+    onMount?: string;
+    onUnmount?: string;
+  } | undefined;
 }
 
 /**
@@ -772,6 +776,11 @@ export async function convertToCompiledProgram(pageInfo: PageInfo): Promise<Comp
       ...resolvedImports,
       ...loadedData,
     };
+  }
+
+  // Add lifecycle if present
+  if (page.lifecycle) {
+    program.lifecycle = page.lifecycle;
   }
 
   return program;
