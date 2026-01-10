@@ -205,6 +205,7 @@ export async function generateStaticPages(
       for (const pathData of staticPaths.paths) {
         // Resolve the program with params (handles both static and function exports)
         const program = await resolvePageExport(pageExport, pathData.params, route.params);
+
         const resolvedPattern = resolvePattern(route.pattern, pathData.params);
         const filePath = await generateSinglePage(
           resolvedPattern,

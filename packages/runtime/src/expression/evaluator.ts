@@ -120,6 +120,15 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
     case 'ref':
       return ctx.refs?.[expr.name] ?? null;
 
+    case 'index': {
+      const base = evaluate(expr.base, ctx);
+      const key = evaluate(expr.key, ctx);
+      if (base == null || key == null) return undefined;
+      const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+      if (typeof key === 'string' && forbiddenKeys.has(key)) return undefined;
+      return (base as Record<string | number, unknown>)[key as string | number];
+    }
+
     case 'data': {
       // Data expressions are resolved from imports (loadedData is merged into importData)
       const dataValue = ctx.imports?.[expr.name];

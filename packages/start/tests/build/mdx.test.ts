@@ -1066,3 +1066,279 @@ describe('mdxToConstela - CompiledProgram Structure', () => {
     expect(result.actions).toEqual({});
   });
 });
+
+// ==================== GFM Tables ====================
+
+describe('mdxToConstela - GFM Tables', () => {
+  describe('table structure with header and body', () => {
+    it('should wrap first row in thead with th cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Header 1 | Header 2 |
+| -------- | -------- |
+| Cell 1   | Cell 2   |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      expect(view.tag).toBe('table');
+
+      // Find thead element
+      const thead = findElementByTag(view.children, 'thead');
+      expect(thead).toBeDefined();
+
+      // thead should contain tr with th cells
+      const headerRow = findElementByTag(thead!.children, 'tr');
+      expect(headerRow).toBeDefined();
+
+      const thCells = findAllElementsByTag(headerRow!.children, 'th');
+      expect(thCells).toHaveLength(2);
+      expect(getTextValue(thCells[0].children![0])).toBe('Header 1');
+      expect(getTextValue(thCells[1].children![0])).toBe('Header 2');
+    });
+
+    it('should wrap remaining rows in tbody with td cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Name  | Age |
+| ----- | --- |
+| Alice | 30  |
+| Bob   | 25  |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      expect(view.tag).toBe('table');
+
+      // Find tbody element
+      const tbody = findElementByTag(view.children, 'tbody');
+      expect(tbody).toBeDefined();
+
+      // tbody should contain tr elements with td cells
+      const bodyRows = findAllElementsByTag(tbody!.children, 'tr');
+      expect(bodyRows).toHaveLength(2);
+
+      // First body row
+      const firstRowCells = findAllElementsByTag(bodyRows[0].children, 'td');
+      expect(firstRowCells).toHaveLength(2);
+      expect(getTextValue(firstRowCells[0].children![0])).toBe('Alice');
+      expect(getTextValue(firstRowCells[1].children![0])).toBe('30');
+
+      // Second body row
+      const secondRowCells = findAllElementsByTag(bodyRows[1].children, 'td');
+      expect(secondRowCells).toHaveLength(2);
+      expect(getTextValue(secondRowCells[0].children![0])).toBe('Bob');
+      expect(getTextValue(secondRowCells[1].children![0])).toBe('25');
+    });
+
+    it('should have correct table structure: table > thead + tbody', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Col A | Col B | Col C |
+| ----- | ----- | ----- |
+| 1     | 2     | 3     |
+| 4     | 5     | 6     |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      expect(view.tag).toBe('table');
+
+      // Table should have exactly thead and tbody as direct children
+      const thead = findElementByTag(view.children, 'thead');
+      const tbody = findElementByTag(view.children, 'tbody');
+      expect(thead).toBeDefined();
+      expect(tbody).toBeDefined();
+
+      // Verify no tr elements are direct children of table
+      const directTr = findAllElementsByTag(view.children, 'tr');
+      expect(directTr).toHaveLength(0);
+    });
+  });
+
+  describe('table with only header row (no body)', () => {
+    it('should output only thead when table has no body rows', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Header Only |
+| ----------- |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      expect(view.tag).toBe('table');
+
+      // Should have thead
+      const thead = findElementByTag(view.children, 'thead');
+      expect(thead).toBeDefined();
+
+      // Should NOT have tbody (or empty tbody)
+      const tbody = findElementByTag(view.children, 'tbody');
+      // Either no tbody exists, or tbody exists but has no rows
+      if (tbody) {
+        const bodyRows = findAllElementsByTag(tbody.children, 'tr');
+        expect(bodyRows).toHaveLength(0);
+      }
+
+      // Verify thead has the header row
+      const headerRow = findElementByTag(thead!.children, 'tr');
+      expect(headerRow).toBeDefined();
+      const thCells = findAllElementsByTag(headerRow!.children, 'th');
+      expect(thCells).toHaveLength(1);
+      expect(getTextValue(thCells[0].children![0])).toBe('Header Only');
+    });
+  });
+
+  describe('table cells with inline content', () => {
+    it('should handle emphasis in table cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Format   | Example       |
+| -------- | ------------- |
+| Bold     | **important** |
+| Italic   | *emphasis*    |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      const tbody = findElementByTag(view.children, 'tbody');
+      expect(tbody).toBeDefined();
+
+      const bodyRows = findAllElementsByTag(tbody!.children, 'tr');
+      expect(bodyRows.length).toBeGreaterThanOrEqual(2);
+
+      // First row should have strong element in second cell
+      const firstRowCells = findAllElementsByTag(bodyRows[0].children, 'td');
+      const strongInCell = findElementByTag(firstRowCells[1].children, 'strong');
+      expect(strongInCell).toBeDefined();
+      expect(getTextValue(strongInCell!.children![0])).toBe('important');
+
+      // Second row should have em element in second cell
+      const secondRowCells = findAllElementsByTag(bodyRows[1].children, 'td');
+      const emInCell = findElementByTag(secondRowCells[1].children, 'em');
+      expect(emInCell).toBeDefined();
+      expect(getTextValue(emInCell!.children![0])).toBe('emphasis');
+    });
+
+    it('should handle links in table cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Site   | Link                          |
+| ------ | ----------------------------- |
+| Google | [Visit](https://google.com)   |
+| GitHub | [Code](https://github.com)    |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      const tbody = findElementByTag(view.children, 'tbody');
+      expect(tbody).toBeDefined();
+
+      const bodyRows = findAllElementsByTag(tbody!.children, 'tr');
+      expect(bodyRows.length).toBeGreaterThanOrEqual(1);
+
+      // First row should have anchor element in second cell
+      const firstRowCells = findAllElementsByTag(bodyRows[0].children, 'td');
+      const linkInCell = findElementByTag(firstRowCells[1].children, 'a');
+      expect(linkInCell).toBeDefined();
+      expect(linkInCell!.props?.href).toBeDefined();
+      expect((linkInCell!.props!.href as any).value).toBe('https://google.com');
+      expect(getTextValue(linkInCell!.children![0])).toBe('Visit');
+    });
+
+    it('should handle inline code in table cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| Function      | Usage           |
+| ------------- | --------------- |
+| \`console.log\` | Debug output    |
+| \`Array.map\`   | Transform items |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      const tbody = findElementByTag(view.children, 'tbody');
+      expect(tbody).toBeDefined();
+
+      const bodyRows = findAllElementsByTag(tbody!.children, 'tr');
+      expect(bodyRows.length).toBeGreaterThanOrEqual(1);
+
+      // First row should have code element in first cell
+      const firstRowCells = findAllElementsByTag(bodyRows[0].children, 'td');
+      const codeInCell = findElementByTag(firstRowCells[0].children, 'code');
+      expect(codeInCell).toBeDefined();
+      expect(getTextValue(codeInCell!.children![0])).toBe('console.log');
+    });
+
+    it('should handle mixed inline content in header cells', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| **Bold Header** | *Italic Header* |
+| --------------- | --------------- |
+| cell            | cell            |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      const thead = findElementByTag(view.children, 'thead');
+      expect(thead).toBeDefined();
+
+      const headerRow = findElementByTag(thead!.children, 'tr');
+      const thCells = findAllElementsByTag(headerRow!.children, 'th');
+      expect(thCells).toHaveLength(2);
+
+      // First header should have strong element
+      const strongInHeader = findElementByTag(thCells[0].children, 'strong');
+      expect(strongInHeader).toBeDefined();
+      expect(getTextValue(strongInHeader!.children![0])).toBe('Bold Header');
+
+      // Second header should have em element
+      const emInHeader = findElementByTag(thCells[1].children, 'em');
+      expect(emInHeader).toBeDefined();
+      expect(getTextValue(emInHeader!.children![0])).toBe('Italic Header');
+    });
+  });
+
+  describe('table with multiple columns', () => {
+    it('should handle tables with many columns', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `| A | B | C | D | E |
+| - | - | - | - | - |
+| 1 | 2 | 3 | 4 | 5 |`;
+
+      // Act
+      const result = await mdxToConstela(source);
+
+      // Assert
+      const view = result.view as CompiledElementNode;
+      expect(view.tag).toBe('table');
+
+      const thead = findElementByTag(view.children, 'thead');
+      const headerRow = findElementByTag(thead!.children, 'tr');
+      const thCells = findAllElementsByTag(headerRow!.children, 'th');
+      expect(thCells).toHaveLength(5);
+
+      const tbody = findElementByTag(view.children, 'tbody');
+      const bodyRow = findElementByTag(tbody!.children, 'tr');
+      const tdCells = findAllElementsByTag(bodyRow!.children, 'td');
+      expect(tdCells).toHaveLength(5);
+    });
+  });
+});

@@ -371,14 +371,40 @@ function transformNode(
     }
 
     // GFM extensions
-    case 'table':
-      return elementNode('table', undefined, transformChildren(node.children, ctx));
+    case 'table': {
+      const rows = node.children as Array<{ type: 'tableRow'; children: Array<{ type: 'tableCell'; children: PhrasingContent[] }> }>;
+      if (!rows || rows.length === 0) {
+        return elementNode('table', undefined, []);
+      }
 
-    case 'tableRow':
-      return elementNode('tr', undefined, transformChildren(node.children, ctx));
+      // First row is header
+      const headerRow = rows[0]!;
+      const headerCells = headerRow.children.map(cell =>
+        elementNode('th', undefined, transformChildren(cell.children, ctx))
+      );
+      const thead = elementNode('thead', undefined, [
+        elementNode('tr', undefined, headerCells)
+      ]);
 
-    case 'tableCell':
-      return elementNode('td', undefined, transformChildren(node.children, ctx));
+      // Remaining rows are body
+      const bodyRows = rows.slice(1).map(row => {
+        const cells = row.children.map(cell =>
+          elementNode('td', undefined, transformChildren(cell.children, ctx))
+        );
+        return elementNode('tr', undefined, cells);
+      });
+      const tbody = bodyRows.length > 0
+        ? elementNode('tbody', undefined, bodyRows)
+        : null;
+
+      const tableChildren: CompiledNode[] = [thead];
+      if (tbody) {
+        tableChildren.push(tbody);
+      }
+      return elementNode('table', undefined, tableChildren);
+    }
+
+    // tableRow and tableCell are handled within the 'table' case above
 
     case 'delete':
       return elementNode('del', undefined, transformChildren(node.children, ctx));

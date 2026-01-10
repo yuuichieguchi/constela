@@ -69,8 +69,18 @@ export interface PageModule {
   getStaticPaths?: () => Promise<StaticPathsResult> | StaticPathsResult;
 }
 
+/**
+ * Single path entry from getStaticPaths
+ */
+export interface StaticPathEntry {
+  /** Route parameters for this path */
+  params: Record<string, string>;
+  /** Optional data to inject as __pathData in importData */
+  data?: unknown;
+}
+
 export interface StaticPathsResult {
-  paths: Array<{ params: Record<string, string> }>;
+  paths: StaticPathEntry[];
 }
 
 /**

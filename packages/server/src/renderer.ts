@@ -182,6 +182,15 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       // SSR context: DOM elements don't exist, return null
       return null;
 
+    case 'index': {
+      const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+      const base = evaluate(expr.base, ctx);
+      const key = evaluate(expr.key, ctx);
+      if (base == null || key == null) return undefined;
+      if (typeof key === 'string' && forbiddenKeys.has(key)) return undefined;
+      return (base as Record<string | number, unknown>)[key as string | number];
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
@@ -473,12 +482,27 @@ function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): string {
 
 /**
  * Renders a code node to HTML string
+ * Matches the structure of the original CodePreview component:
+ * - group relative wrapper
+ * - language badge in top-right corner
+ * - pre/code with appropriate styling
  */
 async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<string> {
   const language = formatValue(evaluate(node.language, ctx));
   const content = formatValue(evaluate(node.content, ctx));
   const html = await renderCodeSSR(content, language);
-  return `<div class="constela-code">${html}</div>`;
+
+  // Match original CodePreview structure
+  const languageBadge = language
+    ? `<span class="rounded bg-muted-foreground/20 px-2 py-0.5 text-xs font-medium text-muted-foreground">${escapeHtml(language)}</span>`
+    : '';
+
+  return `<div class="group relative">
+  <div class="absolute right-3 top-3 z-10 flex items-center gap-2">
+    ${languageBadge}
+  </div>
+  <div class="constela-code">${html}</div>
+</div>`;
 }
 
 // ==================== Main Export ====================

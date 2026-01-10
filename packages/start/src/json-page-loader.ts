@@ -48,6 +48,7 @@ export interface JsonPage {
     path: string;
     layout?: string;
     layoutProps?: Record<string, unknown>;
+    layoutParams?: Record<string, Expression>;
     meta?: Record<string, unknown>;
   } | undefined;
   imports?: Record<string, string> | undefined;
@@ -155,7 +156,7 @@ function evaluateParamExpression(expr: Expression, item: unknown): string {
  */
 function compileWidget(widgetJson: { version?: string; state?: Record<string, unknown>; actions?: unknown[] | Record<string, unknown>; view: ViewNode }): CompiledProgram {
   return {
-    version: widgetJson.version || '1.0',
+    version: (widgetJson.version || '1.0') as '1.0',
     state: convertState(widgetJson.state),
     actions: convertActions(widgetJson.actions),
     view: convertViewNode(widgetJson.view),

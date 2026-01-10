@@ -706,4 +706,259 @@ describe('generateStaticPages with function exports', () => {
       expect(generatedPaths).toHaveLength(2);
     });
   });
+
+  // ==================== __pathData Injection ====================
+
+  describe('__pathData injection', () => {
+    it('should inject pathData.data into program.importData.__pathData when data exists', async () => {
+      // Arrange
+      const { generateStaticPages } = await import('../../src/build/ssg.js');
+      const routes: ScannedRoute[] = [
+        {
+          file: join(tempDir, 'routes/posts/[slug].ts'),
+          pattern: '/posts/:slug',
+          type: 'page',
+          params: ['slug'],
+        },
+      ];
+
+      // Track the program passed to generateSinglePage
+      let capturedProgram: CompiledProgram | null = null;
+      const capturingFn = (params: Record<string, string>): CompiledProgram => {
+        const program = createDynamicProgram(params);
+        // Store reference before any modifications
+        capturedProgram = program;
+        return program;
+      };
+
+      const pathData = {
+        title: 'Test Post Title',
+        content: { kind: 'element', tag: 'p', props: {}, children: [] },
+        author: 'John Doe',
+      };
+
+      vi.doMock(join(tempDir, 'routes/posts/[slug].ts'), () => ({
+        default: capturingFn,
+        getStaticPaths: (): { paths: Array<{ params: Record<string, string>; data?: unknown }> } => ({
+          paths: [
+            { params: { slug: 'test-post' }, data: pathData },
+          ],
+        }),
+      }));
+
+      // Act
+      await generateStaticPages(routes, outDir);
+
+      // Assert
+      // After generation, the program should have importData.__pathData set
+      expect(capturedProgram).not.toBeNull();
+      // The implementation should inject pathData.data into importData.__pathData
+      // This test will FAIL until the implementation is added
+      const htmlContent = await readFile(join(outDir, 'posts', 'test-post', 'index.html'), 'utf-8');
+      // The hydration script should contain __pathData
+      expect(htmlContent).toContain('__pathData');
+      expect(htmlContent).toContain('Test Post Title');
+    });
+
+    it('should NOT add __pathData when pathData.data is undefined', async () => {
+      // Arrange
+      const { generateStaticPages } = await import('../../src/build/ssg.js');
+      const routes: ScannedRoute[] = [
+        {
+          file: join(tempDir, 'routes/items/[id].ts'),
+          pattern: '/items/:id',
+          type: 'page',
+          params: ['id'],
+        },
+      ];
+
+      // Track the program modifications
+      let programImportData: Record<string, unknown> | undefined;
+      const capturingFn = (params: Record<string, string>): CompiledProgram => {
+        const program = createDynamicProgram(params);
+        // Set up importData to track modifications
+        program.importData = {};
+        // We need to capture the state after the injection would happen
+        // Use a getter to capture the final state
+        const originalImportData = program.importData;
+        Object.defineProperty(program, 'importData', {
+          get() { return originalImportData; },
+          set(value) {
+            programImportData = value;
+          },
+        });
+        return program;
+      };
+
+      vi.doMock(join(tempDir, 'routes/items/[id].ts'), () => ({
+        default: capturingFn,
+        getStaticPaths: (): StaticPathsResult => ({
+          paths: [
+            { params: { id: '1' } }, // No data property
+          ],
+        }),
+      }));
+
+      // Act
+      await generateStaticPages(routes, outDir);
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'items', '1', 'index.html'), 'utf-8');
+      // The hydration script should NOT contain __pathData when data is undefined
+      expect(htmlContent).not.toContain('__pathData');
+    });
+
+    it('should preserve existing importData when adding __pathData', async () => {
+      // Arrange
+      const { generateStaticPages } = await import('../../src/build/ssg.js');
+      const routes: ScannedRoute[] = [
+        {
+          file: join(tempDir, 'routes/articles/[slug].ts'),
+          pattern: '/articles/:slug',
+          type: 'page',
+          params: ['slug'],
+        },
+      ];
+
+      const existingImportData = {
+        siteConfig: { name: 'My Site', version: '1.0' },
+        translations: { hello: 'Hello', goodbye: 'Goodbye' },
+      };
+
+      const pathData = {
+        title: 'Article Title',
+        body: 'Article body content',
+      };
+
+      const capturingFn = (params: Record<string, string>): CompiledProgram => {
+        const program = createDynamicProgram(params);
+        // Set existing importData that should be preserved
+        program.importData = { ...existingImportData };
+        return program;
+      };
+
+      vi.doMock(join(tempDir, 'routes/articles/[slug].ts'), () => ({
+        default: capturingFn,
+        getStaticPaths: (): { paths: Array<{ params: Record<string, string>; data?: unknown }> } => ({
+          paths: [
+            { params: { slug: 'my-article' }, data: pathData },
+          ],
+        }),
+      }));
+
+      // Act
+      await generateStaticPages(routes, outDir);
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'articles', 'my-article', 'index.html'), 'utf-8');
+      // Should contain __pathData
+      expect(htmlContent).toContain('__pathData');
+      expect(htmlContent).toContain('Article Title');
+      // Should also preserve existing importData
+      expect(htmlContent).toContain('siteConfig');
+      expect(htmlContent).toContain('My Site');
+    });
+
+    it('should handle complex nested data in __pathData', async () => {
+      // Arrange
+      const { generateStaticPages } = await import('../../src/build/ssg.js');
+      const routes: ScannedRoute[] = [
+        {
+          file: join(tempDir, 'routes/docs/[slug].ts'),
+          pattern: '/docs/:slug',
+          type: 'page',
+          params: ['slug'],
+        },
+      ];
+
+      const complexPathData = {
+        frontmatter: {
+          title: 'Documentation Page',
+          tags: ['typescript', 'tutorial'],
+          author: {
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+          },
+        },
+        content: {
+          kind: 'element',
+          tag: 'article',
+          props: {},
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Content here' } },
+          ],
+        },
+        slug: 'getting-started',
+      };
+
+      const capturingFn = (params: Record<string, string>): CompiledProgram => {
+        return createDynamicProgram(params);
+      };
+
+      vi.doMock(join(tempDir, 'routes/docs/[slug].ts'), () => ({
+        default: capturingFn,
+        getStaticPaths: (): { paths: Array<{ params: Record<string, string>; data?: unknown }> } => ({
+          paths: [
+            { params: { slug: 'getting-started' }, data: complexPathData },
+          ],
+        }),
+      }));
+
+      // Act
+      await generateStaticPages(routes, outDir);
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'docs', 'getting-started', 'index.html'), 'utf-8');
+      // Should contain nested data from __pathData
+      expect(htmlContent).toContain('__pathData');
+      expect(htmlContent).toContain('Documentation Page');
+      expect(htmlContent).toContain('typescript');
+      expect(htmlContent).toContain('Jane Smith');
+    });
+
+    it('should inject __pathData for each path in multiple paths', async () => {
+      // Arrange
+      const { generateStaticPages } = await import('../../src/build/ssg.js');
+      const routes: ScannedRoute[] = [
+        {
+          file: join(tempDir, 'routes/blog/[slug].ts'),
+          pattern: '/blog/:slug',
+          type: 'page',
+          params: ['slug'],
+        },
+      ];
+
+      const capturingFn = (params: Record<string, string>): CompiledProgram => {
+        return createDynamicProgram(params);
+      };
+
+      vi.doMock(join(tempDir, 'routes/blog/[slug].ts'), () => ({
+        default: capturingFn,
+        getStaticPaths: (): { paths: Array<{ params: Record<string, string>; data?: unknown }> } => ({
+          paths: [
+            { params: { slug: 'post-1' }, data: { title: 'First Post', id: 1 } },
+            { params: { slug: 'post-2' }, data: { title: 'Second Post', id: 2 } },
+            { params: { slug: 'post-3' }, data: { title: 'Third Post', id: 3 } },
+          ],
+        }),
+      }));
+
+      // Act
+      await generateStaticPages(routes, outDir);
+
+      // Assert - each page should have its own __pathData
+      const post1Html = await readFile(join(outDir, 'blog', 'post-1', 'index.html'), 'utf-8');
+      const post2Html = await readFile(join(outDir, 'blog', 'post-2', 'index.html'), 'utf-8');
+      const post3Html = await readFile(join(outDir, 'blog', 'post-3', 'index.html'), 'utf-8');
+
+      expect(post1Html).toContain('First Post');
+      expect(post1Html).not.toContain('Second Post');
+
+      expect(post2Html).toContain('Second Post');
+      expect(post2Html).not.toContain('First Post');
+
+      expect(post3Html).toContain('Third Post');
+      expect(post3Html).not.toContain('First Post');
+    });
+  });
 });

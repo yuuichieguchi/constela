@@ -43,6 +43,7 @@ export type {
   CompiledRouteExpr,
   CompiledImportExpr,
   CompiledDataExpr,
+  CompiledIndexExpr,
   CompiledAction,
   CompiledActionStep,
   CompiledSetStep,

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { resolveJsonRefs } from '../data/loader.js';
 
 /**
  * Resolve imports from external JSON files
@@ -44,9 +45,14 @@ export async function resolveImports(
     }
 
     try {
-      resolved[name] = JSON.parse(content);
-    } catch {
-      throw new Error(`Invalid JSON in import "${name}": ${fullPath}`);
+      const parsed = JSON.parse(content);
+      // Resolve $ref references in imported JSON
+      resolved[name] = resolveJsonRefs(parsed);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(`Invalid JSON in import "${name}": ${fullPath}`);
+      }
+      throw error;
     }
   }
 

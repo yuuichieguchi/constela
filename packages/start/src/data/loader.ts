@@ -45,6 +45,156 @@ export interface StaticPath {
   data?: unknown;
 }
 
+// ==================== JSON Reference Resolution (RFC 6901) ====================
+
+/**
+ * Resolve JSON $ref references within a JSON document.
+ *
+ * Implements JSON Pointer (RFC 6901) for $ref resolution:
+ * - $ref paths start with # and use / as delimiter
+ * - Special character encoding: ~0 = ~, ~1 = /
+ * - Circular references are detected and throw an error
+ * - Returns a new object without modifying the original
+ *
+ * @param json - The JSON document to resolve references in
+ * @returns A new object with all $ref references resolved
+ * @throws Error if $ref path is invalid or circular
+ */
+export function resolveJsonRefs<T>(json: T): T {
+  // Deep clone to avoid modifying the original
+  const cloned = JSON.parse(JSON.stringify(json)) as T;
+
+  // Track paths being resolved to detect circular references
+  const resolvingPaths = new Set<string>();
+
+  return resolveRefsRecursive(cloned, cloned, resolvingPaths);
+}
+
+/**
+ * Recursively resolve $ref references in an object
+ */
+function resolveRefsRecursive<T>(
+  current: T,
+  root: unknown,
+  resolvingPaths: Set<string>
+): T {
+  // Null or primitive - return as-is
+  if (current === null || typeof current !== 'object') {
+    return current;
+  }
+
+  // Handle arrays
+  if (Array.isArray(current)) {
+    return current.map((item) => resolveRefsRecursive(item, root, resolvingPaths)) as T;
+  }
+
+  // Handle objects
+  const obj = current as Record<string, unknown>;
+
+  // Check if this is a $ref object (only has $ref property)
+  if ('$ref' in obj && Object.keys(obj).length === 1) {
+    const refPath = obj['$ref'];
+
+    if (typeof refPath !== 'string') {
+      throw new Error(`Invalid $ref: value must be a string`);
+    }
+
+    // Validate JSON Pointer format
+    if (!refPath.startsWith('#')) {
+      throw new Error(`Invalid $ref: path must start with # (got "${refPath}")`);
+    }
+
+    // Check for self-referential (circular) references
+    if (resolvingPaths.has(refPath)) {
+      throw new Error(`Circular $ref detected: "${refPath}"`);
+    }
+
+    // Resolve the reference
+    resolvingPaths.add(refPath);
+    try {
+      const resolved = resolveJsonPointer(root, refPath);
+      // Recursively resolve any $refs in the resolved value
+      return resolveRefsRecursive(resolved as T, root, resolvingPaths);
+    } finally {
+      resolvingPaths.delete(refPath);
+    }
+  }
+
+  // Regular object - recursively resolve each property
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[key] = resolveRefsRecursive(value, root, resolvingPaths);
+  }
+
+  return result as T;
+}
+
+/**
+ * Resolve a JSON Pointer path to a value in the document
+ *
+ * JSON Pointer (RFC 6901) rules:
+ * - Path starts with # for document-relative reference
+ * - Path segments are separated by /
+ * - ~0 decodes to ~
+ * - ~1 decodes to /
+ */
+function resolveJsonPointer(root: unknown, pointer: string): unknown {
+  // Remove the leading #
+  const path = pointer.slice(1);
+
+  // Empty path after # means root
+  if (path === '' || path === '/') {
+    return root;
+  }
+
+  // Validate path format (must be empty or start with /)
+  if (!path.startsWith('/')) {
+    throw new Error(`Invalid $ref: path after # must be empty or start with / (got "${pointer}")`);
+  }
+
+  // Split path into segments and decode
+  const segments = path.slice(1).split('/').map(decodeJsonPointerSegment);
+
+  let current: unknown = root;
+
+  for (const segment of segments) {
+    if (current === null || current === undefined) {
+      throw new Error(`Invalid $ref: path "${pointer}" references null/undefined`);
+    }
+
+    if (Array.isArray(current)) {
+      // Array index access
+      const index = parseInt(segment, 10);
+      if (isNaN(index) || index < 0 || index >= current.length) {
+        throw new Error(`Invalid $ref: array index "${segment}" out of bounds in "${pointer}"`);
+      }
+      current = current[index];
+    } else if (typeof current === 'object') {
+      // Object property access
+      const obj = current as Record<string, unknown>;
+      if (!(segment in obj)) {
+        throw new Error(`Invalid $ref: property "${segment}" not found in "${pointer}"`);
+      }
+      current = obj[segment];
+    } else {
+      throw new Error(`Invalid $ref: cannot access "${segment}" on primitive value in "${pointer}"`);
+    }
+  }
+
+  return current;
+}
+
+/**
+ * Decode a JSON Pointer segment according to RFC 6901
+ * ~1 -> /
+ * ~0 -> ~
+ *
+ * Order matters: ~1 must be decoded before ~0
+ */
+function decodeJsonPointerSegment(segment: string): string {
+  return segment.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
 // ==================== YAML Parser ====================
 
 interface StackEntry {
@@ -312,7 +462,9 @@ function applyTransform(content: string, transform: string | undefined, filename
   if (!transform) {
     // Auto-detect based on file extension
     if (filename.endsWith('.json')) {
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      // Resolve $ref references in JSON files
+      return resolveJsonRefs(parsed);
     }
     return content;
   }

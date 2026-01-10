@@ -8,6 +8,7 @@ export type {
   Middleware,
   PageModule,
   PageExportFunction,
+  StaticPathEntry,
   StaticPathsResult,
   ConstelaConfig,
   DevServerOptions,

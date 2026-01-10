@@ -1271,6 +1271,367 @@ describe('evaluate', () => {
     });
   });
 
+  // ==================== Index Expressions (Dynamic Property Access) ====================
+
+  describe('index expressions', () => {
+    /**
+     * The 'index' expression allows dynamic property access using another expression as the key.
+     * Syntax: { expr: 'index', base: <expression>, key: <expression> }
+     * Equivalent to: base[key]
+     */
+
+    // Extended context helper that includes route and imports
+    function createFullContext(
+      stateDefinitions: Record<string, { type: string; initial: unknown }> = {},
+      locals: Record<string, unknown> = {},
+      route?: { params: Record<string, string>; query: Record<string, string>; path: string },
+      imports?: Record<string, unknown>
+    ): EvaluationContext {
+      return {
+        state: createStateStore(stateDefinitions),
+        locals,
+        route,
+        imports,
+      };
+    }
+
+    // ==================== Basic Index Access ====================
+
+    it('should access object property with literal string key', () => {
+      // Arrange
+      // Equivalent to: obj['name']
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'lit', value: 'name' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'Alice', age: 30 } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Alice');
+    });
+
+    it('should access nested object property with literal key', () => {
+      // Arrange
+      // Equivalent to: users['admin']
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'users' },
+        key: { expr: 'lit', value: 'admin' },
+      } as CompiledExpression;
+      const context = createContext({}, {
+        users: {
+          admin: { name: 'Admin User', role: 'admin' },
+          guest: { name: 'Guest User', role: 'guest' },
+        },
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toEqual({ name: 'Admin User', role: 'admin' });
+    });
+
+    // ==================== Index Access with Dynamic Key ====================
+
+    it('should access import data with route query param as key', () => {
+      // Arrange
+      // Equivalent to: examples.codes[query.example]
+      // where examples.codes = { hello: 'console.log("hello")', world: 'console.log("world")' }
+      // and query.example = 'hello'
+      const expr = {
+        expr: 'index',
+        base: { expr: 'import', name: 'examples', path: 'codes' },
+        key: { expr: 'route', source: 'query', name: 'example' },
+      } as CompiledExpression;
+      const context = createFullContext(
+        {},
+        {},
+        { params: {}, query: { example: 'hello' }, path: '/examples' },
+        {
+          examples: {
+            codes: {
+              hello: 'console.log("hello")',
+              world: 'console.log("world")',
+            },
+          },
+        }
+      );
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('console.log("hello")');
+    });
+
+    it('should access object with variable as key', () => {
+      // Arrange
+      // Equivalent to: data[selectedKey]
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'data' },
+        key: { expr: 'var', name: 'selectedKey' },
+      } as CompiledExpression;
+      const context = createContext({}, {
+        data: { a: 1, b: 2, c: 3 },
+        selectedKey: 'b',
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe(2);
+    });
+
+    it('should access object with state value as key', () => {
+      // Arrange
+      // Equivalent to: config[state.currentTheme]
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'config' },
+        key: { expr: 'state', name: 'currentTheme' },
+      } as CompiledExpression;
+      const context = createContext(
+        { currentTheme: { type: 'string', initial: 'dark' } },
+        { config: { light: '#ffffff', dark: '#000000' } }
+      );
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('#000000');
+    });
+
+    // ==================== Undefined/Missing Key Handling ====================
+
+    it('should return undefined when key does not exist in object', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'lit', value: 'nonexistent' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'Alice' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when key expression evaluates to undefined', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'var', name: 'undefinedKey' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'Alice' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when base is null', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'lit', value: null },
+        key: { expr: 'lit', value: 'name' },
+      } as CompiledExpression;
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when base is undefined', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'nonexistent' },
+        key: { expr: 'lit', value: 'name' },
+      } as CompiledExpression;
+      const context = createContext({}, {});
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    // ==================== Array Access ====================
+
+    it('should access array element with numeric string key', () => {
+      // Arrange
+      // Equivalent to: items['1'] (or items[1])
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'items' },
+        key: { expr: 'lit', value: '1' },
+      } as CompiledExpression;
+      const context = createContext({}, { items: ['first', 'second', 'third'] });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('second');
+    });
+
+    it('should access array element with number key', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'items' },
+        key: { expr: 'lit', value: 0 },
+      } as CompiledExpression;
+      const context = createContext({}, { items: ['first', 'second', 'third'] });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('first');
+    });
+
+    it('should return undefined for out-of-bounds array index', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'items' },
+        key: { expr: 'lit', value: 10 },
+      } as CompiledExpression;
+      const context = createContext({}, { items: ['first', 'second'] });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    // ==================== Nested Access on Result ====================
+
+    it('should allow chained index access', () => {
+      // Arrange
+      // Equivalent to: matrix['row1']['col2']
+      const expr = {
+        expr: 'index',
+        base: {
+          expr: 'index',
+          base: { expr: 'var', name: 'matrix' },
+          key: { expr: 'lit', value: 'row1' },
+        },
+        key: { expr: 'lit', value: 'col2' },
+      } as CompiledExpression;
+      const context = createContext({}, {
+        matrix: {
+          row1: { col1: 'a', col2: 'b' },
+          row2: { col1: 'c', col2: 'd' },
+        },
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('b');
+    });
+
+    it('should work with get expression on index result', () => {
+      // Arrange
+      // Equivalent to: users[selectedId].name
+      const expr = {
+        expr: 'get',
+        base: {
+          expr: 'index',
+          base: { expr: 'var', name: 'users' },
+          key: { expr: 'var', name: 'selectedId' },
+        },
+        path: 'name',
+      } as CompiledExpression;
+      const context = createContext({}, {
+        users: {
+          u1: { name: 'Alice', age: 30 },
+          u2: { name: 'Bob', age: 25 },
+        },
+        selectedId: 'u2',
+      });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe('Bob');
+    });
+
+    // ==================== Prototype Pollution Prevention ====================
+
+    it('should block __proto__ as key', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'lit', value: '__proto__' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should block constructor as key', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'lit', value: 'constructor' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+
+    it('should block prototype as key', () => {
+      // Arrange
+      const expr = {
+        expr: 'index',
+        base: { expr: 'var', name: 'obj' },
+        key: { expr: 'lit', value: 'prototype' },
+      } as CompiledExpression;
+      const context = createContext({}, { obj: { name: 'test' } });
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeUndefined();
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

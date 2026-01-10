@@ -254,7 +254,8 @@ export type CompiledExpression =
   | CompiledRouteExpr
   | CompiledImportExpr
   | CompiledDataExpr
-  | CompiledRefExpr;
+  | CompiledRefExpr
+  | CompiledIndexExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -313,6 +314,12 @@ export interface CompiledDataExpr {
   expr: 'data';
   name: string;
   path?: string;
+}
+
+export interface CompiledIndexExpr {
+  expr: 'index';
+  base: CompiledExpression;
+  key: CompiledExpression;
 }
 
 // ==================== Compiled Event Handler ====================
