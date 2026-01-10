@@ -65,10 +65,42 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
 
       let value = ctx.locals[varName];
 
+      // Fallback to safe globals if not found in locals
+      if (value === undefined) {
+        const safeGlobals: Record<string, unknown> = {
+          JSON,
+          Math,
+          Date,
+          Object,
+          Array,
+          String,
+          Number,
+          Boolean,
+          console,
+        };
+        value = safeGlobals[varName];
+      }
+
       // Traverse path
       for (const part of pathParts) {
         if (value == null) break;
         value = (value as Record<string, unknown>)[part];
+      }
+
+      // Bind methods to their parent object
+      if (typeof value === 'function' && pathParts.length > 0) {
+        let parent = ctx.locals[varName];
+        if (parent === undefined) {
+          const safeGlobals: Record<string, unknown> = { JSON, Math, Date, Object, Array, String, Number, Boolean, console };
+          parent = safeGlobals[varName];
+        }
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (parent == null) break;
+          parent = (parent as Record<string, unknown>)[pathParts[i]!];
+        }
+        if (parent != null) {
+          return (value as Function).bind(parent);
+        }
       }
 
       return value;
