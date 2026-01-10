@@ -1,5 +1,21 @@
 # @constela/runtime
 
+## 0.10.0
+
+### Minor Changes
+
+- feat(start): add production runtime bundling with esbuild
+
+  - Bundle @constela/runtime for production builds instead of relying on importmap
+  - Add runtimePath option to wrapHtml() with injection validation
+  - Implement \_\_pathData injection in generateStaticPages for SSG
+  - Skip bundling when no pages to generate
+
+  feat(runtime): add safe globals and method binding to expression evaluator
+
+  - Add safeGlobals (JSON, Math, Date, Object, Array, String, Number, Boolean, console)
+  - Bind methods to their parent object to preserve 'this' context
+
 ## 0.9.2
 
 ### Patch Changes

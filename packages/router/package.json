@@ -1,6 +1,6 @@
 {
   "name": "@constela/router",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Client-side routing for Constela applications",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,7 +25,7 @@
   "dependencies": {},
   "peerDependencies": {
     "@constela/compiler": "^0.7.0",
-    "@constela/runtime": "^0.9.2"
+    "@constela/runtime": "^0.10.0"
   },
   "devDependencies": {
     "@constela/compiler": "workspace:*",
