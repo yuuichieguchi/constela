@@ -8,6 +8,7 @@ import type {
   LayoutProgram,
   ViewNode,
   ActionDefinition,
+  ActionStep,
   StateField,
   ComponentDef,
   Expression,
@@ -16,7 +17,20 @@ import type {
   CompiledProgram,
   CompiledNode,
   CompiledAction,
+  CompiledActionStep,
   CompiledRouteDefinition,
+  CompiledExpression,
+  CompiledSetStep,
+  CompiledUpdateStep,
+  CompiledFetchStep,
+  CompiledStorageStep,
+  CompiledClipboardStep,
+  CompiledNavigateStep,
+  CompiledImportStep,
+  CompiledCallStep,
+  CompiledSubscribeStep,
+  CompiledDisposeStep,
+  CompiledDomStep,
 } from './transform.js';
 import type { LayoutAnalysisContext } from './analyze-layout.js';
 
@@ -54,33 +68,276 @@ function transformState(
   return result;
 }
 
+// ==================== Expression Transformation ====================
+
+/**
+ * Transforms an AST Expression into a CompiledExpression
+ */
+function transformExpression(expr: Expression): CompiledExpression {
+  switch (expr.expr) {
+    case 'lit':
+      return { expr: 'lit', value: expr.value };
+    case 'state':
+      return { expr: 'state', name: expr.name };
+    case 'var': {
+      const varExpr: CompiledExpression = { expr: 'var', name: expr.name };
+      if (expr.path) {
+        (varExpr as { path?: string }).path = expr.path;
+      }
+      return varExpr;
+    }
+    case 'bin':
+      return {
+        expr: 'bin',
+        op: expr.op,
+        left: transformExpression(expr.left),
+        right: transformExpression(expr.right),
+      };
+    case 'not':
+      return {
+        expr: 'not',
+        operand: transformExpression(expr.operand),
+      };
+    case 'cond':
+      return {
+        expr: 'cond',
+        if: transformExpression(expr.if),
+        then: transformExpression(expr.then),
+        else: transformExpression(expr.else),
+      };
+    case 'get':
+      return {
+        expr: 'get',
+        base: transformExpression(expr.base),
+        path: expr.path,
+      };
+    case 'route':
+      return {
+        expr: 'route',
+        name: expr.name,
+        source: expr.source ?? 'param',
+      };
+    case 'import': {
+      const importExpr: CompiledExpression = { expr: 'import', name: expr.name };
+      if (expr.path) {
+        (importExpr as { path?: string }).path = expr.path;
+      }
+      return importExpr;
+    }
+    case 'data': {
+      const dataExpr: CompiledExpression = { expr: 'import', name: expr.name };
+      if (expr.path) {
+        (dataExpr as { path?: string }).path = expr.path;
+      }
+      return dataExpr;
+    }
+    case 'param':
+      // Param expressions should be resolved during composition, return as-is for now
+      return { expr: 'lit', value: null };
+    case 'ref':
+      return { expr: 'ref', name: expr.name };
+    default:
+      return { expr: 'lit', value: null };
+  }
+}
+
+// ==================== Action Step Transformation ====================
+
+/**
+ * Transforms an AST ActionStep into a CompiledActionStep
+ */
+function transformActionStep(step: ActionStep): CompiledActionStep {
+  switch (step.do) {
+    case 'set':
+      return {
+        do: 'set',
+        target: step.target,
+        value: transformExpression(step.value),
+      } as CompiledSetStep;
+
+    case 'update': {
+      const updateStep: CompiledUpdateStep = {
+        do: 'update',
+        target: step.target,
+        operation: step.operation,
+      };
+      if (step.value) {
+        updateStep.value = transformExpression(step.value);
+      }
+      if (step.index) {
+        updateStep.index = transformExpression(step.index);
+      }
+      if (step.deleteCount) {
+        updateStep.deleteCount = transformExpression(step.deleteCount);
+      }
+      return updateStep;
+    }
+
+    case 'fetch': {
+      const fetchStep: CompiledFetchStep = {
+        do: 'fetch',
+        url: transformExpression(step.url),
+      };
+      if (step.method) {
+        fetchStep.method = step.method;
+      }
+      if (step.body) {
+        fetchStep.body = transformExpression(step.body);
+      }
+      if (step.result) {
+        fetchStep.result = step.result;
+      }
+      if (step.onSuccess) {
+        fetchStep.onSuccess = step.onSuccess.map(transformActionStep);
+      }
+      if (step.onError) {
+        fetchStep.onError = step.onError.map(transformActionStep);
+      }
+      return fetchStep;
+    }
+
+    case 'storage': {
+      const storageStep = step as import('@constela/core').StorageStep;
+      const compiledStorageStep: CompiledStorageStep = {
+        do: 'storage',
+        operation: storageStep.operation,
+        key: transformExpression(storageStep.key),
+        storage: storageStep.storage,
+      };
+      if (storageStep.value) {
+        compiledStorageStep.value = transformExpression(storageStep.value);
+      }
+      if (storageStep.result) {
+        compiledStorageStep.result = storageStep.result;
+      }
+      if (storageStep.onSuccess) {
+        compiledStorageStep.onSuccess = storageStep.onSuccess.map(transformActionStep);
+      }
+      if (storageStep.onError) {
+        compiledStorageStep.onError = storageStep.onError.map(transformActionStep);
+      }
+      return compiledStorageStep;
+    }
+
+    case 'clipboard': {
+      const clipboardStep = step as import('@constela/core').ClipboardStep;
+      const compiledClipboardStep: CompiledClipboardStep = {
+        do: 'clipboard',
+        operation: clipboardStep.operation,
+      };
+      if (clipboardStep.value) {
+        compiledClipboardStep.value = transformExpression(clipboardStep.value);
+      }
+      if (clipboardStep.result) {
+        compiledClipboardStep.result = clipboardStep.result;
+      }
+      if (clipboardStep.onSuccess) {
+        compiledClipboardStep.onSuccess = clipboardStep.onSuccess.map(transformActionStep);
+      }
+      if (clipboardStep.onError) {
+        compiledClipboardStep.onError = clipboardStep.onError.map(transformActionStep);
+      }
+      return compiledClipboardStep;
+    }
+
+    case 'navigate': {
+      const navigateStep = step as import('@constela/core').NavigateStep;
+      const compiledNavigateStep: CompiledNavigateStep = {
+        do: 'navigate',
+        url: transformExpression(navigateStep.url),
+      };
+      if (navigateStep.target) {
+        compiledNavigateStep.target = navigateStep.target;
+      }
+      if (navigateStep.replace !== undefined) {
+        compiledNavigateStep.replace = navigateStep.replace;
+      }
+      return compiledNavigateStep;
+    }
+
+    case 'import': {
+      const importStep = step as import('@constela/core').ImportStep;
+      const compiledImportStep: CompiledImportStep = {
+        do: 'import',
+        module: importStep.module,
+        result: importStep.result,
+      };
+      if (importStep.onSuccess) {
+        compiledImportStep.onSuccess = importStep.onSuccess.map(transformActionStep);
+      }
+      if (importStep.onError) {
+        compiledImportStep.onError = importStep.onError.map(transformActionStep);
+      }
+      return compiledImportStep;
+    }
+
+    case 'call': {
+      const callStep = step as import('@constela/core').CallStep;
+      const compiledCallStep: CompiledCallStep = {
+        do: 'call',
+        target: transformExpression(callStep.target),
+      };
+      if (callStep.args) {
+        compiledCallStep.args = callStep.args.map(arg => transformExpression(arg));
+      }
+      if (callStep.result) {
+        compiledCallStep.result = callStep.result;
+      }
+      if (callStep.onSuccess) {
+        compiledCallStep.onSuccess = callStep.onSuccess.map(transformActionStep);
+      }
+      if (callStep.onError) {
+        compiledCallStep.onError = callStep.onError.map(transformActionStep);
+      }
+      return compiledCallStep;
+    }
+
+    case 'subscribe': {
+      const subscribeStep = step as import('@constela/core').SubscribeStep;
+      return {
+        do: 'subscribe',
+        target: transformExpression(subscribeStep.target),
+        event: subscribeStep.event,
+        action: subscribeStep.action,
+      } as CompiledSubscribeStep;
+    }
+
+    case 'dispose': {
+      const disposeStep = step as import('@constela/core').DisposeStep;
+      return {
+        do: 'dispose',
+        target: transformExpression(disposeStep.target),
+      } as CompiledDisposeStep;
+    }
+
+    case 'dom': {
+      const domStep = step as { do: 'dom'; operation: string; selector: Expression; value?: Expression; attribute?: string };
+      return {
+        do: 'dom',
+        operation: domStep.operation,
+        selector: transformExpression(domStep.selector),
+        ...(domStep.value && { value: transformExpression(domStep.value) }),
+        ...(domStep.attribute && { attribute: domStep.attribute }),
+      } as CompiledDomStep;
+    }
+
+    default:
+      // Fallback for unknown action types - return a minimal set step
+      return {
+        do: 'set',
+        target: '_unknown',
+        value: { expr: 'lit', value: null },
+      } as CompiledSetStep;
+  }
+}
+
 // ==================== Actions Transformation ====================
 
 function transformActions(actions?: ActionDefinition[]): CompiledAction[] {
   if (!actions) return [];
   return actions.map(action => ({
     name: action.name,
-    steps: action.steps.map(step => {
-      if (step.do === 'set') {
-        return {
-          do: 'set' as const,
-          target: step.target,
-          value: { expr: 'lit' as const, value: null }, // Simplified for now
-        };
-      }
-      if (step.do === 'update') {
-        return {
-          do: 'update' as const,
-          target: step.target,
-          operation: step.operation,
-        };
-      }
-      // fetch
-      return {
-        do: 'fetch' as const,
-        url: { expr: 'lit' as const, value: '' },
-      };
-    }),
+    steps: action.steps.map(transformActionStep),
   }));
 }
 
@@ -392,6 +649,64 @@ function resolveParamExpressions(
 }
 
 /**
+ * Processes only named slots in a node tree, skipping default slots.
+ * This is used to process named slots within page content that was inserted
+ * into a layout's default slot, without causing infinite recursion.
+ */
+function processNamedSlotsOnly(
+  node: CompiledNode,
+  namedContent: Record<string, CompiledNode>
+): CompiledNode {
+  // Check if this is a slot node
+  if ((node as unknown as { kind: string }).kind === 'slot') {
+    const slotName = (node as unknown as { name?: string }).name;
+    // Only process named slots, leave default slots as-is
+    if (slotName && namedContent[slotName]) {
+      return deepCloneNode(namedContent[slotName]);
+    }
+    // Default slot (no name) - return as-is
+    return node;
+  }
+
+  // Handle element nodes with children
+  if (node.kind === 'element') {
+    const children = (node as { children?: CompiledNode[] }).children;
+    if (children && children.length > 0) {
+      const newChildren = children.map(child => processNamedSlotsOnly(child, namedContent));
+      return {
+        ...node,
+        children: newChildren,
+      };
+    }
+    return node;
+  }
+
+  // Handle if nodes
+  if (node.kind === 'if') {
+    const ifNode = node as { then: CompiledNode; else?: CompiledNode };
+    const result = {
+      ...node,
+      then: processNamedSlotsOnly(ifNode.then, namedContent),
+    };
+    if (ifNode.else) {
+      (result as { else?: CompiledNode }).else = processNamedSlotsOnly(ifNode.else, namedContent);
+    }
+    return result as CompiledNode;
+  }
+
+  // Handle each nodes
+  if (node.kind === 'each') {
+    const eachNode = node as { body: CompiledNode };
+    return {
+      ...node,
+      body: processNamedSlotsOnly(eachNode.body, namedContent),
+    } as CompiledNode;
+  }
+
+  return node;
+}
+
+/**
  * Replaces slot nodes with content in a compiled node tree
  */
 function replaceSlots(
@@ -405,7 +720,13 @@ function replaceSlots(
     if (slotName && namedContent?.[slotName]) {
       return deepCloneNode(namedContent[slotName]);
     }
-    return deepCloneNode(defaultContent);
+    // Clone the default content
+    const clonedDefault = deepCloneNode(defaultContent);
+    // If there are named slots, process them in the cloned content too
+    if (namedContent && Object.keys(namedContent).length > 0) {
+      return processNamedSlotsOnly(clonedDefault, namedContent);
+    }
+    return clonedDefault;
   }
 
   // Handle element nodes with children
@@ -447,6 +768,38 @@ function replaceSlots(
 }
 
 /**
+ * Extracts MDX content from importData as named slots.
+ * Looks for arrays in importData that contain items with a `content` property (ViewNode).
+ *
+ * @param importData - The page's importData
+ * @returns Record with 'mdx-content' slot if found, undefined otherwise
+ */
+function extractMdxSlotsFromImportData(
+  importData: Record<string, unknown> | undefined
+): Record<string, CompiledNode> | undefined {
+  if (!importData) return undefined;
+
+  for (const [, dataSource] of Object.entries(importData)) {
+    if (!Array.isArray(dataSource)) continue;
+
+    // Find the first item with a content property
+    for (const item of dataSource) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'content' in item &&
+        typeof (item as { content: unknown }).content === 'object'
+      ) {
+        const content = (item as { content: ViewNode }).content;
+        return { 'mdx-content': content as unknown as CompiledNode };
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Composes a layout with a page, inserting page content into slots
  */
 export function composeLayoutWithPage(
@@ -464,11 +817,16 @@ export function composeLayoutWithPage(
   layoutView = resolveParamExpressions(layoutView, resolvedParams);
 
   // Convert ViewNode slots to CompiledNode if provided
-  const namedContent: Record<string, CompiledNode> | undefined = slots
-    ? Object.fromEntries(
-        Object.entries(slots).map(([name, node]) => [name, node as unknown as CompiledNode])
-      )
-    : undefined;
+  // If no slots provided, try to extract MDX content from page.importData
+  let namedContent: Record<string, CompiledNode> | undefined;
+  if (slots) {
+    namedContent = Object.fromEntries(
+      Object.entries(slots).map(([name, node]) => [name, node as unknown as CompiledNode])
+    );
+  } else {
+    // Auto-extract MDX content from importData
+    namedContent = extractMdxSlotsFromImportData(page.importData);
+  }
 
   // Replace slots with page content
   const composedView = replaceSlots(layoutView, page.view, namedContent);

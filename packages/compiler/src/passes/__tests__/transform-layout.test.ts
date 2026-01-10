@@ -418,6 +418,71 @@ describe('composeLayoutWithPage', () => {
       // Unfilled named slots should be removed or rendered as empty element
       expect(children.length).toBeLessThanOrEqual(2);
     });
+
+    it('should process named slots within the page view (default content)', () => {
+      /**
+       * This test covers the case where:
+       * - Layout has a default slot for page content
+       * - Page view contains a named slot for MDX content
+       * - The named slot should be filled with provided content
+       *
+       * Current bug: The page view is inserted as-is, and named slots
+       * inside the page view remain unprocessed.
+       */
+      // Arrange
+      const layout = createLayout({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          { kind: 'element', tag: 'header', children: [] },
+          { kind: 'slot' }, // Default slot for page content
+          { kind: 'element', tag: 'footer', children: [] },
+        ],
+      } as ViewNode);
+
+      const page = createPage({
+        kind: 'element',
+        tag: 'article',
+        children: [
+          { kind: 'element', tag: 'h1', children: [{ kind: 'text', value: { expr: 'lit', value: 'Page Title' } }] },
+          { kind: 'slot', name: 'mdx-content' }, // Named slot for MDX content
+        ],
+      } as ViewNode);
+
+      const slots = {
+        'mdx-content': {
+          kind: 'element',
+          tag: 'div',
+          props: { class: { expr: 'lit', value: 'prose' } },
+          children: [{ kind: 'text', value: { expr: 'lit', value: 'This is MDX content' } }],
+        } as ViewNode,
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, undefined, slots);
+
+      // Assert
+      // The composed view should have:
+      // - header
+      // - article containing:
+      //   - h1 with "Page Title"
+      //   - div.prose with "This is MDX content" (replaced mdx-content slot)
+      // - footer
+
+      const viewChildren = (result.view as { children: ViewNode[] }).children;
+      expect(viewChildren).toHaveLength(3);
+      expect((viewChildren[0] as { tag: string }).tag).toBe('header');
+      expect((viewChildren[2] as { tag: string }).tag).toBe('footer');
+
+      const article = viewChildren[1] as { tag: string; children: ViewNode[] };
+      expect(article.tag).toBe('article');
+      expect(article.children).toHaveLength(2);
+
+      // The named slot should have been replaced
+      const mdxContent = article.children[1] as { tag: string; props?: { class?: { value: string } } };
+      expect(mdxContent.tag).toBe('div');
+      expect(mdxContent.props?.class?.value).toBe('prose');
+    });
   });
 
   // ==================== State and Action Merging ====================

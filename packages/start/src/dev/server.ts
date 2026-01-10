@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs';
 import { join, isAbsolute, dirname, basename } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
+import type { ViewNode } from '@constela/core';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
@@ -162,6 +163,45 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Extract MDX content slot from loaded data.
+ *
+ * Looks for a matching item in the data source array based on slug parameter,
+ * and returns the content as a slot for layout composition.
+ *
+ * @param loadedData - The loaded data from the page
+ * @param dataSourceName - The name of the data source (e.g., 'docs')
+ * @param routeParams - Route parameters containing the slug
+ * @returns Record with 'mdx-content' slot if found, undefined otherwise
+ */
+export function extractMdxContentSlot(
+  loadedData: Record<string, unknown>,
+  dataSourceName: string,
+  routeParams: Record<string, string>
+): Record<string, ViewNode> | undefined {
+  const dataSource = loadedData[dataSourceName];
+  if (!Array.isArray(dataSource)) {
+    return undefined;
+  }
+
+  // Default to 'index' for empty slug (e.g., /docs -> index.mdx)
+  const slug = routeParams['slug'] || 'index';
+
+  const item = dataSource.find(
+    (entry: unknown) =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      'slug' in entry &&
+      (entry as { slug: unknown }).slug === slug
+  );
+
+  if (!item || typeof item !== 'object' || !('content' in item)) {
+    return undefined;
+  }
+
+  return { 'mdx-content': (item as { content: ViewNode }).content };
+}
+
 // ==================== DevServer Implementation ====================
 
 /**
@@ -310,10 +350,13 @@ export async function createDevServer(
                     // composeLayoutWithPage handles both array and Record formats for actions
                     // Pass layoutParams from page route to resolve param expressions in layout
                     const layoutParams = program.route?.layoutParams;
+                    // Extract MDX content slot - look for 'docs' data source
+                    const slots = extractMdxContentSlot(pageInfo.loadedData, 'docs', match.params);
                     composedProgram = composeLayoutWithPage(
                       compiledLayout as unknown as import('@constela/compiler').CompiledProgram,
                       program,
-                      layoutParams
+                      layoutParams,
+                      slots
                     );
                   }
                 }
@@ -340,7 +383,17 @@ export async function createDevServer(
               // Get initial theme from composed program state
               const themeState = composedProgram.state?.['theme'];
               const initialTheme = themeState?.initial as 'dark' | 'light' | undefined;
-              const html = wrapHtml(content, hydrationScript, cssHead, initialTheme ? { theme: initialTheme } : undefined);
+
+              // Import map for resolving bare module specifiers in browser
+              const importMap = {
+                '@constela/runtime': '/node_modules/@constela/runtime/dist/index.js',
+                'marked': '/node_modules/marked/lib/marked.esm.js',
+              };
+
+              const html = wrapHtml(content, hydrationScript, cssHead, {
+                ...(initialTheme ? { theme: initialTheme } : {}),
+                importMap,
+              });
 
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
               res.end(html);

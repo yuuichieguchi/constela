@@ -16,6 +16,8 @@ export interface SSRContext {
 
 export interface WrapHtmlOptions {
   theme?: 'dark' | 'light';
+  /** Import map entries for resolving bare module specifiers */
+  importMap?: Record<string, string>;
 }
 
 export interface WidgetConfig {
@@ -174,10 +176,7 @@ export function generateHydrationScript(
 const container_${jsId} = document.getElementById('${escapedId}');
 if (container_${jsId}) {
   container_${jsId}.innerHTML = '';
-  createApp({
-    program: widgetProgram_${jsId},
-    container: container_${jsId}
-  });
+  createApp(widgetProgram_${jsId}, container_${jsId});
 }`;
         })
         .join('\n')
@@ -219,12 +218,20 @@ export function wrapHtml(
   options?: WrapHtmlOptions
 ): string {
   const htmlClass = options?.theme === 'dark' ? ' class="dark"' : '';
+
+  // Generate import map if provided
+  let importMapScript = '';
+  if (options?.importMap && Object.keys(options.importMap).length > 0) {
+    const importMapJson = JSON.stringify({ imports: options.importMap }, null, 2);
+    importMapScript = `<script type="importmap">\n${importMapJson}\n</script>\n`;
+  }
+
   return `<!DOCTYPE html>
 <html${htmlClass}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${head ?? ''}
+${importMapScript}${head ?? ''}
 </head>
 <body>
 <div id="app">${content}</div>
