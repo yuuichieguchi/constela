@@ -117,7 +117,9 @@ export interface BuildOptions {
   routesDir?: string | undefined;
   publicDir?: string | undefined;
   layoutsDir?: string | undefined;
-  /** CSS entry point(s) for Vite middleware processing */
+  /** CSS entry point(s) for bundling */
   css?: string | string[] | undefined;
+  /** Content paths for Tailwind CSS class scanning (enables PostCSS processing) */
+  cssContent?: string[] | undefined;
   target?: 'node' | 'edge' | undefined;
 }

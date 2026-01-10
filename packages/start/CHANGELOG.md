@@ -1,5 +1,17 @@
 # @constela/start
 
+## 1.2.9
+
+### Patch Changes
+
+- fix(build): add PostCSS/Tailwind CSS v4 support to bundleCSS()
+
+  - Add `content` option to `BundleCSSOptions` for Tailwind class scanning
+  - Process CSS through `@tailwindcss/postcss` when `content` is provided
+  - Add `cssContent` option to `BuildOptions` for build configuration
+  - Expand `@tailwind utilities` and `@import "tailwindcss"` directives
+  - Maintain backward compatibility when `content` is not provided
+
 ## 1.2.8
 
 ### Patch Changes

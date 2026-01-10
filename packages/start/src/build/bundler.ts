@@ -7,8 +7,8 @@
 
 import * as esbuild from 'esbuild';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
-import { join, dirname, isAbsolute } from 'node:path';
+import { mkdir, readFile } from 'node:fs/promises';
+import { join, dirname, isAbsolute, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Get the directory of this module for resolving workspace packages
@@ -83,6 +83,8 @@ export interface BundleCSSOptions {
   css: string | string[];
   /** Whether to minify the output (default: true) */
   minify?: boolean;
+  /** Content paths for Tailwind CSS class scanning (enables PostCSS processing) */
+  content?: string[];
 }
 
 /**
@@ -90,6 +92,10 @@ export interface BundleCSSOptions {
  *
  * Creates a bundled CSS file at {outDir}/_constela/styles.css that combines
  * all input CSS files.
+ *
+ * When the `content` option is provided, PostCSS processing with Tailwind CSS v4
+ * is enabled. The content paths are used to scan for class usage and generate
+ * only the required utility classes.
  *
  * @param options - Bundle options
  * @returns The relative path for HTML link reference (always "/_constela/styles.css")
@@ -112,40 +118,130 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
     }
   }
 
-  // Bundle with esbuild
-  // For multiple CSS files, create a virtual entry that imports all of them
-  try {
-    if (resolvedCssFiles.length === 1) {
-      // Single file: use entryPoints directly
-      await esbuild.build({
-        entryPoints: resolvedCssFiles,
-        bundle: true,
-        outfile: outFile,
-        minify: options.minify ?? true,
-        loader: { '.css': 'css' },
-        conditions: ['style'],
-      });
-    } else {
-      // Multiple files: create a virtual entry that imports all CSS files
-      const virtualEntry = resolvedCssFiles
-        .map((f) => `@import "${f}";`)
+  // PostCSS processing when content option is provided
+  if (options.content !== undefined) {
+    try {
+      // Read CSS content
+      const firstCssFile = resolvedCssFiles[0];
+      if (!firstCssFile) {
+        throw new Error('No CSS files provided');
+      }
+
+      let cssContent: string;
+      if (resolvedCssFiles.length === 1) {
+        cssContent = await readFile(firstCssFile, 'utf-8');
+      } else {
+        cssContent = resolvedCssFiles.map((f) => `@import "${f}";`).join('\n');
+      }
+
+      // Validate content files exist (at least one match required for non-empty content)
+      if (options.content.length > 0) {
+        const fg = (await import('fast-glob')).default;
+        const resolvedContentPaths = options.content.map((p) =>
+          isAbsolute(p) ? p : join(process.cwd(), p)
+        );
+        const matchedFiles = await fg(resolvedContentPaths, { onlyFiles: true });
+        if (matchedFiles.length === 0) {
+          throw new Error(
+            `No content files matched the provided patterns: ${options.content.join(', ')}`
+          );
+        }
+      }
+
+      // Prepend @source directives for Tailwind CSS v4 content scanning
+      // These directives tell Tailwind where to scan for class usage
+      const sourceDir = dirname(firstCssFile);
+      const sourceDirectives = options.content
+        .map((contentPath) => {
+          // Convert to relative path from CSS file directory
+          const absolutePath = isAbsolute(contentPath)
+            ? contentPath
+            : join(process.cwd(), contentPath);
+          const relativePath = relative(sourceDir, absolutePath);
+          return `@source "${relativePath}";`;
+        })
         .join('\n');
 
+      // Combine @source directives with original CSS content
+      const processedCssInput = sourceDirectives + '\n' + cssContent;
+
+      // Process with PostCSS + Tailwind CSS v4
+      const postcss = (await import('postcss')).default;
+      const tailwindPostcss = (await import('@tailwindcss/postcss')).default;
+
+      // Determine the base directory for package resolution
+      // Use CSS file directory if it's within the project, otherwise use process.cwd()
+      const projectRoot = process.cwd();
+      const isWithinProject = firstCssFile.startsWith(projectRoot);
+      const baseDir = isWithinProject ? sourceDir : projectRoot;
+
+      // Process CSS with Tailwind PostCSS plugin
+      // - 'base' determines where to resolve packages and relative paths
+      // - 'from' is used for source maps and error reporting
+      const result = await postcss([
+        tailwindPostcss({
+          base: baseDir,
+          optimize: options.minify ?? true,
+        }),
+      ]).process(processedCssInput, {
+        // Use a path within project root for package resolution
+        // This ensures tailwindcss can be resolved from node_modules
+        from: isWithinProject ? firstCssFile : join(projectRoot, 'styles.css'),
+      });
+
+      // Write processed CSS with esbuild for final bundling and @import resolution
       await esbuild.build({
         stdin: {
-          contents: virtualEntry,
+          contents: result.css,
           loader: 'css',
-          resolveDir: process.cwd(),
+          resolveDir: sourceDir,
         },
         bundle: true,
         outfile: outFile,
         minify: options.minify ?? true,
         conditions: ['style'],
       });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to process CSS with PostCSS/Tailwind: ${message}`);
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to bundle CSS to ${outFile}: ${message}`);
+  } else {
+    // Existing esbuild-only path (backward compatibility)
+    // Bundle with esbuild
+    // For multiple CSS files, create a virtual entry that imports all of them
+    try {
+      if (resolvedCssFiles.length === 1) {
+        // Single file: use entryPoints directly
+        await esbuild.build({
+          entryPoints: resolvedCssFiles,
+          bundle: true,
+          outfile: outFile,
+          minify: options.minify ?? true,
+          loader: { '.css': 'css' },
+          conditions: ['style'],
+        });
+      } else {
+        // Multiple files: create a virtual entry that imports all CSS files
+        const virtualEntry = resolvedCssFiles
+          .map((f) => `@import "${f}";`)
+          .join('\n');
+
+        await esbuild.build({
+          stdin: {
+            contents: virtualEntry,
+            loader: 'css',
+            resolveDir: process.cwd(),
+          },
+          bundle: true,
+          outfile: outFile,
+          minify: options.minify ?? true,
+          conditions: ['style'],
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to bundle CSS to ${outFile}: ${message}`);
+    }
   }
 
   // Return relative path for HTML reference

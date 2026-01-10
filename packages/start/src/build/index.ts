@@ -627,6 +627,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
     cssPath = await bundleCSS({
       outDir,
       css: options.css,
+      ...(options.cssContent ? { content: options.cssContent } : {}),
     });
   }
 

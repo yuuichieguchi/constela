@@ -1,6 +1,6 @@
 {
   "name": "@constela/start",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "description": "Meta-framework for Constela applications",
   "type": "module",
   "main": "./dist/index.js",
@@ -52,7 +52,10 @@
     "remark-mdx": "^3.0.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "postcss": "^8.5.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
     "@types/mdast": "^4.0.4",
