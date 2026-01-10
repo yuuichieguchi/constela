@@ -18,6 +18,24 @@ import { DataLoader } from './data/loader.js';
 // ==================== Type Definitions ====================
 
 /**
+ * Widget definition in JSON page
+ */
+export interface WidgetDefinition {
+  /** The DOM element ID where the widget should be mounted */
+  id: string;
+  /** Path to the widget JSON file (relative to the page file) */
+  src: string;
+}
+
+/**
+ * Compiled widget with ID and program
+ */
+export interface CompiledWidget {
+  id: string;
+  program: CompiledProgram;
+}
+
+/**
  * JSON Page definition structure
  */
 export interface JsonPage {
@@ -35,6 +53,7 @@ export interface JsonPage {
   actions?: unknown[] | Record<string, unknown> | undefined;
   view: ViewNode;
   components?: Record<string, unknown> | undefined;
+  widgets?: WidgetDefinition[] | undefined;
 }
 
 /**
@@ -45,6 +64,7 @@ export interface PageInfo {
   page: JsonPage;
   resolvedImports: Record<string, unknown>;
   loadedData: Record<string, unknown>;
+  widgets: CompiledWidget[];
 }
 
 /**
@@ -127,6 +147,74 @@ function evaluateParamExpression(expr: Expression, item: unknown): string {
 // ==================== Core Functions ====================
 
 /**
+ * Compile a widget JSON to CompiledProgram
+ */
+function compileWidget(widgetJson: { version?: string; state?: Record<string, unknown>; actions?: unknown[] | Record<string, unknown>; view: ViewNode }): CompiledProgram {
+  return {
+    version: widgetJson.version || '1.0',
+    state: convertState(widgetJson.state),
+    actions: convertActions(widgetJson.actions),
+    view: convertViewNode(widgetJson.view),
+  };
+}
+
+/**
+ * Load and compile widgets for a page
+ */
+async function loadWidgets(
+  pageDir: string,
+  widgets: WidgetDefinition[] | undefined,
+  baseDir: string
+): Promise<CompiledWidget[]> {
+  if (!widgets || widgets.length === 0) {
+    return [];
+  }
+
+  const resolvedBase = resolve(baseDir);
+  const compiledWidgets: CompiledWidget[] = [];
+
+  for (const widget of widgets) {
+    const widgetPath = join(pageDir, widget.src);
+    const resolvedWidgetPath = resolve(widgetPath);
+
+    // Path traversal protection
+    if (!resolvedWidgetPath.startsWith(resolvedBase + '/') && resolvedWidgetPath !== resolvedBase) {
+      throw new Error(`Invalid widget path "${widget.id}": path traversal detected`);
+    }
+
+    // Check if widget file exists
+    if (!existsSync(widgetPath)) {
+      throw new Error(`Widget file not found: ${resolvedWidgetPath}`);
+    }
+
+    // Read and parse widget JSON
+    let widgetContent: string;
+    try {
+      widgetContent = readFileSync(widgetPath, 'utf-8');
+    } catch {
+      throw new Error(`Failed to read widget file "${widget.id}": ${resolvedWidgetPath}`);
+    }
+
+    let widgetJson: { version?: string; state?: Record<string, unknown>; actions?: unknown[] | Record<string, unknown>; view: ViewNode };
+    try {
+      widgetJson = JSON.parse(widgetContent);
+    } catch {
+      throw new Error(`Invalid JSON in widget file "${widget.id}": ${resolvedWidgetPath}`);
+    }
+
+    // Compile the widget
+    const program = compileWidget(widgetJson);
+
+    compiledWidgets.push({
+      id: widget.id,
+      program,
+    });
+  }
+
+  return compiledWidgets;
+}
+
+/**
  * Load a JSON page file and return page info with resolved imports and data
  */
 export async function loadJsonPage(
@@ -181,11 +269,15 @@ export async function loadJsonPage(
   // Load data sources
   const loadedData = await loadPageData(baseDir, page.data, { imports: resolvedImports });
 
+  // Load and compile widgets
+  const widgets = await loadWidgets(pageDir, page.widgets, baseDir);
+
   return {
     filePath,
     page,
     resolvedImports,
     loadedData,
+    widgets,
   };
 }
 

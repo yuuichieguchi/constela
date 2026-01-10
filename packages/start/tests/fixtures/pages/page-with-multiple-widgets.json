@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/with-multiple-widgets"
+  },
+  "state": {},
+  "actions": [],
+  "widgets": [
+    {
+      "id": "counter-widget",
+      "src": "../widgets/counter.json"
+    },
+    {
+      "id": "timer-widget",
+      "src": "../widgets/timer.json"
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with multiple widgets" } },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "id": { "expr": "lit", "value": "counter-widget" }
+        },
+        "children": []
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "id": { "expr": "lit", "value": "timer-widget" }
+        },
+        "children": []
+      }
+    ]
+  }
+}

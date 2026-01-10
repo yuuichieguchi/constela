@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "state": {
+    "seconds": { "type": "number", "initial": 0 },
+    "running": { "type": "boolean", "initial": false }
+  },
+  "actions": [
+    {
+      "name": "start",
+      "steps": [
+        { "do": "set", "target": "running", "value": { "expr": "lit", "value": true } }
+      ]
+    },
+    {
+      "name": "stop",
+      "steps": [
+        { "do": "set", "target": "running", "value": { "expr": "lit", "value": false } }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": { "expr": "lit", "value": "timer-widget" }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "span",
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "seconds" } }
+        ]
+      }
+    ]
+  }
+}

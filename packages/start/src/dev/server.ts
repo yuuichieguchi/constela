@@ -5,8 +5,8 @@ import type { AddressInfo } from 'node:net';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
-import { JsonPageLoader } from '../json-page-loader.js';
-import { renderPage, wrapHtml, generateHydrationScript } from '../runtime/entry-server.js';
+import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
+import { renderPage, wrapHtml, generateHydrationScript, type WidgetConfig } from '../runtime/entry-server.js';
 import { scanRoutes } from '../router/file-router.js';
 import { LayoutResolver } from '../layout/resolver.js';
 import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
@@ -292,13 +292,15 @@ export async function createDevServer(
                 ? match.route.file.slice(projectRoot.length + 1)
                 : match.route.file;
 
-              // Compile the page with params
-              const program = await pageLoader.compile(relativePath, {
-                params: match.params,
-              });
+              // Load page info with widgets
+              const pageInfo = await pageLoader.loadPage(relativePath);
+              const program = await convertToCompiledProgram(pageInfo);
 
               // Compose with layout if page specifies one and layoutResolver is available
               let composedProgram = program;
+
+              // Get widgets from pageInfo
+              const widgets: WidgetConfig[] = pageInfo.widgets.map(w => ({ id: w.id, program: w.program }));
               if (program.route?.layout && layoutResolver) {
                 const layoutProgram = await layoutResolver.getLayout(program.route.layout);
                 if (layoutProgram) {
@@ -320,7 +322,7 @@ export async function createDevServer(
 
               // Render the page
               const content = await renderPage(composedProgram, ssrContext);
-              const hydrationScript = generateHydrationScript(composedProgram);
+              const hydrationScript = generateHydrationScript(composedProgram, widgets);
 
               // Generate CSS link tags if css option is provided
               const cssHead = css

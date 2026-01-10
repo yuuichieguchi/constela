@@ -18,6 +18,13 @@ export interface WrapHtmlOptions {
   theme?: 'dark' | 'light';
 }
 
+export interface WidgetConfig {
+  /** The DOM element ID where the widget should be mounted */
+  id: string;
+  /** The compiled program for the widget */
+  program: CompiledProgram;
+}
+
 // ==================== Render Page ====================
 
 /**
@@ -42,6 +49,21 @@ export async function renderPage(
 }
 
 // ==================== Hydration Script Generation ====================
+
+/**
+ * Escapes a string for safe embedding in JavaScript string literals.
+ * Prevents XSS attacks by escaping characters that could break out of string context.
+ *
+ * @param str - The string to escape
+ * @returns Escaped string safe for JavaScript string literal embedding
+ */
+function escapeJsString(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+}
 
 /**
  * Escapes a JSON string for safe embedding in a script tag.
@@ -81,27 +103,88 @@ function serializeProgram(program: CompiledProgram): string {
 }
 
 /**
+ * Converts a widget ID to a valid JavaScript identifier.
+ * Replaces all non-alphanumeric characters with underscores and
+ * prefixes with underscore if the result starts with a digit.
+ *
+ * @param id - The widget container element ID
+ * @returns Valid JavaScript identifier
+ */
+function toJsIdentifier(id: string): string {
+  // Replace all non-alphanumeric characters with underscore
+  // Prefix with underscore if starts with digit
+  let result = id.replace(/[^a-zA-Z0-9]/g, '_');
+  if (/^[0-9]/.test(result)) {
+    result = '_' + result;
+  }
+  return result;
+}
+
+/**
  * Generates a hydration script for client-side initialization.
  *
  * The generated script:
  * - Imports hydrateApp from @constela/runtime
  * - Serializes the program data
  * - Calls hydrateApp with the program and container element
+ * - Optionally mounts widgets using createApp
  *
  * @param program - The compiled program to hydrate
+ * @param widgets - Optional array of widget configurations to mount after hydration
  * @returns JavaScript module code as string
  */
-export function generateHydrationScript(program: CompiledProgram): string {
+export function generateHydrationScript(
+  program: CompiledProgram,
+  widgets?: WidgetConfig[]
+): string {
   const serializedProgram = escapeJsonForScript(serializeProgram(program));
+  const hasWidgets = widgets && widgets.length > 0;
 
-  return `import { hydrateApp } from '@constela/runtime';
+  // Build import statement
+  const imports = hasWidgets
+    ? `import { hydrateApp, createApp } from '@constela/runtime';`
+    : `import { hydrateApp } from '@constela/runtime';`;
+
+  // Build widget program declarations
+  const widgetDeclarations = hasWidgets
+    ? widgets
+        .map((widget) => {
+          const jsId = toJsIdentifier(widget.id);
+          const serializedWidget = escapeJsonForScript(
+            serializeProgram(widget.program)
+          );
+          return `const widgetProgram_${jsId} = ${serializedWidget};`;
+        })
+        .join('\n')
+    : '';
+
+  // Build widget mounting code
+  const widgetMounting = hasWidgets
+    ? widgets
+        .map((widget) => {
+          const jsId = toJsIdentifier(widget.id);
+          const escapedId = escapeJsString(widget.id);
+          return `
+const container_${jsId} = document.getElementById('${escapedId}');
+if (container_${jsId}) {
+  container_${jsId}.innerHTML = '';
+  createApp({
+    program: widgetProgram_${jsId},
+    container: container_${jsId}
+  });
+}`;
+        })
+        .join('\n')
+    : '';
+
+  return `${imports}
 
 const program = ${serializedProgram};
-
+${widgetDeclarations ? '\n' + widgetDeclarations : ''}
 hydrateApp({
   program,
   container: document.getElementById('app')
-});`;
+});${widgetMounting}`;
 }
 
 // ==================== HTML Document Wrapper ====================

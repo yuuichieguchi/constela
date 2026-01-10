@@ -603,6 +603,273 @@ describe('createDevServer', () => {
   });
 });
 
+// ==================== Widget Mounting Tests ====================
+
+describe('generateHydrationScript with widgets', () => {
+  // ==================== Page Without Widgets ====================
+
+  describe('page without widgets', () => {
+    it('should generate hydration script without widget code when no widgets provided', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+
+      // Act
+      const result = generateHydrationScript(simpleProgram);
+
+      // Assert
+      expect(result).toContain('hydrateApp');
+      expect(result).not.toContain('createApp');
+      expect(result).not.toContain('widgetProgram_');
+    });
+
+    it('should generate hydration script without widget code when empty widgets array provided', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+
+      // Act
+      const result = generateHydrationScript(simpleProgram, []);
+
+      // Assert
+      expect(result).toContain('hydrateApp');
+      expect(result).not.toContain('createApp');
+      expect(result).not.toContain('widgetProgram_');
+    });
+  });
+
+  // ==================== Page With Widgets ====================
+
+  describe('page with widgets', () => {
+    it('should import createApp when widgets are provided', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+      const widgetProgram: CompiledProgram = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: {},
+        view: { kind: 'text', value: { expr: 'lit', value: 'Widget' } },
+      };
+      const widgets = [{ id: 'counter-widget', program: widgetProgram }];
+
+      // Act
+      const result = generateHydrationScript(simpleProgram, widgets);
+
+      // Assert
+      expect(result).toContain('createApp');
+      expect(result).toContain("import { hydrateApp, createApp }");
+    });
+
+    it('should include widget program declarations', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+      const widgetProgram: CompiledProgram = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: {},
+        view: { kind: 'text', value: { expr: 'lit', value: 'Widget' } },
+      };
+      const widgets = [{ id: 'counter-widget', program: widgetProgram }];
+
+      // Act
+      const result = generateHydrationScript(simpleProgram, widgets);
+
+      // Assert
+      expect(result).toContain('widgetProgram_counter_widget');
+    });
+
+    it('should include widget mounting code with correct container ID', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+      const widgetProgram: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: { kind: 'text', value: { expr: 'lit', value: 'Widget' } },
+      };
+      const widgets = [{ id: 'my-widget-container', program: widgetProgram }];
+
+      // Act
+      const result = generateHydrationScript(simpleProgram, widgets);
+
+      // Assert
+      expect(result).toContain("document.getElementById('my-widget-container')");
+      expect(result).toContain('createApp({');
+    });
+
+    it('should handle multiple widgets', async () => {
+      // Arrange
+      const { generateHydrationScript } = await import(
+        '../../src/runtime/entry-server.js'
+      );
+      const widget1: CompiledProgram = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: {},
+        view: { kind: 'text', value: { expr: 'lit', value: 'Counter' } },
+      };
+      const widget2: CompiledProgram = {
+        version: '1.0',
+        state: { time: { type: 'number', initial: 0 } },
+        actions: {},
+        view: { kind: 'text', value: { expr: 'lit', value: 'Timer' } },
+      };
+      const widgets = [
+        { id: 'counter-widget', program: widget1 },
+        { id: 'timer-widget', program: widget2 },
+      ];
+
+      // Act
+      const result = generateHydrationScript(simpleProgram, widgets);
+
+      // Assert
+      expect(result).toContain('widgetProgram_counter_widget');
+      expect(result).toContain('widgetProgram_timer_widget');
+      expect(result).toContain("document.getElementById('counter-widget')");
+      expect(result).toContain("document.getElementById('timer-widget')");
+    });
+  });
+});
+
+// ==================== Dev Server Widget Mounting Integration Tests ====================
+
+describe('Dev Server Widget Mounting', () => {
+  let server: Awaited<ReturnType<typeof import('../../src/dev/server.js').createDevServer>> | null = null;
+
+  afterEach(async () => {
+    if (server) {
+      await server.close();
+      server = null;
+    }
+  });
+
+  // ==================== Page Without Widgets ====================
+
+  describe('page without widgets', () => {
+    it('should serve page without widget mounting code', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-without-widgets.json -> route: /page-without-widgets
+      const response = await fetch(`http://localhost:${server.port}/page-without-widgets`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(html).toContain('hydrateApp');
+      expect(html).not.toContain('createApp');
+      expect(html).not.toContain('widgetProgram_');
+    });
+  });
+
+  // ==================== Page With Widgets ====================
+
+  describe('page with widgets', () => {
+    it('should serve page with widget mounting code when page has widgets', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-with-widget.json -> route: /page-with-widget
+      const response = await fetch(`http://localhost:${server.port}/page-with-widget`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(html).toContain('createApp');
+      expect(html).toContain('widgetProgram_counter_widget');
+      expect(html).toContain("document.getElementById('counter-widget')");
+    });
+
+    it('should include widget program data in hydration script', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-with-widget.json -> route: /page-with-widget
+      const response = await fetch(`http://localhost:${server.port}/page-with-widget`);
+      const html = await response.text();
+
+      // Assert
+      // The widget program should contain the counter state
+      expect(html).toContain('"count"');
+      expect(html).toContain('"initial":0');
+    });
+
+    it('should handle page with multiple widgets', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-with-multiple-widgets.json -> route: /page-with-multiple-widgets
+      const response = await fetch(`http://localhost:${server.port}/page-with-multiple-widgets`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(html).toContain('widgetProgram_counter_widget');
+      expect(html).toContain('widgetProgram_timer_widget');
+    });
+  });
+
+  // ==================== Error Handling ====================
+
+  describe('error handling', () => {
+    it('should return 500 when widget file is missing', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-with-missing-widget.json -> route: /page-with-missing-widget
+      const response = await fetch(`http://localhost:${server.port}/page-with-missing-widget`);
+
+      // Assert
+      expect(response.status).toBe(500);
+      const html = await response.text();
+      expect(html).toContain('Widget file not found');
+    });
+  });
+});
+
 // ==================== Integration Tests ====================
 
 describe('Dev Server Integration', () => {

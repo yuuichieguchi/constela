@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/with-missing-widget"
+  },
+  "state": {},
+  "actions": [],
+  "widgets": [
+    {
+      "id": "nonexistent-widget",
+      "src": "../widgets/nonexistent.json"
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with missing widget" } }
+    ]
+  }
+}

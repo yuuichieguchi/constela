@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/with-widget"
+  },
+  "state": {},
+  "actions": [],
+  "widgets": [
+    {
+      "id": "counter-widget",
+      "src": "../widgets/counter.json"
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with widget" } },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "id": { "expr": "lit", "value": "counter-widget" }
+        },
+        "children": []
+      }
+    ]
+  }
+}

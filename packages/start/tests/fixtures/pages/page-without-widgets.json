@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/no-widgets"
+  },
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page without widgets" } }
+    ]
+  }
+}
