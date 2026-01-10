@@ -385,7 +385,7 @@ async function renderPageToHtml(
   };
 
   const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
-  return wrapHtml(content, hydrationScript, undefined, { runtimePath });
+  return wrapHtml(content, hydrationScript, undefined, runtimePath ? { runtimePath } : undefined);
 }
 
 /**
