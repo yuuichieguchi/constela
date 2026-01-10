@@ -129,6 +129,15 @@ function toJsIdentifier(id: string): string {
 }
 
 /**
+ * Route context for hydration
+ */
+export interface HydrationRouteContext {
+  params: Record<string, string>;
+  query: Record<string, string>;
+  path: string;
+}
+
+/**
  * Generates a hydration script for client-side initialization.
  *
  * The generated script:
@@ -139,11 +148,13 @@ function toJsIdentifier(id: string): string {
  *
  * @param program - The compiled program to hydrate
  * @param widgets - Optional array of widget configurations to mount after hydration
+ * @param route - Optional route context for dynamic routes
  * @returns JavaScript module code as string
  */
 export function generateHydrationScript(
   program: CompiledProgram,
-  widgets?: WidgetConfig[]
+  widgets?: WidgetConfig[],
+  route?: HydrationRouteContext
 ): string {
   const serializedProgram = escapeJsonForScript(serializeProgram(program));
   const hasWidgets = widgets && widgets.length > 0;
@@ -182,14 +193,28 @@ if (container_${jsId}) {
         .join('\n')
     : '';
 
+  // Build route context if provided
+  const routeDeclaration = route
+    ? `const route = ${escapeJsonForScript(JSON.stringify(route))};`
+    : '';
+
+  // Build hydrateApp options
+  const hydrateOptions = route
+    ? `{
+  program,
+  container: document.getElementById('app'),
+  route
+}`
+    : `{
+  program,
+  container: document.getElementById('app')
+}`;
+
   return `${imports}
 
 const program = ${serializedProgram};
-${widgetDeclarations ? '\n' + widgetDeclarations : ''}
-hydrateApp({
-  program,
-  container: document.getElementById('app')
-});${widgetMounting}`;
+${routeDeclaration ? '\n' + routeDeclaration : ''}${widgetDeclarations ? '\n' + widgetDeclarations : ''}
+hydrateApp(${hydrateOptions});${widgetMounting}`;
 }
 
 // ==================== HTML Document Wrapper ====================

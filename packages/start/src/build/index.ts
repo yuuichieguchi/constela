@@ -374,7 +374,15 @@ async function renderPageToHtml(
   };
 
   const content = await renderPage(normalizedProgram, ctx);
-  const hydrationScript = generateHydrationScript(normalizedProgram);
+
+  // Create route context for hydration
+  const routeContext = {
+    params,
+    query: {} as Record<string, string>,
+    path: '/',
+  };
+
+  const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
   return wrapHtml(content, hydrationScript);
 }
 

@@ -28,6 +28,7 @@
   "dependencies": {
     "isomorphic-dompurify": "^2.35.0",
     "marked": "^17.0.1",
+    "marked-shiki": "^1.2.0",
     "shiki": "^1.0.0"
   },
   "devDependencies": {

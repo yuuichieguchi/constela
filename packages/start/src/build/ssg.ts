@@ -152,8 +152,15 @@ async function generateSinglePage(
   // Render page content
   const content = await renderPage(program, ctx);
 
+  // Create route context for hydration
+  const routeContext = {
+    params,
+    query: {} as Record<string, string>,
+    path: pattern,
+  };
+
   // Generate hydration script
-  const hydrationScript = generateHydrationScript(program);
+  const hydrationScript = generateHydrationScript(program, undefined, routeContext);
 
   // Wrap in full HTML document
   const html = wrapHtml(content, hydrationScript);

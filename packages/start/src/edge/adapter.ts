@@ -130,7 +130,14 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
           query: url.searchParams,
         });
 
-        const hydrationScript = generateHydrationScript(program);
+        // Create route context for hydration
+        const routeContext = {
+          params: matchedParams,
+          query: Object.fromEntries(url.searchParams.entries()),
+          path: url.pathname,
+        };
+
+        const hydrationScript = generateHydrationScript(program, undefined, routeContext);
         const html = wrapHtml(content, hydrationScript);
 
         return new Response(html, {
