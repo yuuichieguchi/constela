@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.2.6
+
+### Patch Changes
+
+- fix(build): support Expression in getStaticPaths.source
+
+  Allow `getStaticPaths.source` to be an Expression (e.g., `{ expr: "import", name: "examples", path: "examples" }`) in addition to a string reference to a data source name.
+
 ## 1.2.5
 
 ### Patch Changes

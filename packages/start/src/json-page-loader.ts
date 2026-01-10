@@ -396,11 +396,67 @@ export async function loadPageData(
 }
 
 /**
+ * Resolve source data for getStaticPaths
+ * Handles both string references (data source name) and Expression objects (e.g., import expressions)
+ */
+function resolveSourceData(
+  source: string | Expression,
+  loadedData: Record<string, unknown>,
+  resolvedImports?: Record<string, unknown>
+): unknown {
+  // If source is a string, it's a direct reference to a data source
+  if (typeof source === 'string') {
+    return loadedData[source];
+  }
+
+  // If source is an Expression object, evaluate it
+  if (source && typeof source === 'object' && 'expr' in source) {
+    const expr = source as Expression;
+
+    if (expr.expr === 'import' && 'name' in expr) {
+      // Handle import expression: { expr: "import", name: "examples", path: "examples" }
+      const importName = (expr as { name: string }).name;
+      const importPath = (expr as { path?: string }).path;
+      const importData = resolvedImports?.[importName];
+
+      if (importData === undefined) {
+        throw new Error(`Import "${importName}" not found for getStaticPaths source`);
+      }
+
+      // If path is specified, traverse the object
+      if (importPath) {
+        const pathParts = importPath.split('.');
+        let result: unknown = importData;
+        for (const part of pathParts) {
+          if (result && typeof result === 'object' && part in result) {
+            result = (result as Record<string, unknown>)[part];
+          } else {
+            throw new Error(`Path "${importPath}" not found in import "${importName}"`);
+          }
+        }
+        return result;
+      }
+
+      return importData;
+    }
+
+    // Handle var expression referencing loadedData
+    if (expr.expr === 'var' && 'name' in expr) {
+      const varName = (expr as { name: string }).name;
+      return loadedData[varName];
+    }
+  }
+
+  throw new Error(`Invalid getStaticPaths source: ${JSON.stringify(source)}`);
+}
+
+/**
  * Generate static paths from page config
  */
 export async function generateStaticPathsFromPage(
   pageConfig: JsonPage,
-  loadedData: Record<string, unknown>
+  loadedData: Record<string, unknown>,
+  resolvedImports?: Record<string, unknown>
 ): Promise<StaticPathResult[]> {
   if (!pageConfig.getStaticPaths) {
     return [];
@@ -408,14 +464,16 @@ export async function generateStaticPathsFromPage(
 
   const { source, params } = pageConfig.getStaticPaths;
 
-  // Get source data
-  const sourceData = loadedData[source];
+  // Get source data - handle both string and Expression sources
+  const sourceData = resolveSourceData(source, loadedData, resolvedImports);
   if (sourceData === undefined) {
-    throw new Error(`Data source "${source}" not found for getStaticPaths`);
+    const sourceStr = typeof source === 'string' ? source : JSON.stringify(source);
+    throw new Error(`Data source "${sourceStr}" not found for getStaticPaths`);
   }
 
   if (!Array.isArray(sourceData)) {
-    throw new Error(`Data source "${source}" must be an array for getStaticPaths`);
+    const sourceStr = typeof source === 'string' ? source : JSON.stringify(source);
+    throw new Error(`Data source "${sourceStr}" must be an array for getStaticPaths`);
   }
 
   const paths: StaticPathResult[] = [];
@@ -844,7 +902,7 @@ export class JsonPageLoader {
    */
   async getStaticPaths(pagePath: string): Promise<StaticPathResult[]> {
     const pageInfo = await this.loadPage(pagePath);
-    return generateStaticPathsFromPage(pageInfo.page, pageInfo.loadedData);
+    return generateStaticPathsFromPage(pageInfo.page, pageInfo.loadedData, pageInfo.resolvedImports);
   }
 
   /**

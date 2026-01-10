@@ -561,7 +561,8 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         // Use inline getStaticPaths from JSON
         staticPathsResult = await generateStaticPathsFromPage(
           pageInfo.page,
-          pageInfo.loadedData
+          pageInfo.loadedData,
+          pageInfo.resolvedImports
         );
       } else {
         // Fall back to .paths.ts file
