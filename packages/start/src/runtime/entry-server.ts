@@ -18,6 +18,8 @@ export interface WrapHtmlOptions {
   theme?: 'dark' | 'light';
   /** Import map entries for resolving bare module specifiers */
   importMap?: Record<string, string>;
+  /** Path to bundled runtime for production builds. When provided, replaces @constela/runtime imports and excludes importmap. */
+  runtimePath?: string;
 }
 
 export interface WidgetConfig {
@@ -244,9 +246,23 @@ export function wrapHtml(
 ): string {
   const htmlClass = options?.theme === 'dark' ? ' class="dark"' : '';
 
-  // Generate import map if provided
+  // Production mode: use bundled runtime, no importmap
+  let processedScript = hydrationScript;
   let importMapScript = '';
-  if (options?.importMap && Object.keys(options.importMap).length > 0) {
+
+  if (options?.runtimePath) {
+    // Validate runtimePath to prevent injection attacks
+    if (!/^[a-zA-Z0-9/_.-]+$/.test(options.runtimePath)) {
+      throw new Error(`Invalid runtimePath: ${options.runtimePath}. Only alphanumeric characters, slashes, underscores, dots, and hyphens are allowed.`);
+    }
+    // Replace @constela/runtime import with bundled runtime path
+    processedScript = hydrationScript.replace(
+      /from\s+['"]@constela\/runtime['"]/g,
+      `from '${options.runtimePath}'`
+    );
+    // No importmap in production mode
+  } else if (options?.importMap && Object.keys(options.importMap).length > 0) {
+    // Development mode: use importmap
     const importMapJson = JSON.stringify({ imports: options.importMap }, null, 2);
     importMapScript = `<script type="importmap">\n${importMapJson}\n</script>\n`;
   }
@@ -261,7 +277,7 @@ ${importMapScript}${head ?? ''}
 <body>
 <div id="app">${content}</div>
 <script type="module">
-${hydrationScript}
+${processedScript}
 </script>
 </body>
 </html>`;

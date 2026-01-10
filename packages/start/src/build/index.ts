@@ -16,6 +16,7 @@ import {
   generateHydrationScript,
   type SSRContext,
 } from '../runtime/entry-server.js';
+import { bundleRuntime } from './bundler.js';
 
 export interface BuildResult {
   outDir: string;
@@ -359,7 +360,8 @@ async function processLayouts(
  */
 async function renderPageToHtml(
   program: CompiledProgram,
-  params: Record<string, string>
+  params: Record<string, string>,
+  runtimePath?: string
 ): Promise<string> {
   // Normalize the view to handle legacy expression formats
   const normalizedProgram: CompiledProgram = {
@@ -383,7 +385,7 @@ async function renderPageToHtml(
   };
 
   const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
-  return wrapHtml(content, hydrationScript);
+  return wrapHtml(content, hydrationScript, undefined, { runtimePath });
 }
 
 /**
@@ -490,6 +492,23 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
     (route) => route.type === 'page' && route.file.endsWith('.json')
   );
 
+  // Skip bundling if no pages to generate
+  if (jsonPages.length === 0) {
+    // Copy public directory if exists
+    if (publicDir) {
+      const generatedSet = new Set(generatedFiles);
+      await copyPublicDir(publicDir, outDir, generatedSet);
+    }
+    return {
+      outDir,
+      routes,
+      generatedFiles: [],
+    };
+  }
+
+  // Bundle runtime for production (only if there are pages to generate)
+  const runtimePath = await bundleRuntime({ outDir });
+
   // Process each JSON page
   for (const route of jsonPages) {
     const relPath = relative(routesDir, route.file);
@@ -533,7 +552,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const program = await convertToCompiledProgram(pageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params);
+        const html = await renderPageToHtml(program, params, runtimePath);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
@@ -568,7 +587,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {});
+      const html = await renderPageToHtml(program, {}, runtimePath);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });
