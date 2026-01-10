@@ -10,7 +10,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import type { CompiledProgram, CompiledNode, CompiledAction } from '@constela/compiler';
 import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition } from '@constela/core';
 import { DataLoader } from './data/loader.js';
@@ -219,6 +219,72 @@ async function loadWidgets(
 }
 
 /**
+ * Normalize relative glob patterns in data sources from page directory to project root.
+ *
+ * @param projectRoot - The project root directory (absolute path)
+ * @param pageDir - The directory containing the page file (absolute path)
+ * @param dataSources - Data sources from the page definition
+ * @returns Data sources with normalized patterns
+ */
+export function normalizeDataSourcePatterns(
+  projectRoot: string,
+  pageDir: string,
+  dataSources: Record<string, DataSource> | undefined
+): Record<string, DataSource> {
+  if (!dataSources || Object.keys(dataSources).length === 0) {
+    return {};
+  }
+
+  const resolvedProjectRoot = resolve(projectRoot);
+  const result: Record<string, DataSource> = {};
+
+  for (const [name, source] of Object.entries(dataSources)) {
+    // Clone the source to avoid mutating the original
+    const normalizedSource: DataSource = { ...source };
+
+    // Normalize pattern for glob type data sources
+    if (source.type === 'glob' && source.pattern) {
+      if (source.pattern.startsWith('./') || source.pattern.startsWith('../')) {
+        // Resolve the pattern relative to pageDir to get absolute path
+        const absolutePath = resolve(pageDir, source.pattern);
+
+        // Ensure no path traversal outside projectRoot
+        if (!absolutePath.startsWith(resolvedProjectRoot + '/') && absolutePath !== resolvedProjectRoot) {
+          throw new Error(
+            `Invalid pattern "${source.pattern}": path traversal outside project root detected`
+          );
+        }
+
+        // Make it relative to projectRoot
+        normalizedSource.pattern = relative(resolvedProjectRoot, absolutePath);
+      }
+    }
+
+    // Normalize path for file type data sources
+    if (source.type === 'file' && source.path) {
+      if (source.path.startsWith('./') || source.path.startsWith('../')) {
+        // Resolve the path relative to pageDir to get absolute path
+        const absolutePath = resolve(pageDir, source.path);
+
+        // Ensure no path traversal outside projectRoot
+        if (!absolutePath.startsWith(resolvedProjectRoot + '/') && absolutePath !== resolvedProjectRoot) {
+          throw new Error(
+            `Invalid path "${source.path}": path traversal outside project root detected`
+          );
+        }
+
+        // Make it relative to projectRoot
+        normalizedSource.path = relative(resolvedProjectRoot, absolutePath);
+      }
+    }
+
+    result[name] = normalizedSource;
+  }
+
+  return result;
+}
+
+/**
  * Load a JSON page file and return page info with resolved imports and data
  */
 export async function loadJsonPage(
@@ -270,8 +336,11 @@ export async function loadJsonPage(
   const pageDir = dirname(filePath);
   const resolvedImports = await resolveImports(pageDir, page.imports, baseDir);
 
+  // Normalize data source patterns to be relative to baseDir
+  const normalizedData = normalizeDataSourcePatterns(baseDir, pageDir, page.data);
+
   // Load data sources
-  const loadedData = await loadPageData(baseDir, page.data, { imports: resolvedImports });
+  const loadedData = await loadPageData(baseDir, normalizedData, { imports: resolvedImports });
 
   // Load and compile widgets
   const widgets = await loadWidgets(pageDir, page.widgets, baseDir);

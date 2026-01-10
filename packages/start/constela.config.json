@@ -1,0 +1,13 @@
+{
+  "css": "src/styles/main.css",
+  "layoutsDir": "src/layouts",
+  "routesDir": "src/pages",
+  "publicDir": "public",
+  "build": {
+    "outDir": "dist"
+  },
+  "dev": {
+    "port": 3000,
+    "host": "localhost"
+  }
+}
