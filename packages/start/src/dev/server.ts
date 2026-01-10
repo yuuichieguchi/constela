@@ -308,7 +308,13 @@ export async function createDevServer(
                   if (analysis.ok) {
                     const compiledLayout = transformLayoutPass(layoutProgram, analysis.context);
                     // composeLayoutWithPage handles both array and Record formats for actions
-                    composedProgram = composeLayoutWithPage(compiledLayout as unknown as import('@constela/compiler').CompiledProgram, program);
+                    // Pass layoutParams from page route to resolve param expressions in layout
+                    const layoutParams = program.route?.layoutParams;
+                    composedProgram = composeLayoutWithPage(
+                      compiledLayout as unknown as import('@constela/compiler').CompiledProgram,
+                      program,
+                      layoutParams
+                    );
                   }
                 }
               }

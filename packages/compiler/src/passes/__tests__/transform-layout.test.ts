@@ -15,7 +15,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { transformLayoutPass, composeLayoutWithPage } from '../transform-layout.js';
-import type { Program, LayoutProgram, ViewNode } from '@constela/core';
+import type { Program, LayoutProgram, ViewNode, Expression } from '@constela/core';
 import type { AnalysisContext, LayoutAnalysisContext } from '../analyze.js';
 import type { CompiledProgram } from '../transform.js';
 
@@ -169,6 +169,69 @@ describe('transformLayoutPass', () => {
       expect(result.components).toBeDefined();
       expect(result.components?.Header).toBeDefined();
     });
+
+    it('should preserve layout importData in transformation', () => {
+      // Arrange
+      const layout: LayoutProgram = {
+        version: '1.0',
+        type: 'layout',
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+        importData: {
+          config: {
+            repoMain: 'https://github.com/example/repo',
+            siteName: 'My Site',
+          },
+          navigation: {
+            items: [
+              { label: 'Home', href: '/' },
+              { label: 'Docs', href: '/docs' },
+            ],
+          },
+        },
+      } as unknown as LayoutProgram;
+
+      const context = createLayoutContext();
+
+      // Act
+      const result = transformLayoutPass(layout, context);
+
+      // Assert
+      // The compiled layout should preserve importData for later use during composition
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.config).toEqual({
+        repoMain: 'https://github.com/example/repo',
+        siteName: 'My Site',
+      });
+      expect(result.importData?.navigation).toEqual({
+        items: [
+          { label: 'Home', href: '/' },
+          { label: 'Docs', href: '/docs' },
+        ],
+      });
+    });
+
+    it('should handle layout without importData', () => {
+      // Arrange
+      const layout: LayoutProgram = {
+        version: '1.0',
+        type: 'layout',
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+        // No importData
+      } as unknown as LayoutProgram;
+
+      const context = createLayoutContext();
+
+      // Act
+      const result = transformLayoutPass(layout, context);
+
+      // Assert
+      // Should not throw, importData can be undefined
+      expect(result.importData === undefined || Object.keys(result.importData).length === 0).toBe(true);
+    });
   });
 });
 
@@ -293,7 +356,7 @@ describe('composeLayoutWithPage', () => {
       };
 
       // Act
-      const result = composeLayoutWithPage(layout, page, slots);
+      const result = composeLayoutWithPage(layout, page, undefined, slots);
 
       // Assert
       const children = (result.view as { children: ViewNode[] }).children;
@@ -323,7 +386,7 @@ describe('composeLayoutWithPage', () => {
       };
 
       // Act
-      const result = composeLayoutWithPage(layout, page, slots);
+      const result = composeLayoutWithPage(layout, page, undefined, slots);
 
       // Assert
       const children = (result.view as { children: ViewNode[] }).children;
@@ -629,6 +692,601 @@ describe('CompiledLayoutProgram type', () => {
 });
 
 // ==================== Issue 1: composeLayoutWithPage loses importData ====================
+
+// ==================== Issue 2: composeLayoutWithPage with layoutParams ====================
+
+describe('composeLayoutWithPage with layoutParams', () => {
+  // ==================== Helper Functions ====================
+
+  function createLayoutWithView(view: ViewNode): CompiledProgram {
+    return {
+      version: '1.0',
+      type: 'layout',
+      state: {},
+      actions: {},
+      view,
+    } as unknown as CompiledProgram;
+  }
+
+  function createPageWithView(view: ViewNode): CompiledProgram {
+    return {
+      version: '1.0',
+      state: {},
+      actions: {},
+      view,
+    } as unknown as CompiledProgram;
+  }
+
+  // ==================== Basic Param Expression Resolution ====================
+
+  describe('basic param expression resolution', () => {
+    it('should replace param expression with provided layoutParams value', () => {
+      /**
+       * Given: Layout has a text node with { "expr": "param", "name": "myParam" }
+       * When: composeLayoutWithPage is called with layoutParams { myParam: { expr: "lit", value: "resolved value" } }
+       * Then: The composed result should have the param expression replaced with the literal value
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'myParam' },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        myParam: { expr: 'lit' as const, value: 'resolved value' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const textNode = children[0] as { value: { expr: string; value: string } };
+      expect(textNode.value.expr).toBe('lit');
+      expect(textNode.value.value).toBe('resolved value');
+    });
+
+    it('should replace param expression in element props', () => {
+      /**
+       * Given: Layout has element with prop using param expression
+       * When: composeLayoutWithPage is called with corresponding layoutParams
+       * Then: The prop value should be replaced with the provided expression
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        props: {
+          title: { expr: 'param', name: 'pageTitle' },
+        },
+        children: [{ kind: 'slot' }],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        pageTitle: { expr: 'lit' as const, value: 'Welcome Page' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const props = (result.view as { props: Record<string, unknown> }).props;
+      expect(props.title).toEqual({ expr: 'lit', value: 'Welcome Page' });
+    });
+
+    it('should handle multiple param expressions in same layout', () => {
+      /**
+       * Given: Layout has multiple param expressions
+       * When: composeLayoutWithPage is called with all corresponding layoutParams
+       * Then: All param expressions should be resolved
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'title' },
+          } as ViewNode,
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'subtitle' },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        title: { expr: 'lit' as const, value: 'Main Title' },
+        subtitle: { expr: 'lit' as const, value: 'Sub Title' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const titleNode = children[0] as { value: { expr: string; value: string } };
+      const subtitleNode = children[1] as { value: { expr: string; value: string } };
+      expect(titleNode.value).toEqual({ expr: 'lit', value: 'Main Title' });
+      expect(subtitleNode.value).toEqual({ expr: 'lit', value: 'Sub Title' });
+    });
+  });
+
+  // ==================== Param Expression with Path ====================
+
+  describe('param expression with path', () => {
+    it('should handle param expression with path by substituting entire expression', () => {
+      /**
+       * Given: Layout has { "expr": "param", "name": "nav", "path": "items" }
+       * When: layoutParams provides { nav: { expr: "import", name: "docsNav", path: "navigation" } }
+       * Then: The param expression should be substituted with a get expression
+       *       that accesses "items" on the provided import expression
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'nav',
+        children: [
+          {
+            kind: 'each',
+            items: { expr: 'param', name: 'nav', path: 'items' },
+            as: 'item',
+            body: {
+              kind: 'text',
+              value: { expr: 'var', name: 'item', path: 'label' },
+            },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        nav: { expr: 'import' as const, name: 'docsNav', path: 'navigation' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const eachNode = children[0] as { items: { expr: string; base?: unknown; path?: string; name?: string } };
+
+      // The param with path should be resolved to a get expression
+      // that combines the provided import expression with the path
+      expect(eachNode.items.expr).toBe('get');
+      expect((eachNode.items.base as { expr: string; name: string; path: string }).expr).toBe('import');
+      expect((eachNode.items.base as { expr: string; name: string; path: string }).name).toBe('docsNav');
+      expect(eachNode.items.path).toBe('items');
+    });
+
+    it('should handle nested path in param expression', () => {
+      /**
+       * Given: Layout has { "expr": "param", "name": "config", "path": "settings.theme" }
+       * When: layoutParams provides { config: { expr: "import", name: "siteConfig" } }
+       * Then: The result should be a get expression with combined path
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        props: {
+          'data-theme': { expr: 'param', name: 'config', path: 'settings.theme' },
+        },
+        children: [{ kind: 'slot' }],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        config: { expr: 'import' as const, name: 'siteConfig' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const props = (result.view as { props: Record<string, unknown> }).props;
+      const themeExpr = props['data-theme'] as { expr: string; base?: unknown; path?: string };
+
+      expect(themeExpr.expr).toBe('get');
+      expect((themeExpr.base as { expr: string; name: string }).expr).toBe('import');
+      expect((themeExpr.base as { expr: string; name: string }).name).toBe('siteConfig');
+      expect(themeExpr.path).toBe('settings.theme');
+    });
+  });
+
+  // ==================== Missing Param Handling ====================
+
+  describe('missing layoutParam handling', () => {
+    it('should replace missing param with null literal', () => {
+      /**
+       * Given: Layout has param expression { "expr": "param", "name": "optionalParam" }
+       * When: composeLayoutWithPage is called without that param in layoutParams
+       * Then: The param expression should be replaced with { expr: "lit", value: null }
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'optionalParam' },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      // Act - No layoutParams provided for optionalParam
+      const result = composeLayoutWithPage(layout, page, {});
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const textNode = children[0] as { value: { expr: string; value: unknown } };
+      expect(textNode.value.expr).toBe('lit');
+      expect(textNode.value.value).toBeNull();
+    });
+
+    it('should handle undefined layoutParams parameter gracefully', () => {
+      /**
+       * Given: Layout has param expressions
+       * When: composeLayoutWithPage is called without layoutParams argument
+       * Then: All param expressions should be replaced with null literals
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'someParam' },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      // Act - layoutParams is undefined (using old signature for backward compatibility)
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const textNode = children[0] as { value: { expr: string; value: unknown } };
+      expect(textNode.value.expr).toBe('lit');
+      expect(textNode.value.value).toBeNull();
+    });
+
+    it('should handle partial layoutParams - only resolve provided params', () => {
+      /**
+       * Given: Layout has multiple param expressions
+       * When: layoutParams only provides some of them
+       * Then: Provided params should be resolved, missing ones should become null
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'providedParam' },
+          } as ViewNode,
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'missingParam' },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        providedParam: { expr: 'lit' as const, value: 'I exist!' },
+        // missingParam is not provided
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const providedNode = children[0] as { value: { expr: string; value: unknown } };
+      const missingNode = children[1] as { value: { expr: string; value: unknown } };
+
+      expect(providedNode.value).toEqual({ expr: 'lit', value: 'I exist!' });
+      expect(missingNode.value).toEqual({ expr: 'lit', value: null });
+    });
+  });
+
+  // ==================== Nested View Structure ====================
+
+  describe('param resolution in nested view structures', () => {
+    it('should resolve param expressions inside conditional nodes', () => {
+      /**
+       * Given: Layout has param expression inside if/then/else structure
+       * When: composeLayoutWithPage is called with layoutParams
+       * Then: Param expressions in all branches should be resolved
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'if',
+            condition: { expr: 'state', name: 'showTitle' },
+            then: {
+              kind: 'text',
+              value: { expr: 'param', name: 'title' },
+            },
+            else: {
+              kind: 'text',
+              value: { expr: 'param', name: 'fallbackTitle' },
+            },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        title: { expr: 'lit' as const, value: 'Main Title' },
+        fallbackTitle: { expr: 'lit' as const, value: 'Fallback' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const ifNode = children[0] as { then: { value: unknown }; else: { value: unknown } };
+
+      expect(ifNode.then.value).toEqual({ expr: 'lit', value: 'Main Title' });
+      expect(ifNode.else.value).toEqual({ expr: 'lit', value: 'Fallback' });
+    });
+
+    it('should resolve param expressions inside each node', () => {
+      /**
+       * Given: Layout has param expression as items source for each node
+       * When: composeLayoutWithPage is called with layoutParams
+       * Then: The items expression should be resolved
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'nav',
+        children: [
+          {
+            kind: 'each',
+            items: { expr: 'param', name: 'navItems' },
+            as: 'item',
+            body: {
+              kind: 'element',
+              tag: 'a',
+              props: {
+                href: { expr: 'var', name: 'item', path: 'href' },
+              },
+              children: [
+                { kind: 'text', value: { expr: 'var', name: 'item', path: 'label' } },
+              ],
+            },
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        navItems: { expr: 'import' as const, name: 'navigation', path: 'items' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      const eachNode = children[0] as { items: { expr: string; name: string; path: string } };
+
+      expect(eachNode.items.expr).toBe('import');
+      expect(eachNode.items.name).toBe('navigation');
+      expect(eachNode.items.path).toBe('items');
+    });
+
+    it('should resolve param expressions deeply nested in component children', () => {
+      /**
+       * Given: Layout has deeply nested param expressions
+       * When: composeLayoutWithPage is called with layoutParams
+       * Then: All nested param expressions should be resolved
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'element',
+            tag: 'header',
+            children: [
+              {
+                kind: 'element',
+                tag: 'h1',
+                children: [
+                  {
+                    kind: 'text',
+                    value: { expr: 'param', name: 'deepTitle' },
+                  },
+                ],
+              },
+            ],
+          } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const layoutParams = {
+        deepTitle: { expr: 'lit' as const, value: 'Deeply Nested Title' },
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams);
+
+      // Assert
+      const divChildren = (result.view as { children: ViewNode[] }).children;
+      const header = divChildren[0] as { children: ViewNode[] };
+      const h1 = header.children[0] as { children: ViewNode[] };
+      const textNode = h1.children[0] as { value: { expr: string; value: string } };
+
+      expect(textNode.value).toEqual({ expr: 'lit', value: 'Deeply Nested Title' });
+    });
+  });
+
+  // ==================== Backward Compatibility ====================
+
+  describe('backward compatibility', () => {
+    it('should work with existing slots parameter when layoutParams not provided', () => {
+      /**
+       * Given: Existing usage with slots parameter
+       * When: composeLayoutWithPage is called without layoutParams (old signature)
+       * Then: Named slot composition should still work correctly
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          { kind: 'slot', name: 'header' } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'main',
+      } as ViewNode);
+
+      const slots = {
+        header: { kind: 'element', tag: 'h1', children: [] } as ViewNode,
+      };
+
+      // Act - Using old signature with just slots
+      const result = composeLayoutWithPage(layout, page, undefined, slots);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+      expect((children[0] as { tag: string }).tag).toBe('h1');
+      expect((children[1] as { tag: string }).tag).toBe('main');
+    });
+
+    it('should work with both layoutParams and slots provided', () => {
+      /**
+       * Given: Layout with both param expressions and named slots
+       * When: composeLayoutWithPage is called with both layoutParams and slots
+       * Then: Both param resolution and slot composition should work
+       */
+      // Arrange
+      const layout = createLayoutWithView({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'param', name: 'siteTitle' },
+          } as ViewNode,
+          { kind: 'slot', name: 'sidebar' } as ViewNode,
+          { kind: 'slot' },
+        ],
+      } as ViewNode);
+
+      const page = createPageWithView({
+        kind: 'element',
+        tag: 'article',
+      } as ViewNode);
+
+      const layoutParams = {
+        siteTitle: { expr: 'lit' as const, value: 'My Site' },
+      };
+
+      const slots = {
+        sidebar: { kind: 'element', tag: 'aside', children: [] } as ViewNode,
+      };
+
+      // Act
+      const result = composeLayoutWithPage(layout, page, layoutParams, slots);
+
+      // Assert
+      const children = (result.view as { children: ViewNode[] }).children;
+
+      // First child: resolved param expression
+      const titleNode = children[0] as { value: { expr: string; value: string } };
+      expect(titleNode.value).toEqual({ expr: 'lit', value: 'My Site' });
+
+      // Second child: filled named slot
+      expect((children[1] as { tag: string }).tag).toBe('aside');
+
+      // Third child: default slot with page content
+      expect((children[2] as { tag: string }).tag).toBe('article');
+    });
+  });
+});
 
 describe('composeLayoutWithPage importData merging', () => {
   // ==================== Helper Functions ====================

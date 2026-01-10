@@ -370,3 +370,228 @@ describe('generateHydrationScript', () => {
     });
   });
 });
+
+// ==================== renderPage Tests ====================
+
+describe('renderPage', () => {
+  // Import renderPage for testing
+  // Note: We need to mock renderToString to verify imports are passed correctly
+
+  describe('importData handling', () => {
+    it('should pass program importData to renderToString for import expression evaluation', async () => {
+      // This test verifies that renderPage correctly passes importData to renderToString
+      // so that import expressions like { expr: 'import', module: 'nav', path: 'topNav' }
+      // can be evaluated during SSR.
+
+      // Arrange
+      const { renderPage } = await import('../../src/runtime/entry-server.js');
+      const { renderToString } = await import('@constela/server');
+      const { vi } = await import('vitest');
+
+      // Create a program with importData
+      const programWithImportData: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'nav',
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'import', name: 'nav', path: 'topNav' },
+              as: 'item',
+              body: {
+                kind: 'element',
+                tag: 'a',
+                props: {
+                  href: { expr: 'var', name: 'item', path: 'href' },
+                },
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'item', path: 'label' } },
+                ],
+              },
+            },
+          ],
+        },
+        importData: {
+          nav: {
+            topNav: [
+              { label: 'Home', href: '/' },
+              { label: 'About', href: '/about' },
+              { label: 'Docs', href: '/docs' },
+            ],
+          },
+        },
+      } as unknown as CompiledProgram;
+
+      const ssrContext = {
+        url: '/test',
+        params: {},
+        query: new URLSearchParams(),
+      };
+
+      // Act
+      const html = await renderPage(programWithImportData, ssrContext);
+
+      // Assert
+      // The HTML should contain the rendered navigation items from importData
+      expect(html).toContain('Home');
+      expect(html).toContain('About');
+      expect(html).toContain('Docs');
+      expect(html).toContain('href="/"');
+      expect(html).toContain('href="/about"');
+      expect(html).toContain('href="/docs"');
+    });
+
+    it('should correctly render import expressions in text content', async () => {
+      // Arrange
+      const { renderPage } = await import('../../src/runtime/entry-server.js');
+
+      const programWithImportText: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'footer',
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'import', name: 'config', path: 'copyright' },
+            },
+          ],
+        },
+        importData: {
+          config: {
+            copyright: '2024 My Company. All rights reserved.',
+          },
+        },
+      } as unknown as CompiledProgram;
+
+      const ssrContext = {
+        url: '/test',
+        params: {},
+        query: new URLSearchParams(),
+      };
+
+      // Act
+      const html = await renderPage(programWithImportText, ssrContext);
+
+      // Assert
+      expect(html).toContain('2024 My Company. All rights reserved.');
+    });
+
+    it('should correctly render import expressions in element props', async () => {
+      // Arrange
+      const { renderPage } = await import('../../src/runtime/entry-server.js');
+
+      const programWithImportProps: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'a',
+          props: {
+            href: { expr: 'import', name: 'links', path: 'repoUrl' },
+            class: { expr: 'lit', value: 'repo-link' },
+          },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'GitHub' } },
+          ],
+        },
+        importData: {
+          links: {
+            repoUrl: 'https://github.com/example/repo',
+          },
+        },
+      } as unknown as CompiledProgram;
+
+      const ssrContext = {
+        url: '/test',
+        params: {},
+        query: new URLSearchParams(),
+      };
+
+      // Act
+      const html = await renderPage(programWithImportProps, ssrContext);
+
+      // Assert
+      expect(html).toContain('href="https://github.com/example/repo"');
+      expect(html).toContain('GitHub');
+    });
+
+    it('should handle nested import paths correctly', async () => {
+      // Arrange
+      const { renderPage } = await import('../../src/runtime/entry-server.js');
+
+      const programWithNestedImport: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'import', name: 'settings', path: 'theme.primaryColor' },
+            },
+          ],
+        },
+        importData: {
+          settings: {
+            theme: {
+              primaryColor: '#3b82f6',
+              secondaryColor: '#10b981',
+            },
+          },
+        },
+      } as unknown as CompiledProgram;
+
+      const ssrContext = {
+        url: '/test',
+        params: {},
+        query: new URLSearchParams(),
+      };
+
+      // Act
+      const html = await renderPage(programWithNestedImport, ssrContext);
+
+      // Assert
+      expect(html).toContain('#3b82f6');
+    });
+
+    it('should work when program has no importData', async () => {
+      // Arrange
+      const { renderPage } = await import('../../src/runtime/entry-server.js');
+
+      const programWithoutImportData: CompiledProgram = {
+        version: '1.0',
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Static content' } },
+          ],
+        },
+        // No importData
+      } as unknown as CompiledProgram;
+
+      const ssrContext = {
+        url: '/test',
+        params: {},
+        query: new URLSearchParams(),
+      };
+
+      // Act
+      const html = await renderPage(programWithoutImportData, ssrContext);
+
+      // Assert
+      expect(html).toContain('Static content');
+    });
+  });
+});

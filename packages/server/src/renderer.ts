@@ -168,6 +168,16 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return importData;
     }
 
+    case 'data': {
+      // Data expressions are resolved from importData (loadedData is merged into importData)
+      const dataValue = ctx.imports?.[expr.name];
+      if (dataValue === undefined) return undefined;
+      if (expr.path) {
+        return getNestedValue(dataValue, expr.path);
+      }
+      return dataValue;
+    }
+
     case 'ref':
       // SSR context: DOM elements don't exist, return null
       return null;
@@ -331,6 +341,10 @@ async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> 
       return renderMarkdown(node, ctx);
     case 'code':
       return await renderCode(node, ctx);
+    case 'slot':
+      // Slots should be replaced during layout composition
+      // If we reach here, render empty (slot content not provided)
+      return '';
     default: {
       const _exhaustiveCheck: never = node;
       throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);

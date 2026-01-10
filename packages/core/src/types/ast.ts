@@ -525,6 +525,7 @@ export interface RouteDefinition {
   path: string;
   title?: Expression;
   layout?: string;
+  layoutParams?: Record<string, Expression>;
   meta?: Record<string, Expression>;
   getStaticPaths?: StaticPathsDefinition;
 }

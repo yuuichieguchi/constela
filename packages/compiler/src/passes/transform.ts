@@ -34,6 +34,7 @@ export interface CompiledRouteDefinition {
   params: string[];
   title?: CompiledExpression;
   layout?: string;
+  layoutParams?: Record<string, Expression>;
   meta?: Record<string, CompiledExpression>;
 }
 
@@ -180,7 +181,8 @@ export type CompiledNode =
   | CompiledIfNode
   | CompiledEachNode
   | CompiledMarkdownNode
-  | CompiledCodeNode;
+  | CompiledCodeNode
+  | CompiledSlotNode;
 
 export interface CompiledElementNode {
   kind: 'element';
@@ -222,6 +224,11 @@ export interface CompiledCodeNode {
   content: CompiledExpression;
 }
 
+export interface CompiledSlotNode {
+  kind: 'slot';
+  name?: string;
+}
+
 // ==================== Compiled Expression Types ====================
 
 export type CompiledExpression =
@@ -234,6 +241,7 @@ export type CompiledExpression =
   | CompiledGetExpr
   | CompiledRouteExpr
   | CompiledImportExpr
+  | CompiledDataExpr
   | CompiledRefExpr;
 
 export interface CompiledLitExpr {
@@ -285,6 +293,12 @@ export interface CompiledRouteExpr {
 
 export interface CompiledImportExpr {
   expr: 'import';
+  name: string;
+  path?: string;
+}
+
+export interface CompiledDataExpr {
+  expr: 'data';
   name: string;
   path?: string;
 }
@@ -853,7 +867,7 @@ function extractRouteParams(path: string): string[] {
  * Transforms AST RouteDefinition into CompiledRouteDefinition
  */
 function transformRouteDefinition(
-  route: { path: string; title?: Expression; layout?: string; meta?: Record<string, Expression> },
+  route: { path: string; title?: Expression; layout?: string; layoutParams?: Record<string, Expression>; meta?: Record<string, Expression> },
   ctx: TransformContext
 ): CompiledRouteDefinition {
   const compiled: CompiledRouteDefinition = {
@@ -867,6 +881,12 @@ function transformRouteDefinition(
 
   if (route.layout) {
     compiled.layout = route.layout;
+  }
+
+  // layoutParams are passed through as-is (not transformed)
+  // They will be resolved during layout composition
+  if (route.layoutParams) {
+    compiled.layoutParams = route.layoutParams;
   }
 
   if (route.meta) {

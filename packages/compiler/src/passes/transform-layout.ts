@@ -10,6 +10,7 @@ import type {
   ActionDefinition,
   StateField,
   ComponentDef,
+  Expression,
 } from '@constela/core';
 import type {
   CompiledProgram,
@@ -28,6 +29,7 @@ export interface CompiledLayoutProgram {
   actions: CompiledAction[];
   view: CompiledNode;
   components?: Record<string, ComponentDef> | undefined;
+  importData?: Record<string, unknown>;
 }
 
 // ==================== Transform Context ====================
@@ -184,7 +186,7 @@ export function transformLayoutPass(
     components: layout.components || {},
   };
 
-  return {
+  const result: CompiledLayoutProgram = {
     version: '1.0',
     type: 'layout',
     state: transformState(layout.state),
@@ -192,6 +194,13 @@ export function transformLayoutPass(
     view: transformViewNode(layout.view, ctx),
     components: layout.components,
   };
+
+  // Preserve importData if present
+  if (layout.importData && Object.keys(layout.importData).length > 0) {
+    result.importData = layout.importData;
+  }
+
+  return result;
 }
 
 // ==================== Layout Composition ====================
@@ -201,6 +210,185 @@ export function transformLayoutPass(
  */
 function deepCloneNode(node: CompiledNode): CompiledNode {
   return JSON.parse(JSON.stringify(node));
+}
+
+// ==================== Param Expression Resolution ====================
+
+/**
+ * Type guard to check if a value is a param expression
+ */
+function isParamExpression(value: unknown): value is { expr: 'param'; name: string; path?: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { expr?: string }).expr === 'param' &&
+    typeof (value as { name?: unknown }).name === 'string'
+  );
+}
+
+/**
+ * Resolves a param expression to its corresponding value from layoutParams
+ * If the param has a path, creates a get expression to access the path on the resolved value
+ */
+function resolveParamExpression(
+  paramExpr: { expr: 'param'; name: string; path?: string },
+  layoutParams: Record<string, Expression>
+): Expression {
+  const resolvedValue = layoutParams[paramExpr.name];
+
+  if (!resolvedValue) {
+    // Param not found, return null literal
+    return { expr: 'lit', value: null };
+  }
+
+  if (paramExpr.path) {
+    // Param has a path, create a get expression
+    return {
+      expr: 'get',
+      base: resolvedValue,
+      path: paramExpr.path,
+    };
+  }
+
+  // No path, return the resolved value directly
+  return resolvedValue;
+}
+
+/**
+ * Resolves param expressions in an expression value
+ */
+function resolveExpressionValue(
+  value: unknown,
+  layoutParams: Record<string, Expression>
+): unknown {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (isParamExpression(value)) {
+    return resolveParamExpression(value, layoutParams);
+  }
+
+  // Handle nested expressions in objects
+  if (Array.isArray(value)) {
+    return value.map(item => resolveExpressionValue(item, layoutParams));
+  }
+
+  // Check for expression types that may contain nested expressions
+  const obj = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, val] of Object.entries(obj)) {
+    result[key] = resolveExpressionValue(val, layoutParams);
+  }
+
+  return result;
+}
+
+/**
+ * Resolves param expressions in props
+ */
+function resolvePropsParams(
+  props: Record<string, unknown>,
+  layoutParams: Record<string, Expression>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    result[key] = resolveExpressionValue(value, layoutParams);
+  }
+  return result;
+}
+
+/**
+ * Recursively resolves param expressions in a view node tree
+ */
+function resolveParamExpressions(
+  node: CompiledNode,
+  layoutParams: Record<string, Expression>
+): CompiledNode {
+  switch (node.kind) {
+    case 'element': {
+      const elementNode = node as {
+        kind: 'element';
+        tag: string;
+        props?: Record<string, unknown>;
+        children?: CompiledNode[];
+      };
+
+      const result: CompiledNode = {
+        kind: 'element',
+        tag: elementNode.tag,
+      };
+
+      if (elementNode.props) {
+        (result as { props?: Record<string, unknown> }).props = resolvePropsParams(
+          elementNode.props,
+          layoutParams
+        );
+      }
+
+      if (elementNode.children && elementNode.children.length > 0) {
+        (result as { children?: CompiledNode[] }).children = elementNode.children.map(
+          child => resolveParamExpressions(child, layoutParams)
+        );
+      }
+
+      return result;
+    }
+
+    case 'text': {
+      const textNode = node as { kind: 'text'; value: unknown };
+      return {
+        kind: 'text',
+        value: resolveExpressionValue(textNode.value, layoutParams),
+      } as CompiledNode;
+    }
+
+    case 'if': {
+      const ifNode = node as {
+        kind: 'if';
+        condition: unknown;
+        then: CompiledNode;
+        else?: CompiledNode;
+      };
+
+      const result = {
+        kind: 'if',
+        condition: resolveExpressionValue(ifNode.condition, layoutParams),
+        then: resolveParamExpressions(ifNode.then, layoutParams),
+      } as CompiledNode;
+
+      if (ifNode.else) {
+        (result as { else?: CompiledNode }).else = resolveParamExpressions(
+          ifNode.else,
+          layoutParams
+        );
+      }
+
+      return result;
+    }
+
+    case 'each': {
+      const eachNode = node as {
+        kind: 'each';
+        items: unknown;
+        as: string;
+        body: CompiledNode;
+      };
+
+      return {
+        kind: 'each',
+        items: resolveExpressionValue(eachNode.items, layoutParams),
+        as: eachNode.as,
+        body: resolveParamExpressions(eachNode.body, layoutParams),
+      } as CompiledNode;
+    }
+
+    default:
+      // For other node kinds (slot, markdown, code, component), return as-is
+      // Slots will be handled separately by replaceSlots
+      return node;
+  }
 }
 
 /**
@@ -264,10 +452,16 @@ function replaceSlots(
 export function composeLayoutWithPage(
   layout: CompiledProgram,
   page: CompiledProgram,
+  layoutParams?: Record<string, Expression>,
   slots?: Record<string, ViewNode>
 ): CompiledProgram {
   // Clone layout view for modification
-  const layoutView = deepCloneNode(layout.view);
+  let layoutView = deepCloneNode(layout.view);
+
+  // Resolve param expressions in layout view if layoutParams provided
+  // If layoutParams is undefined, still resolve params to null literals
+  const resolvedParams = layoutParams ?? {};
+  layoutView = resolveParamExpressions(layoutView, resolvedParams);
 
   // Convert ViewNode slots to CompiledNode if provided
   const namedContent: Record<string, CompiledNode> | undefined = slots

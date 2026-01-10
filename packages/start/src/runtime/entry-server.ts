@@ -45,6 +45,12 @@ export async function renderPage(
       path: ctx.url,
     },
   };
+
+  // Pass importData if present
+  if (program.importData) {
+    options.imports = program.importData;
+  }
+
   return await renderToString(program, options);
 }
 

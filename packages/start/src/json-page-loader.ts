@@ -440,6 +440,9 @@ export async function convertToCompiledProgram(pageInfo: PageInfo): Promise<Comp
     if (page.route.layout) {
       program.route.layout = page.route.layout;
     }
+    if (page.route.layoutParams) {
+      program.route.layoutParams = page.route.layoutParams;
+    }
     if (page.route.meta) {
       // Convert meta to CompiledExpression format
       program.route.meta = {};
