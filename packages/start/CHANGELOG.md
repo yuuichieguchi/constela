@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.2.10
+
+### Patch Changes
+
+- fix(build): fix PostCSS path resolution for Tailwind CSS v4 directives
+
+  - Fix `from` option to use project root for package resolution
+  - Fix `base` option to correctly resolve relative paths in CSS
+  - Add tests for @tailwind utilities and @source directives
+
 ## 1.2.9
 
 ### Patch Changes
