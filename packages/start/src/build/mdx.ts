@@ -302,7 +302,11 @@ function transformNode(
 
     case 'list': {
       const tag = node.ordered ? 'ol' : 'ul';
-      return elementNode(tag, undefined, transformChildren(node.children, ctx));
+      const props: Record<string, CompiledExpression> | undefined =
+        node.ordered && node.start != null && node.start !== 1
+          ? { start: lit(node.start) }
+          : undefined;
+      return elementNode(tag, props, transformChildren(node.children, ctx));
     }
 
     case 'listItem': {
