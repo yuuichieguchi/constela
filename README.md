@@ -420,6 +420,76 @@ Named actions with declarative steps:
 **Clipboard operations:** `write`, `read`
 **Navigate targets:** `_self` (default), `_blank`
 
+### Advanced Actions
+
+#### DOM Manipulation
+
+Manipulate DOM elements via refs:
+
+```json
+// Define a ref on an element
+{
+  "kind": "element",
+  "tag": "div",
+  "ref": "myElement",
+  "children": [...]
+}
+
+// Manipulate via action
+{ "do": "dom", "operation": "addClass", "ref": "myElement", "value": { "expr": "lit", "value": "active" } }
+{ "do": "dom", "operation": "removeClass", "ref": "myElement", "value": { "expr": "lit", "value": "active" } }
+{ "do": "dom", "operation": "toggleClass", "ref": "myElement", "value": { "expr": "lit", "value": "visible" } }
+{ "do": "dom", "operation": "setAttribute", "ref": "myElement", "attr": "data-state", "value": { "expr": "state", "name": "currentState" } }
+{ "do": "dom", "operation": "removeAttribute", "ref": "myElement", "attr": "disabled" }
+```
+
+**DOM operations:** `addClass`, `removeClass`, `toggleClass`, `setAttribute`, `removeAttribute`
+
+#### Dynamic Imports & External Libraries
+
+Import external JavaScript modules and call their methods:
+
+```json
+// Import a module
+{ "do": "import", "module": "chart.js", "result": "Chart" }
+
+// Call a method on the imported module
+{ "do": "call", "ref": "Chart", "method": "create", "args": [{ "expr": "ref", "name": "canvas" }, { "expr": "state", "name": "chartConfig" }], "result": "chartInstance" }
+
+// Subscribe to events
+{ "do": "subscribe", "ref": "eventSource", "event": "message", "action": "handleMessage" }
+
+// Dispose resources
+{ "do": "dispose", "ref": "chartInstance" }
+```
+
+**Note:** Subscriptions are automatically disposed on component unmount.
+
+### Markdown & Code Blocks
+
+Render Markdown content and syntax-highlighted code:
+
+```json
+// Markdown node
+{
+  "kind": "markdown",
+  "content": { "expr": "state", "name": "markdownContent" }
+}
+
+// Code block with syntax highlighting
+{
+  "kind": "code",
+  "code": { "expr": "lit", "value": "const x: number = 42;" },
+  "language": { "expr": "lit", "value": "typescript" }
+}
+```
+
+**Features:**
+- Markdown rendered with [marked](https://marked.js.org/)
+- Code highlighting with [Shiki](https://shiki.style/)
+- Dual theme support (light/dark)
+- Built-in copy button
+
 ### Components
 
 Reusable view definitions with props and slots:
@@ -761,17 +831,116 @@ export default {
 };
 ```
 
+## Full-Stack Development (via @constela/start)
+
+`@constela/start` provides a complete framework for building Constela applications:
+
+### Dev Server
+
+```bash
+# Start development server
+npx constela dev --port 3000
+```
+
+Features:
+- Vite-powered hot reload
+- File-based routing
+- Layout composition
+- SSR with hydration
+
+### Production Build
+
+```bash
+# Build for production
+npx constela build --outDir dist
+```
+
+Generates:
+- Static HTML for all routes
+- Bundled runtime JavaScript
+- Optimized assets
+
+### MDX Support
+
+Transform Markdown with JSX components:
+
+```json
+{
+  "data": {
+    "docs": {
+      "type": "glob",
+      "pattern": "content/docs/*.mdx",
+      "transform": "mdx"
+    }
+  }
+}
+```
+
+MDX files support:
+- Frontmatter (YAML)
+- Custom components
+- Code blocks with syntax highlighting
+- GitHub Flavored Markdown
+
+### API Routes
+
+Create server-side API endpoints:
+
+```typescript
+// pages/api/users.ts
+export const GET = async (ctx) => {
+  return new Response(JSON.stringify({ users: [] }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+export const POST = async (ctx) => {
+  const body = await ctx.request.json();
+  // Handle POST request
+};
+```
+
+### Middleware
+
+Add request middleware:
+
+```typescript
+// pages/_middleware.ts
+export default async (ctx, next) => {
+  console.log('Request:', ctx.url);
+  const response = await next();
+  return response;
+};
+```
+
+### Edge Deployment
+
+Deploy to edge platforms:
+
+```typescript
+import { createAdapter } from '@constela/start';
+
+const adapter = createAdapter({
+  platform: 'cloudflare', // 'vercel' | 'deno' | 'node'
+  routes: scannedRoutes,
+});
+
+export default { fetch: adapter.fetch };
+```
+
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| `@constela/core` | AST types, JSON Schema, validator, type guards |
-| `@constela/compiler` | AST → CompiledProgram transformation |
-| `@constela/runtime` | DOM renderer with fine-grained reactivity |
-| `@constela/server` | Server-side rendering |
-| `@constela/start` | Build tools, dev server, SSG, dynamic routes |
-| `@constela/cli` | Command-line tools |
-| `@constela/router` | Client-side routing (add-on) |
+| Package | Version | Description |
+|---------|---------|-------------|
+| `@constela/core` | 0.7.0 | AST types, JSON Schema, validator, 47 type guards, error codes |
+| `@constela/compiler` | 0.7.0 | 3-pass compiler: validate → analyze → transform |
+| `@constela/runtime` | 0.10.1 | DOM renderer, hydration, reactive signals, Markdown/Code support |
+| `@constela/router` | 8.0.0 | History API routing, dynamic params, catch-all routes |
+| `@constela/server` | 3.0.0 | SSR with Shiki dual-theme syntax highlighting |
+| `@constela/start` | 1.2.1 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/cli` | 0.3.8 | CLI: compile, dev, build, start commands |
+
+See each package's README for detailed API documentation.
 
 ## CLI Usage
 
@@ -806,6 +975,82 @@ const app = createApp(result.program, document.getElementById('app'));
 
 // Later: cleanup
 app.destroy();
+```
+
+## App Instance API
+
+The `createApp` function returns an `AppInstance` with the following methods:
+
+```typescript
+interface AppInstance {
+  destroy(): void;                                              // Cleanup and unmount
+  setState(name: string, value: unknown): void;                 // Update state
+  getState(name: string): unknown;                              // Read state
+  subscribe(name: string, fn: (value: unknown) => void): () => void;  // Observe state changes
+}
+```
+
+### Example: External State Updates
+
+```typescript
+const app = createApp(result.program, document.getElementById('app'));
+
+// Update state from outside the DSL
+app.setState('count', 10);
+
+// Subscribe to state changes
+const unsubscribe = app.subscribe('count', (value) => {
+  console.log('Count changed:', value);
+});
+
+// Read current state
+console.log(app.getState('count')); // 10
+
+// Stop listening
+unsubscribe();
+```
+
+## Server-Side Rendering (SSR)
+
+Render Constela programs on the server with `@constela/server`:
+
+```typescript
+import { renderToString } from '@constela/server';
+
+const html = await renderToString(compiledProgram, {
+  route: {
+    params: { id: '123' },
+    query: { tab: 'overview' },
+    path: '/users/123',
+  },
+  imports: {
+    config: { siteName: 'My Site' },
+  },
+});
+```
+
+## Hydration
+
+Hydrate server-rendered HTML on the client without DOM reconstruction:
+
+```typescript
+import { hydrateApp } from '@constela/runtime';
+
+const app = hydrateApp({
+  program: compiledProgram,
+  mount: document.getElementById('app'),
+  route: {
+    params: { id: '123' },
+    query: new URLSearchParams('tab=overview'),
+    path: '/users/123',
+  },
+  imports: {
+    config: { siteName: 'My Site' },
+  },
+});
+
+// App is now interactive
+app.subscribe('count', (value) => console.log('count:', value));
 ```
 
 ## Error Model
