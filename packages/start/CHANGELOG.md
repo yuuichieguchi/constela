@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.2.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/server@3.0.1
+  - @constela/runtime@0.10.1
+
 ## 1.2.6
 
 ### Patch Changes

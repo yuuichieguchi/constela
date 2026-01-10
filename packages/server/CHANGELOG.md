@@ -1,5 +1,11 @@
 # @constela/server
 
+## 3.0.1
+
+### Patch Changes
+
+- fix(server): add index expression type support in SSR evaluate function
+
 ## 3.0.0
 
 ### Patch Changes
