@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.3
+
+### Patch Changes
+
+- fix(build): add default publicDir value to match dev server behavior
+
 ## 1.2.2
 
 ### Patch Changes

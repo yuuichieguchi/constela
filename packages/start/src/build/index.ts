@@ -18,6 +18,8 @@ import {
 } from '../runtime/entry-server.js';
 import { bundleRuntime } from './bundler.js';
 
+const DEFAULT_PUBLIC_DIR = 'public';
+
 export interface BuildResult {
   outDir: string;
   routes: string[];
@@ -463,7 +465,7 @@ function validateJsonPage(content: string, filePath: string): JsonPage {
 export async function build(options?: BuildOptions): Promise<BuildResult> {
   const outDir = options?.outDir ?? 'dist';
   const routesDir = options?.routesDir ?? 'src/routes';
-  const publicDir = options?.publicDir;
+  const publicDir = options?.publicDir ?? DEFAULT_PUBLIC_DIR;
   const layoutsDir = options?.layoutsDir;
 
   const generatedFiles: string[] = [];

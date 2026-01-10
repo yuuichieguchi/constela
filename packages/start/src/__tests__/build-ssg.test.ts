@@ -1326,6 +1326,48 @@ describe('build() - Default Options', () => {
         process.chdir(originalCwd);
       }
     });
+
+    it('should use "public" as default publicDir and copy files from it', async () => {
+      // Arrange
+      // Create the default "public" directory structure in the project root
+      const defaultPublicDir = join(testDir, 'public');
+      const pagesDir = join(testDir, 'src', 'routes');
+      const outDir = join(testDir, 'dist');
+
+      await mkdir(pagesDir, { recursive: true });
+      await mkdir(defaultPublicDir, { recursive: true });
+
+      // Write page file
+      await writeFile(join(pagesDir, 'index.json'), JSON.stringify(SIMPLE_PAGE_JSON));
+
+      // Write public files that should be copied with default publicDir
+      await writeFile(join(defaultPublicDir, 'favicon.ico'), 'default-favicon-content');
+      await writeFile(join(defaultPublicDir, 'robots.txt'), 'User-agent: *\nAllow: /');
+
+      // Change CWD temporarily so the default "public" directory is found
+      const originalCwd = process.cwd();
+      process.chdir(testDir);
+
+      try {
+        // Act - Call build WITHOUT specifying publicDir
+        // It should use "public" as the default and copy files from it
+        await build({
+          routesDir: pagesDir,
+          outDir,
+          // publicDir is intentionally NOT specified
+        });
+
+        // Assert - Files from default "public" directory should be copied to outDir
+        expect(await fileExists(join(outDir, 'favicon.ico'))).toBe(true);
+        expect(await fileExists(join(outDir, 'robots.txt'))).toBe(true);
+
+        // Verify content was preserved
+        const faviconContent = await readFile(join(outDir, 'favicon.ico'), 'utf-8');
+        expect(faviconContent).toBe('default-favicon-content');
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
   });
 });
 
