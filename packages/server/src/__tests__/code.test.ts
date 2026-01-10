@@ -81,7 +81,8 @@ describe('renderCodeSSR', () => {
       /**
        * Given: Code with syntax elements
        * When: renderCodeSSR is called
-       * Then: Syntax highlighting styles (color) should be preserved, only background-color removed
+       * Then: Syntax highlighting styles should be preserved using CSS custom properties
+       *       (Shiki uses --shiki-light/--shiki-dark CSS variables for dual-theme support)
        */
       // Arrange
       const code = 'const keyword = "string";';
@@ -91,9 +92,9 @@ describe('renderCodeSSR', () => {
       const result = await renderCodeSSR(code, language);
 
       // Assert
-      // Should have span elements with style for syntax highlighting colors
+      // Should have span elements with style for syntax highlighting using CSS custom properties
       expect(result).toContain('<span');
-      expect(result).toMatch(/style="[^"]*color/);
+      expect(result).toMatch(/style="[^"]*--shiki-/);
     });
   });
 

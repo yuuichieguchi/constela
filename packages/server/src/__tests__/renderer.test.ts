@@ -1418,7 +1418,8 @@ describe('renderToString', () => {
        * When: renderCode is called
        * Then: Output should contain colored tokens (spans with style attributes)
        *
-       * Shiki applies colors via inline styles like style="color:#..."
+       * Shiki applies colors via CSS custom properties like style="--shiki-light:...;--shiki-dark:..."
+       * when using dual-theme mode (defaultColor: false)
        */
       it('should render code blocks with colored tokens from Shiki', async () => {
         // Arrange
@@ -1432,8 +1433,8 @@ describe('renderToString', () => {
         const result = await renderToString(program);
 
         // Assert
-        // Shiki outputs spans with inline color styles
-        expect(result).toMatch(/<span[^>]*style="[^"]*color:[^"]*"[^>]*>/);
+        // Shiki outputs spans with CSS custom properties for dual-theme support
+        expect(result).toMatch(/<span[^>]*style="[^"]*--shiki-[^"]*"[^>]*>/);
       });
 
       /**
@@ -1480,8 +1481,8 @@ describe('renderToString', () => {
         // Assert
         // Should have language badge
         expect(result).toContain('javascript');
-        // Should also have syntax highlighting (spans with styles)
-        expect(result).toMatch(/<span[^>]*style="[^"]*color:[^"]*"[^>]*>/);
+        // Should also have syntax highlighting (spans with CSS custom properties)
+        expect(result).toMatch(/<span[^>]*style="[^"]*--shiki-[^"]*"[^>]*>/);
       });
 
       /**
@@ -1503,8 +1504,8 @@ describe('renderToString', () => {
         // Assert
         // Should have copy button class
         expect(result).toContain('constela-copy-btn');
-        // Should also have syntax highlighting (spans with styles)
-        expect(result).toMatch(/<span[^>]*style="[^"]*color:[^"]*"[^>]*>/);
+        // Should also have syntax highlighting (spans with CSS custom properties)
+        expect(result).toMatch(/<span[^>]*style="[^"]*--shiki-[^"]*"[^>]*>/);
       });
 
       /**
