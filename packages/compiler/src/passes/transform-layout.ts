@@ -346,5 +346,15 @@ export function composeLayoutWithPage(
     (result as unknown as { components: Record<string, ComponentDef> }).components = mergedComponents;
   }
 
+  // Merge importData from layout and page (page takes precedence on conflicts)
+  const mergedImportData = {
+    ...(layout.importData || {}),
+    ...(page.importData || {}),
+  };
+
+  if (Object.keys(mergedImportData).length > 0) {
+    result.importData = mergedImportData;
+  }
+
   return result;
 }

@@ -973,6 +973,396 @@ describe('JSON Layout Support', () => {
   });
 });
 
+// ==================== JSON Layout Import Resolution Tests ====================
+// TDD Red Phase: These tests will FAIL because loadLayout() does not resolve imports yet
+
+describe('JSON Layout Import Resolution in loadLayout()', () => {
+  // ==================== Setup ====================
+
+  beforeEach(async () => {
+    const fs = await import('node:fs');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReset();
+  });
+
+  // ==================== Happy Path ====================
+
+  describe('resolving imports defined in JSON layout', () => {
+    it('should resolve imports using resolveImports()', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const navigationData = {
+        items: [
+          { title: 'Home', href: '/' },
+          { title: 'About', href: '/about' },
+        ],
+      };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          nav: '../data/navigation.json',
+        },
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))  // First call: layout file
+        .mockReturnValueOnce(JSON.stringify(navigationData));  // Second call: imported file
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.importData).toBeDefined();
+      expect(layout.importData?.nav).toEqual(navigationData);
+    });
+
+    it('should resolve multiple imports', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const navigationData = { items: [{ title: 'Home', href: '/' }] };
+      const configData = { siteName: 'My Site', theme: 'dark' };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          nav: '../data/navigation.json',
+          config: '../data/config.json',
+        },
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(navigationData))
+        .mockReturnValueOnce(JSON.stringify(configData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout.importData).toBeDefined();
+      expect(layout.importData?.nav).toEqual(navigationData);
+      expect(layout.importData?.config).toEqual(configData);
+    });
+  });
+
+  // ==================== Store in importData property ====================
+
+  describe('storing resolved imports in importData property', () => {
+    it('should store resolved imports in importData property of returned LayoutProgram', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/header.json';
+      const menuData = { primary: [], secondary: [] };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          menu: '../data/menu.json',
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(menuData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      // importData should be a property on the returned LayoutProgram
+      expect('importData' in layout).toBe(true);
+      expect(layout.importData).toEqual({ menu: menuData });
+    });
+
+    it('should preserve other layout properties alongside importData', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const footerData = { copyright: '2024' };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          footer: '../data/footer.json',
+        },
+        state: { count: { expr: 'lit', value: 0 } },
+        actions: [{ name: 'increment', steps: [] }],
+        view: {
+          kind: 'element',
+          tag: 'main',
+          children: [{ kind: 'slot' }],
+        },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(footerData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      // All original properties should be preserved
+      expect(layout.version).toBe('1.0');
+      expect(layout.type).toBe('layout');
+      expect(layout.state).toBeDefined();
+      expect(layout.actions).toBeDefined();
+      expect(layout.view).toBeDefined();
+      // And importData should be added
+      expect(layout.importData?.footer).toEqual(footerData);
+    });
+  });
+
+  // ==================== Error Handling ====================
+
+  describe('error handling for import resolution', () => {
+    it('should throw error when import file not found', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          missing: '../data/nonexistent.json',
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      // Reset existsSync mock and configure for this test
+      vi.mocked(fs.existsSync).mockReset();
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false); // Import file does not exist
+      // First call (layout file) succeeds, subsequent calls for imports fail
+      vi.mocked(fs.readFileSync).mockReturnValueOnce(JSON.stringify(jsonLayout));
+
+      // Act & Assert
+      await expect(loadLayout(layoutFile)).rejects.toThrow(/not found/i);
+    });
+
+    it('should include import name in error message when file not found', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          myMissingImport: '../data/missing.json',
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      // Reset existsSync mock and configure for this test
+      vi.mocked(fs.existsSync).mockReset();
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false); // Import file does not exist
+      vi.mocked(fs.readFileSync).mockReturnValueOnce(JSON.stringify(jsonLayout));
+
+      // Act & Assert
+      try {
+        await loadLayout(layoutFile);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect((error as Error).message).toContain('myMissingImport');
+      }
+    });
+
+    it('should throw error when import file contains invalid JSON', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          broken: '../data/broken.json',
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce('{ invalid json content }');
+
+      // Act & Assert
+      await expect(loadLayout(layoutFile)).rejects.toThrow(/invalid json/i);
+    });
+  });
+
+  // ==================== Backward Compatibility ====================
+
+  describe('backward compatibility with layouts without imports', () => {
+    it('should work with layout files that have no imports field', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/simple.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        // No imports field
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.type).toBe('layout');
+      // importData should be undefined or empty when no imports
+      expect(layout.importData).toBeUndefined();
+    });
+
+    it('should work with layout files that have empty imports object', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/empty-imports.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {},  // Empty imports object
+        state: {},
+        actions: [],
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.type).toBe('layout');
+      // importData should be undefined when imports is empty
+      expect(layout.importData).toBeUndefined();
+    });
+
+    it('should not break existing TypeScript layout loading', async () => {
+      // This test ensures TypeScript layouts still work
+      // Note: This test may need to be skipped or handled differently
+      // since TypeScript dynamic imports are difficult to mock
+
+      // Arrange - Using a JSON path that would normally be a .ts file
+      const layoutFile = '/project/layouts/legacy.json';
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(jsonLayout));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout).toBeDefined();
+      expect(layout.version).toBe('1.0');
+      expect(layout.type).toBe('layout');
+    });
+  });
+
+  // ==================== Path Resolution ====================
+
+  describe('resolving paths relative to layout file directory', () => {
+    it('should resolve import paths relative to layout file directory', async () => {
+      // Arrange
+      const layoutFile = '/project/src/layouts/admin/dashboard.json';
+      const sidebarData = { items: [] };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          sidebar: '../../data/sidebar.json',  // Relative to /project/src/layouts/admin/
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);  // Import file exists
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(sidebarData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout.importData?.sidebar).toEqual(sidebarData);
+      // Verify the correct path was used (existsSync is called with the resolved path)
+      expect(fs.existsSync).toHaveBeenCalledWith(
+        expect.stringContaining('data/sidebar.json')
+      );
+    });
+
+    it('should handle imports from subdirectories', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const nestedData = { nested: true };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          nested: './components/nested.json',  // Subdirectory relative to layout
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(nestedData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout.importData?.nested).toEqual(nestedData);
+    });
+
+    it('should handle imports from sibling directories', async () => {
+      // Arrange
+      const layoutFile = '/project/layouts/main.json';
+      const siblingData = { sibling: true };
+      const jsonLayout = {
+        version: '1.0',
+        type: 'layout',
+        imports: {
+          sibling: '../data/shared/common.json',  // Sibling directory
+        },
+        view: { kind: 'slot' },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync)
+        .mockReturnValueOnce(JSON.stringify(jsonLayout))
+        .mockReturnValueOnce(JSON.stringify(siblingData));
+
+      // Act
+      const layout = await loadLayout(layoutFile);
+
+      // Assert
+      expect(layout.importData?.sibling).toEqual(siblingData);
+    });
+  });
+});
+
 // Cleanup
 afterEach(() => {
   vi.clearAllMocks();

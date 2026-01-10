@@ -627,3 +627,234 @@ describe('CompiledLayoutProgram type', () => {
     expect(compiledLayout.version).toBe('1.0');
   });
 });
+
+// ==================== Issue 1: composeLayoutWithPage loses importData ====================
+
+describe('composeLayoutWithPage importData merging', () => {
+  // ==================== Helper Functions ====================
+
+  function createLayoutWithImports(
+    view: ViewNode,
+    importData?: Record<string, unknown>
+  ): CompiledProgram {
+    return {
+      version: '1.0',
+      type: 'layout',
+      state: {},
+      actions: {},
+      view,
+      importData,
+    } as unknown as CompiledProgram;
+  }
+
+  function createPageWithImports(
+    view: ViewNode,
+    importData?: Record<string, unknown>
+  ): CompiledProgram {
+    return {
+      version: '1.0',
+      state: {},
+      actions: {},
+      view,
+      importData,
+    } as unknown as CompiledProgram;
+  }
+
+  // ==================== Page importData preservation ====================
+
+  describe('page importData preservation', () => {
+    it('should preserve page importData in composed result', () => {
+      // Arrange
+      const layout = createLayoutWithImports({ kind: 'slot' } as ViewNode);
+      const page = createPageWithImports(
+        { kind: 'element', tag: 'main' } as ViewNode,
+        {
+          pageConfig: { theme: 'dark', title: 'My Page' },
+          pageData: [1, 2, 3],
+        }
+      );
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.pageConfig).toEqual({ theme: 'dark', title: 'My Page' });
+      expect(result.importData?.pageData).toEqual([1, 2, 3]);
+    });
+
+    it('should preserve nested page importData', () => {
+      // Arrange
+      const layout = createLayoutWithImports({ kind: 'slot' } as ViewNode);
+      const page = createPageWithImports(
+        { kind: 'element', tag: 'main' } as ViewNode,
+        {
+          navigation: {
+            items: [
+              { label: 'Home', href: '/' },
+              { label: 'About', href: '/about' },
+            ],
+          },
+        }
+      );
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.navigation).toBeDefined();
+      expect((result.importData?.navigation as { items: unknown[] })?.items).toHaveLength(2);
+    });
+  });
+
+  // ==================== Layout importData preservation ====================
+
+  describe('layout importData preservation', () => {
+    it('should preserve layout importData in composed result', () => {
+      // Arrange
+      const layout = createLayoutWithImports(
+        { kind: 'slot' } as ViewNode,
+        {
+          layoutConfig: { sidebarWidth: 250, showHeader: true },
+          layoutStrings: { copyright: '2024 MyApp' },
+        }
+      );
+      const page = createPageWithImports({ kind: 'element', tag: 'main' } as ViewNode);
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.layoutConfig).toEqual({ sidebarWidth: 250, showHeader: true });
+      expect(result.importData?.layoutStrings).toEqual({ copyright: '2024 MyApp' });
+    });
+
+    it('should preserve layout importData with complex nested structure', () => {
+      // Arrange
+      const layout = createLayoutWithImports(
+        { kind: 'slot' } as ViewNode,
+        {
+          menu: {
+            main: [
+              { label: 'Dashboard', icon: 'home' },
+              { label: 'Settings', icon: 'gear' },
+            ],
+            footer: [{ label: 'Help' }],
+          },
+        }
+      );
+      const page = createPageWithImports({ kind: 'element', tag: 'main' } as ViewNode);
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.menu).toBeDefined();
+    });
+  });
+
+  // ==================== Merging both importData ====================
+
+  describe('merging layout and page importData', () => {
+    it('should merge importData from both layout and page', () => {
+      // Arrange
+      const layout = createLayoutWithImports(
+        { kind: 'slot' } as ViewNode,
+        {
+          layoutNav: { items: ['Home', 'About'] },
+        }
+      );
+      const page = createPageWithImports(
+        { kind: 'element', tag: 'main' } as ViewNode,
+        {
+          pageData: { content: 'Hello World' },
+        }
+      );
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.layoutNav).toEqual({ items: ['Home', 'About'] });
+      expect(result.importData?.pageData).toEqual({ content: 'Hello World' });
+    });
+
+    it('should give page importData precedence on key conflicts', () => {
+      // Arrange - Both have 'config' key
+      const layout = createLayoutWithImports(
+        { kind: 'slot' } as ViewNode,
+        {
+          config: { theme: 'light', fontSize: 14 },
+          layoutOnly: 'from-layout',
+        }
+      );
+      const page = createPageWithImports(
+        { kind: 'element', tag: 'main' } as ViewNode,
+        {
+          config: { theme: 'dark', maxWidth: 1200 },
+          pageOnly: 'from-page',
+        }
+      );
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      // Page should take precedence for conflicting keys
+      expect(result.importData?.config).toEqual({ theme: 'dark', maxWidth: 1200 });
+      // Non-conflicting keys should be preserved
+      expect(result.importData?.layoutOnly).toBe('from-layout');
+      expect(result.importData?.pageOnly).toBe('from-page');
+    });
+
+    it('should handle case where only layout has importData', () => {
+      // Arrange
+      const layout = createLayoutWithImports(
+        { kind: 'slot' } as ViewNode,
+        { layoutData: { value: 42 } }
+      );
+      const page = createPageWithImports({ kind: 'element', tag: 'main' } as ViewNode);
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.layoutData).toEqual({ value: 42 });
+    });
+
+    it('should handle case where only page has importData', () => {
+      // Arrange
+      const layout = createLayoutWithImports({ kind: 'slot' } as ViewNode);
+      const page = createPageWithImports(
+        { kind: 'element', tag: 'main' } as ViewNode,
+        { pageData: { value: 100 } }
+      );
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      expect(result.importData).toBeDefined();
+      expect(result.importData?.pageData).toEqual({ value: 100 });
+    });
+
+    it('should handle case where neither has importData', () => {
+      // Arrange
+      const layout = createLayoutWithImports({ kind: 'slot' } as ViewNode);
+      const page = createPageWithImports({ kind: 'element', tag: 'main' } as ViewNode);
+
+      // Act
+      const result = composeLayoutWithPage(layout, page);
+
+      // Assert
+      // Should not have importData or should be undefined/empty
+      expect(result.importData === undefined || Object.keys(result.importData).length === 0).toBe(true);
+    });
+  });
+});

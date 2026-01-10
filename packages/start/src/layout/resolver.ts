@@ -9,10 +9,11 @@
  */
 
 import { existsSync, statSync, readFileSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, dirname } from 'node:path';
 import fg from 'fast-glob';
 import type { LayoutProgram, Program } from '@constela/core';
 import { isLayoutProgram } from '@constela/core';
+import { resolveImports } from '../utils/import-resolver.js';
 
 // ==================== Types ====================
 
@@ -112,7 +113,24 @@ export async function loadLayout(layoutFile: string): Promise<LayoutProgram> {
     if (layoutFile.endsWith('.json')) {
       // Read and parse JSON file
       const content = readFileSync(layoutFile, 'utf-8');
-      exported = JSON.parse(content);
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // Resolve imports if defined
+      const importsValue = parsed['imports'];
+      if (
+        importsValue &&
+        typeof importsValue === 'object' &&
+        Object.keys(importsValue as Record<string, unknown>).length > 0
+      ) {
+        const layoutDir = dirname(layoutFile);
+        const resolvedImports = await resolveImports(
+          layoutDir,
+          importsValue as Record<string, string>
+        );
+        exported = { ...parsed, importData: resolvedImports };
+      } else {
+        exported = parsed;
+      }
     } else {
       // Dynamic import for TypeScript files
       const module = await import(layoutFile);
@@ -127,6 +145,12 @@ export async function loadLayout(layoutFile: string): Promise<LayoutProgram> {
     return exported;
   } catch (error) {
     if (error instanceof Error && error.message.includes('not a valid layout')) {
+      throw error;
+    }
+    if (error instanceof Error && error.message.includes('not found')) {
+      throw error;
+    }
+    if (error instanceof Error && error.message.includes('Invalid JSON')) {
       throw error;
     }
     throw new Error(`Failed to load layout: ${layoutFile}`);

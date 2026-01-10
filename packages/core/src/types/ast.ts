@@ -570,6 +570,8 @@ export type ConstelaAst = Program;
 export interface LayoutProgram {
   version: '1.0';
   type: 'layout';
+  imports?: Record<string, string>;        // External data references (e.g., { "navigation": "./data/nav.json" })
+  importData?: Record<string, unknown>;    // Resolved import data (populated at load time)
   state?: Record<string, StateField>;
   actions?: ActionDefinition[];
   view: ViewNode;  // Must contain at least one SlotNode

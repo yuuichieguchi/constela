@@ -41,6 +41,7 @@ interface HydrateContext {
   actions: Record<string, CompiledAction>;
   locals: Record<string, unknown>;
   cleanups: (() => void)[];
+  imports?: Record<string, unknown>;
 }
 
 /**
@@ -87,6 +88,7 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     actions,
     locals: {},
     cleanups,
+    ...(program.importData && { imports: program.importData }),
   };
 
   // Hydrate the existing DOM
@@ -192,6 +194,7 @@ function hydrateElement(
               payload = evaluate(handler.payload, {
                 state: ctx.state,
                 locals: { ...ctx.locals, ...eventLocals },
+                ...(ctx.imports && { imports: ctx.imports }),
               });
             }
 
@@ -210,6 +213,7 @@ function hydrateElement(
           const value = evaluate(propValue as CompiledExpression, {
             state: ctx.state,
             locals: ctx.locals,
+            ...(ctx.imports && { imports: ctx.imports }),
           });
           applyProp(el, propName, value);
         });
@@ -284,6 +288,7 @@ function hydrateChildren(
       const items = evaluate((childNode as CompiledEachNode).items, {
         state: ctx.state,
         locals: ctx.locals,
+        ...(ctx.imports && { imports: ctx.imports }),
       }) as unknown[];
       const itemCount = Array.isArray(items) ? items.length : 0;
 
@@ -320,6 +325,7 @@ function hydrateTextGroup(
       const value = evaluate(node.value, {
         state: ctx.state,
         locals: ctx.locals,
+        ...(ctx.imports && { imports: ctx.imports }),
       });
       combinedText += formatValue(value);
     }
@@ -372,6 +378,7 @@ function hydrateText(
     const value = evaluate(node.value, {
       state: ctx.state,
       locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
     });
     textNode.textContent = formatValue(value);
   });
@@ -418,6 +425,7 @@ function hydrateIf(
   const initialCondition = evaluate(node.condition, {
     state: ctx.state,
     locals: ctx.locals,
+    ...(ctx.imports && { imports: ctx.imports }),
   });
   currentBranch = Boolean(initialCondition) ? 'then' : node.else ? 'else' : 'none';
 
@@ -439,6 +447,7 @@ function hydrateIf(
     const condition = evaluate(node.condition, {
       state: ctx.state,
       locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
     });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
@@ -468,6 +477,7 @@ function hydrateIf(
         actions: ctx.actions,
         locals: ctx.locals,
         cleanups: localCleanups,
+        ...(ctx.imports && { imports: ctx.imports }),
       };
 
       // Render new branch (create fresh DOM)
@@ -522,6 +532,7 @@ function hydrateEach(
   const initialItems = evaluate(node.items, {
     state: ctx.state,
     locals: ctx.locals,
+    ...(ctx.imports && { imports: ctx.imports }),
   }) as unknown[];
 
   // Track if this is the first run of the effect
@@ -567,6 +578,7 @@ function hydrateEach(
     const items = evaluate(node.items, {
       state: ctx.state,
       locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
     }) as unknown[];
 
     // Skip the first run - initial hydration already done above
@@ -606,6 +618,7 @@ function hydrateEach(
           actions: ctx.actions,
           locals: itemLocals,
           cleanups: localCleanups,
+          ...(ctx.imports && { imports: ctx.imports }),
         };
 
         const itemNode = render(node.body, itemCtx);

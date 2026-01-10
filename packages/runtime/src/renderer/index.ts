@@ -31,6 +31,7 @@ export interface RenderContext {
   state: StateStore;
   actions: Record<string, CompiledAction>;
   locals: Record<string, unknown>;
+  imports?: Record<string, unknown>;
   cleanups?: (() => void)[];
 }
 
@@ -97,7 +98,8 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
             if (handler.payload) {
               payload = evaluate(handler.payload, {
                 state: ctx.state,
-                locals: { ...ctx.locals, ...eventLocals }
+                locals: { ...ctx.locals, ...eventLocals },
+                ...(ctx.imports && { imports: ctx.imports })
               });
             }
 
@@ -113,7 +115,7 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
       } else {
         // Apply prop with effect for reactivity
         const cleanup = createEffect(() => {
-          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals });
+          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
           applyProp(el, propName, value);
         });
         ctx.cleanups?.push(cleanup);
@@ -166,7 +168,7 @@ function renderText(node: CompiledTextNode, ctx: RenderContext): Text {
   const textNode = document.createTextNode('');
 
   const cleanup = createEffect(() => {
-    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals });
+    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
     textNode.textContent = formatValue(value);
   });
   ctx.cleanups?.push(cleanup);
@@ -192,7 +194,7 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
   let branchCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals });
+    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : (node.else ? 'else' : 'none');
 
@@ -256,7 +258,7 @@ function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
   let itemCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals }) as unknown[];
+    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) as unknown[];
 
     // Cleanup previous item effects
     for (const cleanup of itemCleanups) {
@@ -334,7 +336,7 @@ function renderMarkdown(node: CompiledMarkdownNode, ctx: RenderContext): HTMLEle
   container.className = 'constela-markdown';
 
   const cleanup = createEffect(() => {
-    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals });
+    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
     const html = parseMarkdown(String(content ?? ''));
     container.innerHTML = html;
   });
@@ -353,8 +355,8 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
   pre.appendChild(codeEl);
 
   const cleanup = createEffect(() => {
-    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals }) ?? 'plaintext');
-    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals }) ?? '');
+    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) ?? 'plaintext');
+    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) ?? '');
 
     // Set language class for immediate access
     codeEl.className = `language-${language || 'plaintext'}`;

@@ -103,9 +103,11 @@ export interface DevServerOptions {
  * Build options
  */
 export interface BuildOptions {
-  outDir?: string;
-  routesDir?: string;
-  publicDir?: string;
-  layoutsDir?: string;
-  target?: 'node' | 'edge';
+  outDir?: string | undefined;
+  routesDir?: string | undefined;
+  publicDir?: string | undefined;
+  layoutsDir?: string | undefined;
+  /** CSS entry point(s) for Vite middleware processing */
+  css?: string | string[] | undefined;
+  target?: 'node' | 'edge' | undefined;
 }
