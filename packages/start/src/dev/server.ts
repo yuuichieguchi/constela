@@ -394,6 +394,8 @@ export async function createDevServer(
               // Import map for resolving bare module specifiers in browser
               const importMap = {
                 '@constela/runtime': '/node_modules/@constela/runtime/dist/index.js',
+                '@constela/core': '/node_modules/@constela/core/dist/index.js',
+                '@constela/compiler': '/node_modules/@constela/compiler/dist/index.js',
                 'marked': '/node_modules/marked/lib/marked.esm.js',
                 'monaco-editor': '/node_modules/monaco-editor/esm/vs/editor/editor.api.js',
               };
