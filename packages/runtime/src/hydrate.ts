@@ -177,6 +177,11 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     getState(name: string): unknown {
       return state.get(name);
     },
+
+    subscribe(name: string, fn: (value: unknown) => void): () => void {
+      if (destroyed) return () => {};
+      return state.subscribe(name, fn);
+    },
   };
 }
 

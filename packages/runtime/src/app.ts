@@ -13,6 +13,7 @@ export interface AppInstance {
   destroy(): void;
   setState(name: string, value: unknown): void;
   getState(name: string): unknown;
+  subscribe(name: string, fn: (value: unknown) => void): () => void;
 }
 
 /**
@@ -116,6 +117,11 @@ export function createApp(
 
     getState(name: string): unknown {
       return state.get(name);
+    },
+
+    subscribe(name: string, fn: (value: unknown) => void): () => void {
+      if (destroyed) return () => {};
+      return state.subscribe(name, fn);
     },
   };
 }
