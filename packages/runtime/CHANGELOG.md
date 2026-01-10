@@ -1,5 +1,15 @@
 # @constela/runtime
 
+## 0.10.1
+
+### Patch Changes
+
+- feat(runtime): add subscribe method to AppInstance
+
+  Expose StateStore.subscribe() through hydrateApp() and createApp() return objects.
+  This enables client-side code to reactively respond to state changes, fixing theme
+  persistence across page navigation.
+
 ## 0.10.0
 
 ### Minor Changes
