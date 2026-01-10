@@ -7,8 +7,10 @@ import { scanRoutes, filePathToPattern } from '../router/file-router.js';
 import {
   JsonPageLoader,
   convertToCompiledProgram,
+  generateStaticPathsFromPage,
   type PageInfo,
   type JsonPage,
+  type StaticPathResult,
 } from '../json-page-loader.js';
 import {
   renderPage,
@@ -16,7 +18,7 @@ import {
   generateHydrationScript,
   type SSRContext,
 } from '../runtime/entry-server.js';
-import { bundleRuntime } from './bundler.js';
+import { bundleRuntime, bundleCSS } from './bundler.js';
 
 const DEFAULT_PUBLIC_DIR = 'public';
 
@@ -363,7 +365,8 @@ async function processLayouts(
 async function renderPageToHtml(
   program: CompiledProgram,
   params: Record<string, string>,
-  runtimePath?: string
+  runtimePath?: string,
+  cssPath?: string
 ): Promise<string> {
   // Normalize the view to handle legacy expression formats
   const normalizedProgram: CompiledProgram = {
@@ -386,8 +389,11 @@ async function renderPageToHtml(
     path: '/',
   };
 
+  // Generate CSS link tag if cssPath is provided
+  const cssLinkTag = cssPath ? `<link rel="stylesheet" href="${cssPath}">` : undefined;
+
   const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
-  return wrapHtml(content, hydrationScript, undefined, runtimePath ? { runtimePath } : undefined);
+  return wrapHtml(content, hydrationScript, cssLinkTag, runtimePath ? { runtimePath } : undefined);
 }
 
 /**
@@ -511,6 +517,15 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
   // Bundle runtime for production (only if there are pages to generate)
   const runtimePath = await bundleRuntime({ outDir });
 
+  // Bundle CSS if provided
+  let cssPath: string | undefined;
+  if (options?.css) {
+    cssPath = await bundleCSS({
+      outDir,
+      css: options.css,
+    });
+  }
+
   // Resolve routesDir to absolute path
   // This is needed to correctly calculate relative paths when routesDir is absolute
   // (e.g., in tests where routesDir points to a temp directory)
@@ -533,40 +548,49 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
 
     // Check if this is a dynamic route
     if (isDynamicRoute(route.pattern)) {
-      // Load getStaticPaths
-      const staticPaths = await loadGetStaticPaths(route.file);
+      // Load page once outside the loop
+      // Pass routesDir so that relative patterns in data sources are resolved from routes directory
+      // This ensures patterns like "../../content/" work consistently regardless of page nesting depth
+      const loader = new JsonPageLoader(projectRoot, { routesDir: absoluteRoutesDir });
+      let pageInfo = await loader.loadPage(relPathFromProjectRoot);
 
-      if (!staticPaths) {
+      // Check for inline getStaticPaths first
+      let staticPathsResult: StaticPathResult[] | null = null;
+
+      if (pageInfo.page.getStaticPaths) {
+        // Use inline getStaticPaths from JSON
+        staticPathsResult = await generateStaticPathsFromPage(
+          pageInfo.page,
+          pageInfo.loadedData
+        );
+      } else {
+        // Fall back to .paths.ts file
+        const externalPaths = await loadGetStaticPaths(route.file);
+        if (externalPaths) {
+          staticPathsResult = externalPaths.paths.map((p) => ({ params: p.params }));
+        }
+      }
+
+      if (!staticPathsResult || staticPathsResult.length === 0) {
         // Skip dynamic routes without getStaticPaths
         continue;
       }
 
-      // Validate getStaticPaths result
-      if (!staticPaths.paths || !Array.isArray(staticPaths.paths)) {
-        throw new Error(`Invalid getStaticPaths format in ${route.file}`);
+      // Apply layouts if configured (once, outside loop)
+      if (layoutsDir) {
+        pageInfo = await processLayouts(pageInfo, layoutsDir);
       }
 
       // Generate page for each path
-      for (const pathEntry of staticPaths.paths) {
+      for (const pathEntry of staticPathsResult) {
         const params = pathEntry.params;
         const outputPath = paramsToOutputPath(route.pattern, params, outDir);
-
-        // Create page loader for this page
-        const loader = new JsonPageLoader(projectRoot);
-
-        // Load page info
-        let pageInfo = await loader.loadPage(relPathFromProjectRoot);
-
-        // Apply layouts if configured
-        if (layoutsDir) {
-          pageInfo = await processLayouts(pageInfo, layoutsDir);
-        }
 
         // Convert to compiled program
         const program = await convertToCompiledProgram(pageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params, runtimePath);
+        const html = await renderPageToHtml(program, params, runtimePath, cssPath);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
@@ -586,8 +610,8 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       // Static page - generate single HTML file
       const outputPath = getOutputPath(relPathFromRoutesDir, outDir);
 
-      // Create page loader
-      const loader = new JsonPageLoader(projectRoot);
+      // Create page loader with routesDir for consistent pattern resolution
+      const loader = new JsonPageLoader(projectRoot, { routesDir: absoluteRoutesDir });
 
       // Load page info
       let pageInfo = await loader.loadPage(relPathFromProjectRoot);
@@ -601,7 +625,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {}, runtimePath);
+      const html = await renderPageToHtml(program, {}, runtimePath, cssPath);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });

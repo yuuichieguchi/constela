@@ -1509,3 +1509,452 @@ describe('build() - Integration Tests', () => {
     });
   });
 });
+
+// ==================== Bug #1: Inline getStaticPaths in JSON ====================
+
+describe('build() - Inline getStaticPaths in JSON Pages', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await createTestDir();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDir(testDir);
+  });
+
+  /**
+   * Bug: JSON pages can define getStaticPaths inline, but build() only reads .paths.ts files.
+   * The JsonPageLoader has getStaticPaths() method that correctly handles inline definitions,
+   * but build() uses loadGetStaticPaths() which only checks for .paths.ts files.
+   */
+  describe('inline getStaticPaths definition', () => {
+    it('should generate pages from inline getStaticPaths in JSON page', async () => {
+      /**
+       * Given: A dynamic route JSON page with inline getStaticPaths definition
+       * When: build() is called
+       * Then: HTML files should be generated for each path from the inline definition
+       *
+       * This test verifies that JSON pages with inline getStaticPaths are processed
+       * correctly, not just pages with external .paths.ts files.
+       */
+
+      // Arrange - Create content files that will be loaded via glob
+      const contentDir = join(testDir, 'content', 'posts');
+      await mkdir(contentDir, { recursive: true });
+
+      // Create MDX content files with frontmatter containing slug
+      await writeFile(
+        join(contentDir, 'hello-world.mdx'),
+        '---\nslug: hello-world\ntitle: Hello World\n---\n# Hello World'
+      );
+      await writeFile(
+        join(contentDir, 'second-post.mdx'),
+        '---\nslug: second-post\ntitle: Second Post\n---\n# Second Post'
+      );
+      await writeFile(
+        join(contentDir, 'third-post.mdx'),
+        '---\nslug: third-post\ntitle: Third Post\n---\n# Third Post'
+      );
+
+      // Create a dynamic page with inline getStaticPaths using glob data
+      const dynamicPageWithInlineGetStaticPaths = {
+        version: '1.0',
+        route: {
+          path: '/posts/:slug',
+        },
+        data: {
+          posts: {
+            type: 'glob',
+            pattern: '../../content/posts/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'posts',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'article',
+          props: {},
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Post content' },
+            },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'posts/[slug].json': dynamicPageWithInlineGetStaticPaths,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - All pages from inline getStaticPaths should be generated
+      expect(await fileExists(join(outDir, 'posts', 'hello-world', 'index.html'))).toBe(true);
+      expect(await fileExists(join(outDir, 'posts', 'second-post', 'index.html'))).toBe(true);
+      expect(await fileExists(join(outDir, 'posts', 'third-post', 'index.html'))).toBe(true);
+    });
+
+    it('should prefer inline getStaticPaths over .paths.ts file when both exist', async () => {
+      /**
+       * Given: A dynamic route with both inline getStaticPaths and external .paths.ts
+       * When: build() is called
+       * Then: The inline definition should take precedence (or both should be merged)
+       *
+       * This test ensures consistent behavior when both definitions exist.
+       */
+
+      // Arrange - Create content files
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'inline-doc-1.mdx'),
+        '---\nslug: inline-doc-1\n---\n# Inline Doc 1'
+      );
+      await writeFile(
+        join(contentDir, 'inline-doc-2.mdx'),
+        '---\nslug: inline-doc-2\n---\n# Inline Doc 2'
+      );
+
+      const pageWithBothDefinitions = {
+        version: '1.0',
+        route: {
+          path: '/docs/:slug',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../content/docs/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/[slug].json': pageWithBothDefinitions,
+        },
+      });
+
+      // Also create a .paths.ts file with different paths
+      const externalPathsModule = `
+        export function getStaticPaths() {
+          return {
+            paths: [
+              { params: { slug: 'external-doc-1' } },
+              { params: { slug: 'external-doc-2' } },
+            ],
+          };
+        }
+      `;
+      await writeFile(join(pagesDir, 'docs', '[slug].paths.ts'), externalPathsModule);
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Inline paths should be generated (from inline getStaticPaths, not .paths.ts)
+      expect(await fileExists(join(outDir, 'docs', 'inline-doc-1', 'index.html'))).toBe(true);
+      expect(await fileExists(join(outDir, 'docs', 'inline-doc-2', 'index.html'))).toBe(true);
+    });
+
+    it('should handle inline getStaticPaths with nested param paths', async () => {
+      /**
+       * Given: A JSON page with inline getStaticPaths using nested path expressions
+       * When: build() is called
+       * Then: Params should be correctly extracted from nested paths
+       */
+
+      // Arrange - Create content files with nested frontmatter
+      const contentDir = join(testDir, 'content', 'articles');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'january-update.mdx'),
+        '---\nmeta:\n  year: "2024"\n  slug: january-update\n---\n# January Update'
+      );
+      await writeFile(
+        join(contentDir, 'february-news.mdx'),
+        '---\nmeta:\n  year: "2024"\n  slug: february-news\n---\n# February News'
+      );
+      await writeFile(
+        join(contentDir, 'annual-review.mdx'),
+        '---\nmeta:\n  year: "2023"\n  slug: annual-review\n---\n# Annual Review'
+      );
+
+      const pageWithNestedParams = {
+        version: '1.0',
+        route: {
+          path: '/blog/:year/:slug',
+        },
+        data: {
+          articles: {
+            type: 'glob',
+            pattern: '../../content/articles/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'articles',
+          params: {
+            year: { expr: 'var', name: 'item', path: 'frontmatter.meta.year' },
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.meta.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'article',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'blog/[year]/[slug].json': pageWithNestedParams,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      expect(await fileExists(join(outDir, 'blog', '2024', 'january-update', 'index.html'))).toBe(true);
+      expect(await fileExists(join(outDir, 'blog', '2024', 'february-news', 'index.html'))).toBe(true);
+      expect(await fileExists(join(outDir, 'blog', '2023', 'annual-review', 'index.html'))).toBe(true);
+    });
+  });
+});
+
+// ==================== Bug #2: CSS Processing in Build ====================
+
+describe('build() - CSS Processing', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await createTestDir();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDir(testDir);
+  });
+
+  /**
+   * Bug: BuildOptions accepts a `css` option but build() doesn't process it.
+   * CSS should be bundled to {outDir}/_constela/styles.css and HTML should
+   * include a stylesheet link.
+   */
+  describe('CSS bundling', () => {
+    it('should bundle CSS file to _constela/styles.css when css option is provided', async () => {
+      /**
+       * Given: A project with a CSS file and build options specifying css
+       * When: build() is called with css option
+       * Then: CSS should be bundled to {outDir}/_constela/styles.css
+       */
+
+      // Arrange - Create CSS file
+      const cssDir = join(testDir, 'src', 'styles');
+      await mkdir(cssDir, { recursive: true });
+      const cssContent = `
+        :root {
+          --primary-color: #007bff;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: sans-serif;
+        }
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+      `;
+      await writeFile(join(cssDir, 'main.css'), cssContent);
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+        css: join(cssDir, 'main.css'),
+      });
+
+      // Assert - CSS should be bundled
+      const bundledCssPath = join(outDir, '_constela', 'styles.css');
+      expect(await fileExists(bundledCssPath)).toBe(true);
+
+      // Verify CSS content is preserved
+      const bundledContent = await readFile(bundledCssPath, 'utf-8');
+      expect(bundledContent).toContain('--primary-color');
+      expect(bundledContent).toContain('font-family');
+    });
+
+    it('should include stylesheet link in generated HTML when css is provided', async () => {
+      /**
+       * Given: A project with CSS option specified
+       * When: build() generates HTML files
+       * Then: Each HTML file should include <link rel="stylesheet" href="/_constela/styles.css">
+       */
+
+      // Arrange
+      const cssDir = join(testDir, 'src', 'styles');
+      await mkdir(cssDir, { recursive: true });
+      await writeFile(join(cssDir, 'app.css'), 'body { color: black; }');
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON,
+          'about.json': PAGE_WITH_LAYOUT_JSON,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+        css: join(cssDir, 'app.css'),
+      });
+
+      // Assert - HTML files should include stylesheet link
+      const indexHtml = await readFile(join(outDir, 'index.html'), 'utf-8');
+      const aboutHtml = await readFile(join(outDir, 'about', 'index.html'), 'utf-8');
+
+      expect(indexHtml).toContain('<link rel="stylesheet" href="/_constela/styles.css">');
+      expect(aboutHtml).toContain('<link rel="stylesheet" href="/_constela/styles.css">');
+    });
+
+    it('should handle multiple CSS entry points as array', async () => {
+      /**
+       * Given: Multiple CSS files specified as an array
+       * When: build() is called
+       * Then: All CSS should be bundled together into styles.css
+       */
+
+      // Arrange
+      const cssDir = join(testDir, 'src', 'styles');
+      await mkdir(cssDir, { recursive: true });
+
+      await writeFile(join(cssDir, 'reset.css'), '* { margin: 0; padding: 0; box-sizing: border-box; }');
+      await writeFile(join(cssDir, 'typography.css'), 'body { font-size: 16px; line-height: 1.5; }');
+      await writeFile(join(cssDir, 'layout.css'), '.container { max-width: 1200px; }');
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+        css: [
+          join(cssDir, 'reset.css'),
+          join(cssDir, 'typography.css'),
+          join(cssDir, 'layout.css'),
+        ],
+      });
+
+      // Assert - All CSS content should be bundled
+      const bundledCssPath = join(outDir, '_constela', 'styles.css');
+      expect(await fileExists(bundledCssPath)).toBe(true);
+
+      const bundledContent = await readFile(bundledCssPath, 'utf-8');
+      expect(bundledContent).toContain('box-sizing');
+      expect(bundledContent).toContain('font-size');
+      expect(bundledContent).toContain('max-width');
+    });
+
+    it('should not include stylesheet link when css option is not provided', async () => {
+      /**
+       * Given: A project without CSS option
+       * When: build() is called
+       * Then: HTML should not include stylesheet link to _constela/styles.css
+       */
+
+      // Arrange
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON,
+        },
+      });
+
+      // Act - No css option provided
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const indexHtml = await readFile(join(outDir, 'index.html'), 'utf-8');
+      expect(indexHtml).not.toContain('/_constela/styles.css');
+    });
+
+    it('should throw error when CSS file does not exist', async () => {
+      /**
+       * Given: A css option pointing to a non-existent file
+       * When: build() is called
+       * Then: Should throw a descriptive error
+       */
+
+      // Arrange
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON,
+        },
+      });
+
+      const nonExistentCss = join(testDir, 'src', 'styles', 'non-existent.css');
+
+      // Act & Assert
+      await expect(
+        build({
+          routesDir: pagesDir,
+          outDir,
+          css: nonExistentCss,
+        })
+      ).rejects.toThrow(/css.*not found|no such file/i);
+    });
+  });
+});

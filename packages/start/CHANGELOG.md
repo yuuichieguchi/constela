@@ -1,5 +1,16 @@
 # @constela/start
 
+## 1.2.4
+
+### Patch Changes
+
+- fix(build): process inline getStaticPaths and bundle CSS
+
+  - Fix JSON pages with inline `getStaticPaths` not being processed during build
+  - Add `bundleCSS()` function to bundle CSS files with esbuild
+  - Add `routesDir` option to `JsonPageLoader` for consistent glob pattern resolution
+  - Generate `<link rel="stylesheet">` tag in HTML output when CSS is provided
+
 ## 1.2.3
 
 ### Patch Changes

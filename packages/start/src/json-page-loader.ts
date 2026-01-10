@@ -290,11 +290,20 @@ export function normalizeDataSourcePatterns(
 }
 
 /**
+ * Options for loading a JSON page
+ */
+export interface LoadJsonPageOptions {
+  /** Routes directory for resolving relative patterns (optional, defaults to pageDir) */
+  routesDir?: string;
+}
+
+/**
  * Load a JSON page file and return page info with resolved imports and data
  */
 export async function loadJsonPage(
   baseDir: string,
-  pagePath: string
+  pagePath: string,
+  options?: LoadJsonPageOptions
 ): Promise<PageInfo> {
   const filePath = join(baseDir, pagePath);
 
@@ -341,8 +350,13 @@ export async function loadJsonPage(
   const pageDir = dirname(filePath);
   const resolvedImports = await resolveImports(pageDir, page.imports, baseDir);
 
+  // Use routesDir for pattern resolution if provided, otherwise fall back to pageDir
+  // This allows patterns like "../../content/" to be resolved consistently from the routes directory
+  // rather than varying based on how deeply nested the page file is
+  const patternBaseDir = options?.routesDir ?? pageDir;
+
   // Normalize data source patterns to be relative to baseDir
-  const normalizedData = normalizeDataSourcePatterns(baseDir, pageDir, page.data);
+  const normalizedData = normalizeDataSourcePatterns(baseDir, patternBaseDir, page.data);
 
   // Load data sources
   const loadedData = await loadPageData(baseDir, normalizedData, { imports: resolvedImports });
@@ -789,14 +803,24 @@ export async function convertToCompiledProgram(pageInfo: PageInfo): Promise<Comp
 // ==================== JsonPageLoader Class ====================
 
 /**
+ * Options for JsonPageLoader constructor
+ */
+export interface JsonPageLoaderOptions {
+  /** Routes directory for resolving relative patterns in data sources */
+  routesDir?: string;
+}
+
+/**
  * JsonPageLoader class for managing JSON page loading with caching
  */
 export class JsonPageLoader {
   private projectRoot: string;
+  private routesDir?: string;
   private cache: Map<string, PageInfo> = new Map();
 
-  constructor(projectRoot: string) {
+  constructor(projectRoot: string, options?: JsonPageLoaderOptions) {
     this.projectRoot = projectRoot;
+    this.routesDir = options?.routesDir;
   }
 
   /**
@@ -808,7 +832,9 @@ export class JsonPageLoader {
       return this.cache.get(pagePath)!;
     }
 
-    const pageInfo = await loadJsonPage(this.projectRoot, pagePath);
+    const pageInfo = await loadJsonPage(this.projectRoot, pagePath, {
+      routesDir: this.routesDir,
+    });
     this.cache.set(pagePath, pageInfo);
     return pageInfo;
   }
