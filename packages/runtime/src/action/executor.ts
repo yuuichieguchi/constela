@@ -279,6 +279,10 @@ async function executeStep(
     case 'dom':
       await executeDomStep(step, ctx);
       break;
+
+    case 'if':
+      await executeIfStep(step, ctx);
+      break;
   }
 }
 

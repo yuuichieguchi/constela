@@ -833,6 +833,163 @@ describe('executeAction with External Library Steps', () => {
     });
   });
 
+  // ==================== Non-Throwing Result Objects ====================
+
+  describe('call step with non-throwing result objects', () => {
+    /**
+     * Test Case 1: call step with function returning {ok: false, error: {...}}
+     *
+     * This verifies that:
+     * - Functions that return error objects (instead of throwing) execute onSuccess
+     * - The result object is correctly stored in ctx.locals
+     *
+     * This is the expected behavior: onSuccess means "the call completed without exception",
+     * not "the result indicates success".
+     */
+    it('should execute onSuccess when function returns {ok: false, error: {...}} without throwing', async () => {
+      // Arrange
+      const validationResult = { ok: false, error: { message: 'Invalid syntax', line: 5 } };
+      const mockValidateFn = vi.fn().mockReturnValue(validationResult);
+      const context = createContext({
+        onSuccessCalled: { type: 'boolean', initial: false },
+        onErrorCalled: { type: 'boolean', initial: false },
+      });
+      context.locals['validator'] = { validateAst: mockValidateFn };
+
+      const action: CompiledAction = {
+        name: 'validateCode',
+        steps: [
+          {
+            do: 'call',
+            target: { expr: 'var', name: 'validator', path: 'validateAst' },
+            args: [{ expr: 'lit', value: 'some code' }],
+            result: 'validationResult',
+            onSuccess: [
+              { do: 'set', target: 'onSuccessCalled', value: { expr: 'lit', value: true } },
+            ],
+            onError: [
+              { do: 'set', target: 'onErrorCalled', value: { expr: 'lit', value: true } },
+            ],
+          } as CompiledActionStep,
+        ],
+      };
+
+      // Act
+      await executeAction(action, context);
+
+      // Assert
+      // onSuccess should be called because the function returned without throwing
+      expect(context.state.get('onSuccessCalled')).toBe(true);
+      // onError should NOT be called because no exception was thrown
+      expect(context.state.get('onErrorCalled')).toBe(false);
+      // The result object should be stored in locals
+      expect(context.locals['validationResult']).toEqual(validationResult);
+      expect((context.locals['validationResult'] as { ok: boolean }).ok).toBe(false);
+    });
+
+    /**
+     * Test Case 2: if step checking result.ok and executing else branch
+     *
+     * This verifies that:
+     * - The if step can access nested properties of locals using path notation
+     * - When result.ok is false, the else branch is executed
+     *
+     * This is the pattern needed for handling validation results like validateAst
+     * which returns {ok: boolean, error?: ConstelaError}.
+     */
+    it('should execute else branch in if step when result.ok is false', async () => {
+      // Arrange
+      const validationResult = { ok: false, error: { message: 'Parse error', code: 'E001' } };
+      const mockValidateFn = vi.fn().mockReturnValue(validationResult);
+      const context = createContext({
+        isValid: { type: 'boolean', initial: true },
+        errorMessage: { type: 'string', initial: '' },
+      });
+      context.locals['validator'] = { validateAst: mockValidateFn };
+
+      const action: CompiledAction = {
+        name: 'validateAndBranch',
+        steps: [
+          // Step 1: Call validator, store result
+          {
+            do: 'call',
+            target: { expr: 'var', name: 'validator', path: 'validateAst' },
+            args: [{ expr: 'lit', value: 'invalid code' }],
+            result: 'validationResult',
+          } as CompiledActionStep,
+          // Step 2: Check result.ok and branch
+          {
+            do: 'if',
+            condition: { expr: 'var', name: 'validationResult', path: 'ok' },
+            then: [
+              { do: 'set', target: 'isValid', value: { expr: 'lit', value: true } },
+            ],
+            else: [
+              { do: 'set', target: 'isValid', value: { expr: 'lit', value: false } },
+              { do: 'set', target: 'errorMessage', value: { expr: 'var', name: 'validationResult', path: 'error.message' } },
+            ],
+          } as CompiledActionStep,
+        ],
+      };
+
+      // Act
+      await executeAction(action, context);
+
+      // Assert
+      // Since result.ok is false, else branch should be executed
+      expect(context.state.get('isValid')).toBe(false);
+      expect(context.state.get('errorMessage')).toBe('Parse error');
+    });
+
+    /**
+     * Test Case 3: if step with result.ok === true should execute then branch
+     *
+     * This is the complementary test to verify the then branch works correctly
+     * when the validation succeeds.
+     */
+    it('should execute then branch in if step when result.ok is true', async () => {
+      // Arrange
+      const validationResult = { ok: true, data: { ast: { type: 'Program' } } };
+      const mockValidateFn = vi.fn().mockReturnValue(validationResult);
+      const context = createContext({
+        isValid: { type: 'boolean', initial: false },
+        successMessage: { type: 'string', initial: '' },
+      });
+      context.locals['validator'] = { validateAst: mockValidateFn };
+
+      const action: CompiledAction = {
+        name: 'validateAndBranchSuccess',
+        steps: [
+          {
+            do: 'call',
+            target: { expr: 'var', name: 'validator', path: 'validateAst' },
+            args: [{ expr: 'lit', value: 'valid code' }],
+            result: 'validationResult',
+          } as CompiledActionStep,
+          {
+            do: 'if',
+            condition: { expr: 'var', name: 'validationResult', path: 'ok' },
+            then: [
+              { do: 'set', target: 'isValid', value: { expr: 'lit', value: true } },
+              { do: 'set', target: 'successMessage', value: { expr: 'lit', value: 'Validation passed!' } },
+            ],
+            else: [
+              { do: 'set', target: 'isValid', value: { expr: 'lit', value: false } },
+            ],
+          } as CompiledActionStep,
+        ],
+      };
+
+      // Act
+      await executeAction(action, context);
+
+      // Assert
+      // Since result.ok is true, then branch should be executed
+      expect(context.state.get('isValid')).toBe(true);
+      expect(context.state.get('successMessage')).toBe('Validation passed!');
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {
