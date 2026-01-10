@@ -341,11 +341,24 @@ function hydrateChildren(
         domIndex++;
       }
     } else if (childNode.kind === 'if') {
-      // For if nodes, the DOM might have the then or else branch element
+      // For if nodes, evaluate condition to check if DOM exists
+      const ifNode = childNode as CompiledIfNode;
+      const initialCondition = evaluate(ifNode.condition, {
+        state: ctx.state,
+        locals: ctx.locals,
+        ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.route && { route: ctx.route }),
+      });
+      const hasDomForIf = Boolean(initialCondition) || Boolean(ifNode.else);
+
       const domChild = domChildren[domIndex];
-      if (domChild) {
+      if (hasDomForIf && domChild) {
+        // DOM exists - hydrate normally
         hydrate(childNode, domChild, ctx);
         domIndex++;
+      } else {
+        // No DOM - create effect to render when condition becomes true
+        hydrateIfWithoutDom(ifNode, parent, domChildren[domIndex] || null, ctx);
       }
     } else if (childNode.kind === 'each') {
       // For each nodes, count how many items are rendered
@@ -547,6 +560,91 @@ function hydrateIf(
         locals: ctx.locals,
         cleanups: localCleanups,
         ...(ctx.imports && { imports: ctx.imports }),
+      };
+
+      // Render new branch (create fresh DOM)
+      if (newBranch === 'then') {
+        currentNode = render(node.then, branchCtx);
+        branchCleanups = localCleanups;
+      } else if (newBranch === 'else' && node.else) {
+        currentNode = render(node.else, branchCtx);
+        branchCleanups = localCleanups;
+      } else {
+        currentNode = null;
+      }
+
+      // Insert after anchor
+      if (currentNode && anchor.parentNode) {
+        anchor.parentNode.insertBefore(currentNode, anchor.nextSibling);
+      }
+
+      currentBranch = newBranch;
+    }
+  });
+  ctx.cleanups.push(effectCleanup);
+
+  // Cleanup branch effects when the if node is destroyed
+  ctx.cleanups.push(() => {
+    for (const cleanup of branchCleanups) {
+      cleanup();
+    }
+  });
+}
+
+/**
+ * Hydrates an if node when there is no initial DOM (condition was initially false)
+ * Creates an anchor and effect to render when condition becomes true
+ */
+function hydrateIfWithoutDom(
+  node: CompiledIfNode,
+  parent: HTMLElement,
+  nextSibling: Node | null,
+  ctx: HydrateContext
+): void {
+  // Create an anchor comment for the if node
+  const anchor = document.createComment('if');
+  if (nextSibling) {
+    parent.insertBefore(anchor, nextSibling);
+  } else {
+    parent.appendChild(anchor);
+  }
+
+  let currentNode: Node | null = null;
+  let currentBranch: 'then' | 'else' | 'none' = 'none';
+  let branchCleanups: (() => void)[] = [];
+
+  const effectCleanup = createEffect(() => {
+    // Read state to track dependencies
+    const condition = evaluate(node.condition, {
+      state: ctx.state,
+      locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
+    });
+    const shouldShowThen = Boolean(condition);
+    const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
+
+    if (newBranch !== currentBranch) {
+      // Cleanup previous branch effects
+      for (const cleanup of branchCleanups) {
+        cleanup();
+      }
+      branchCleanups = [];
+
+      // Remove current node
+      if (currentNode && currentNode.parentNode) {
+        currentNode.parentNode.removeChild(currentNode);
+      }
+
+      // Create a local cleanups array for the new branch
+      const localCleanups: (() => void)[] = [];
+      const branchCtx: RenderContext = {
+        state: ctx.state,
+        actions: ctx.actions,
+        locals: ctx.locals,
+        cleanups: localCleanups,
+        ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.route && { route: ctx.route }),
       };
 
       // Render new branch (create fresh DOM)
