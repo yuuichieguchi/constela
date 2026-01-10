@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.2.8
+
+### Patch Changes
+
+- fix(build): resolve glob patterns from pageDir and substitute layoutParams
+
+  - Fix patternBaseDir to use pageDir instead of routesDir for glob pattern resolution in data sources
+  - Add layoutParams substitution during layout processing to resolve param expressions
+  - Fixes dynamic route generation for docs/ and reference/ pages
+
 ## 1.2.7
 
 ### Patch Changes
