@@ -371,7 +371,14 @@ export async function createDevServer(
 
               // Render the page
               const content = await renderPage(composedProgram, ssrContext);
-              const hydrationScript = generateHydrationScript(composedProgram, widgets);
+
+              // Create route context for hydration
+              const routeContext = {
+                params: match.params,
+                query: Object.fromEntries(url.searchParams.entries()),
+                path: pathname,
+              };
+              const hydrationScript = generateHydrationScript(composedProgram, widgets, routeContext);
 
               // Generate CSS link tags if css option is provided
               const cssHead = css
@@ -471,6 +478,9 @@ h1 { color: #666; }
           resolve();
           return;
         }
+
+        // Force close all active connections (Node.js 18.2+)
+        httpServer.closeAllConnections();
 
         httpServer.close((err) => {
           if (err) {

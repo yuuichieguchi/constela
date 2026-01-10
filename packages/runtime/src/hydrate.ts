@@ -31,6 +31,12 @@ export interface HydrateOptions {
   program: CompiledProgram;
   /** The container element containing SSR-rendered HTML */
   container: HTMLElement;
+  /** Optional route context for dynamic routes */
+  route?: {
+    params: Record<string, string>;
+    query: Record<string, string>;
+    path: string;
+  };
 }
 
 /**
@@ -42,6 +48,11 @@ interface HydrateContext {
   locals: Record<string, unknown>;
   cleanups: (() => void)[];
   imports?: Record<string, unknown>;
+  route?: {
+    params: Record<string, string>;
+    query: Record<string, string>;
+    path: string;
+  };
 }
 
 /**
@@ -63,7 +74,7 @@ function isEventHandler(value: unknown): value is CompiledEventHandler {
  * @returns AppInstance for controlling the hydrated application
  */
 export function hydrateApp(options: HydrateOptions): AppInstance {
-  const { program, container } = options;
+  const { program, container, route } = options;
 
   // Create state store
   const state = createStateStore(program.state);
@@ -89,6 +100,7 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     locals: {},
     cleanups,
     ...(program.importData && { imports: program.importData }),
+    ...(route && { route }),
   };
 
   // Create action context for lifecycle hooks
@@ -111,6 +123,9 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
   if (firstChild) {
     hydrate(program.view, firstChild, ctx);
   }
+
+  // Initialize copy buttons
+  initCopyButtons(container);
 
   let destroyed = false;
 
@@ -218,6 +233,7 @@ function hydrateElement(
                 state: ctx.state,
                 locals: { ...ctx.locals, ...eventLocals },
                 ...(ctx.imports && { imports: ctx.imports }),
+                ...(ctx.route && { route: ctx.route }),
               });
             }
 
@@ -237,6 +253,7 @@ function hydrateElement(
             state: ctx.state,
             locals: ctx.locals,
             ...(ctx.imports && { imports: ctx.imports }),
+            ...(ctx.route && { route: ctx.route }),
           });
           applyProp(el, propName, value);
         });
@@ -312,6 +329,7 @@ function hydrateChildren(
         state: ctx.state,
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.route && { route: ctx.route }),
       }) as unknown[];
       const itemCount = Array.isArray(items) ? items.length : 0;
 
@@ -349,6 +367,7 @@ function hydrateTextGroup(
         state: ctx.state,
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.route && { route: ctx.route }),
       });
       combinedText += formatValue(value);
     }
@@ -402,6 +421,7 @@ function hydrateText(
       state: ctx.state,
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
     });
     textNode.textContent = formatValue(value);
   });
@@ -449,6 +469,7 @@ function hydrateIf(
     state: ctx.state,
     locals: ctx.locals,
     ...(ctx.imports && { imports: ctx.imports }),
+    ...(ctx.route && { route: ctx.route }),
   });
   currentBranch = Boolean(initialCondition) ? 'then' : node.else ? 'else' : 'none';
 
@@ -471,6 +492,7 @@ function hydrateIf(
       state: ctx.state,
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
     });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
@@ -556,6 +578,7 @@ function hydrateEach(
     state: ctx.state,
     locals: ctx.locals,
     ...(ctx.imports && { imports: ctx.imports }),
+    ...(ctx.route && { route: ctx.route }),
   }) as unknown[];
 
   // Track if this is the first run of the effect
@@ -602,6 +625,7 @@ function hydrateEach(
       state: ctx.state,
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
     }) as unknown[];
 
     // Skip the first run - initial hydration already done above
@@ -669,5 +693,31 @@ function hydrateEach(
     for (const cleanup of itemCleanups) {
       cleanup();
     }
+  });
+}
+
+// ==================== Copy Button Initialization ====================
+
+const COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-green-500"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+/**
+ * Initialize copy buttons within a container
+ */
+function initCopyButtons(container: HTMLElement): void {
+  const buttons = container.querySelectorAll<HTMLButtonElement>('.constela-copy-btn');
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.getAttribute('data-code') || '';
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.innerHTML = CHECK_ICON;
+        setTimeout(() => {
+          btn.innerHTML = COPY_ICON;
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
   });
 }

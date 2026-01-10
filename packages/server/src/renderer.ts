@@ -16,7 +16,7 @@ import type {
   CompiledExpression,
   CompiledEventHandler,
 } from '@constela/compiler';
-import { parseMarkdownSSR } from './markdown.js';
+import { parseMarkdownSSRAsync } from './markdown.js';
 import { renderCodeSSR } from './code.js';
 import { escapeHtml } from './utils/escape.js';
 
@@ -347,9 +347,9 @@ async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> 
     case 'each':
       return await renderEach(node, ctx);
     case 'markdown':
-      return renderMarkdown(node, ctx);
+      return await renderMarkdown(node, ctx);
     case 'code':
-      return await renderCode(node, ctx);
+      return renderCode(node, ctx);
     case 'slot':
       // Slots should be replaced during layout composition
       // If we reach here, render empty (slot content not provided)
@@ -474,35 +474,30 @@ async function renderEach(node: CompiledEachNode, ctx: SSRContext): Promise<stri
 /**
  * Renders a markdown node to HTML string
  */
-function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): string {
+async function renderMarkdown(node: CompiledMarkdownNode, ctx: SSRContext): Promise<string> {
   const content = evaluate(node.content, ctx);
-  const html = parseMarkdownSSR(formatValue(content));
+  const html = await parseMarkdownSSRAsync(formatValue(content));
   return `<div class="constela-markdown">${html}</div>`;
 }
 
 /**
  * Renders a code node to HTML string
- * Matches the structure of the original CodePreview component:
+ * Matches the structure of the original React CodePreview component:
  * - group relative wrapper
- * - language badge in top-right corner
- * - pre/code with appropriate styling
+ * - language badge + copy button in top-right corner
+ * - pre/code with appropriate styling (no syntax highlighting)
  */
-async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<string> {
+function renderCode(node: CompiledCodeNode, ctx: SSRContext): string {
   const language = formatValue(evaluate(node.language, ctx));
   const content = formatValue(evaluate(node.content, ctx));
-  const html = await renderCodeSSR(content, language);
 
-  // Match original CodePreview structure
   const languageBadge = language
     ? `<span class="rounded bg-muted-foreground/20 px-2 py-0.5 text-xs font-medium text-muted-foreground">${escapeHtml(language)}</span>`
     : '';
 
-  return `<div class="group relative">
-  <div class="absolute right-3 top-3 z-10 flex items-center gap-2">
-    ${languageBadge}
-  </div>
-  <div class="constela-code">${html}</div>
-</div>`;
+  const copyButton = `<button class="constela-copy-btn flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/80 transition-colors hover:bg-muted" data-code="${escapeHtml(content)}" aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
+
+  return `<div class="group relative"><div class="absolute right-3 top-3 z-10 flex items-center gap-2">${languageBadge}${copyButton}</div><pre class="overflow-x-auto rounded-lg border border-border bg-muted p-4 text-sm"><code class="font-mono text-foreground">${escapeHtml(content)}</code></pre></div>`;
 }
 
 // ==================== Main Export ====================

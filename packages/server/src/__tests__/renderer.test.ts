@@ -1229,5 +1229,160 @@ describe('renderToString', () => {
       expect(result).toContain('print');
       expect(result).toContain('Hello');
     });
+
+    // ==================== Copy Button ====================
+
+    describe('copy button', () => {
+      /**
+       * Given: A code node with any content
+       * When: renderCode is called
+       * Then: Output should contain a button with class "constela-copy-btn"
+       */
+      it('should render copy button with constela-copy-btn class', async () => {
+        // Arrange
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('constela-copy-btn');
+        expect(result).toContain('<button');
+      });
+
+      /**
+       * Given: A code node with any content
+       * When: renderCode is called
+       * Then: Output should contain data-copy-target attribute on the button
+       */
+      it('should render copy button with data-copy-target attribute', async () => {
+        // Arrange
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('data-copy-target="code"');
+      });
+
+      /**
+       * Given: A code node with specific content
+       * When: renderCode is called
+       * Then: Output should contain data-code-content attribute with the raw code content
+       */
+      it('should render code wrapper with data-code-content attribute containing the code', async () => {
+        // Arrange
+        const codeContent = 'const greeting = "Hello, World!";';
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: codeContent },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('data-code-content');
+      });
+
+      /**
+       * Given: A code node with content containing special characters
+       * When: renderCode is called
+       * Then: data-code-content attribute should properly escape the content
+       */
+      it('should escape special characters in data-code-content attribute', async () => {
+        // Arrange
+        const codeContent = 'const html = "<div>Hello</div>";';
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: codeContent },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        // The attribute value should be properly escaped for HTML
+        expect(result).toContain('data-code-content');
+        // Should not contain unescaped quotes that would break the attribute
+        expect(result).not.toMatch(/data-code-content="[^"]*"[^"]*"/);
+      });
+
+      /**
+       * Given: A code node with multi-line content
+       * When: renderCode is called
+       * Then: data-code-content should preserve the multi-line content
+       */
+      it('should handle multi-line code in data-code-content attribute', async () => {
+        // Arrange
+        const codeContent = `function add(a, b) {
+  return a + b;
+}`;
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: codeContent },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('data-code-content');
+      });
+
+      /**
+       * Given: A code node with empty language
+       * When: renderCode is called
+       * Then: Copy button should still be rendered
+       */
+      it('should render copy button even without language specified', async () => {
+        // Arrange
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: '' },
+          content: { expr: 'lit', value: 'some code' },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('constela-copy-btn');
+        expect(result).toContain('data-copy-target="code"');
+      });
+
+      /**
+       * Given: A code node
+       * When: renderCode is called
+       * Then: Copy button should contain an SVG icon
+       */
+      it('should render copy button with SVG icon', async () => {
+        // Arrange
+        const program = createProgram({
+          kind: 'code',
+          language: { expr: 'lit', value: 'javascript' },
+          content: { expr: 'lit', value: 'const x = 1;' },
+        } as CompiledProgram['view']);
+
+        // Act
+        const result = await renderToString(program);
+
+        // Assert
+        expect(result).toContain('<svg');
+        expect(result).toContain('</svg>');
+      });
+    });
   });
 });

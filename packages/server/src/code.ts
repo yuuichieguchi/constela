@@ -17,7 +17,7 @@ const PRELOAD_LANGS = [
   'markdown',
 ];
 
-async function getHighlighter(): Promise<Highlighter> {
+export async function getHighlighter(): Promise<Highlighter> {
   if (!highlighter) {
     highlighter = await createHighlighter({
       themes: ['github-dark'],
@@ -36,7 +36,8 @@ export async function renderCodeSSR(code: string, language: string): Promise<str
       await hl.loadLanguage(language as Parameters<typeof hl.loadLanguage>[0]);
     }
     const langToUse = language || 'text';
-    return hl.codeToHtml(code, { lang: langToUse, theme: 'github-dark' });
+    const html = hl.codeToHtml(code, { lang: langToUse, theme: 'github-dark' });
+    return html.replace(/background-color:[^;]+;?/g, '');
   } catch {
     const escapedCode = escapeHtml(code);
     const langClass = language ? ` class="language-${language}"` : '';
