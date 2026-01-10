@@ -213,6 +213,14 @@ export async function generateStaticPages(
         // Resolve the program with params (handles both static and function exports)
         const program = await resolvePageExport(pageExport, pathData.params, route.params);
 
+        // Inject pathData.data into program.importData.__pathData if data exists
+        if (pathData.data !== undefined) {
+          program.importData = {
+            ...program.importData,
+            __pathData: pathData.data,
+          };
+        }
+
         const resolvedPattern = resolvePattern(route.pattern, pathData.params);
         const filePath = await generateSinglePage(
           resolvedPattern,
