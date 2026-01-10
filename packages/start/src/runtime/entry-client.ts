@@ -25,12 +25,22 @@ export interface EscapeHandler {
 }
 
 /**
+ * Route context for the application
+ */
+export interface RouteContext {
+  params: Record<string, string>;
+  query: Record<string, string>;
+  path: string;
+}
+
+/**
  * Options for initializing the client application
  */
 export interface InitClientOptions {
   program: CompiledProgram;
   container: HTMLElement;
   escapeHandlers?: EscapeHandler[];
+  route?: RouteContext;
 }
 
 /**
@@ -47,10 +57,10 @@ interface ExtendedAppInstance extends AppInstance {
  * @returns AppInstance for controlling the application
  */
 export function initClient(options: InitClientOptions): AppInstance {
-  const { program, container, escapeHandlers = [] } = options;
+  const { program, container, escapeHandlers = [], route } = options;
 
-  // Step 1: Hydrate the application
-  const appInstance = hydrateApp({ program, container }) as ExtendedAppInstance;
+  // Step 1: Hydrate the application with route context
+  const appInstance = hydrateApp({ program, container, ...(route && { route }) }) as ExtendedAppInstance;
 
   // Step 2: Find all escape hatch elements
   const escapeElements = container.querySelectorAll<HTMLElement>(

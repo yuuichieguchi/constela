@@ -128,6 +128,7 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     actions,
     locals: {},
     refs,
+    ...(route && { route }),
   };
 
   // Execute onMount lifecycle hook (after hydration so refs are available)
