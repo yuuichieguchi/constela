@@ -363,7 +363,18 @@ export interface DisposeStep {
   target: Expression;    // Object with dispose() method
 }
 
-export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep;
+/**
+ * DOM step - manipulate DOM elements (add/remove classes, attributes)
+ */
+export interface DomStep {
+  do: 'dom';
+  operation: 'addClass' | 'removeClass' | 'toggleClass' | 'setAttribute' | 'removeAttribute';
+  selector: Expression;  // CSS selector or 'html', 'body'
+  value?: Expression;    // class name or attribute value
+  attribute?: string;    // for setAttribute/removeAttribute
+}
+
+export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep;
 
 // ==================== Event Handler ====================
 

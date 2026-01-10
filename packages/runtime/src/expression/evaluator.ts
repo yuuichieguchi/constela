@@ -120,6 +120,16 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
     case 'ref':
       return ctx.refs?.[expr.name] ?? null;
 
+    case 'data': {
+      // Data expressions are resolved from imports (loadedData is merged into importData)
+      const dataValue = ctx.imports?.[expr.name];
+      if (dataValue === undefined) return undefined;
+      if (expr.path) {
+        return getNestedValue(dataValue, expr.path);
+      }
+      return dataValue;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

@@ -23,6 +23,7 @@ import type {
   CompiledCallStep,
   CompiledSubscribeStep,
   CompiledDisposeStep,
+  CompiledDomStep,
 } from '@constela/compiler';
 import { evaluate } from '../expression/evaluator.js';
 
@@ -224,6 +225,10 @@ async function executeStep(
 
     case 'dispose':
       await executeDisposeStep(step, ctx);
+      break;
+
+    case 'dom':
+      await executeDomStep(step, ctx);
       break;
   }
 }
@@ -677,5 +682,50 @@ async function executeDisposeStep(
     } else if (typeof obj['destroy'] === 'function') {
       obj['destroy']();
     }
+  }
+}
+
+
+/**
+ * Executes a DOM manipulation step
+ */
+async function executeDomStep(
+  step: CompiledDomStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = { state: ctx.state, locals: ctx.locals };
+  const selectorValue = evaluate(step.selector, evalCtx);
+  const selector = String(selectorValue);
+
+  // Get target element
+  let element: Element | null = null;
+  if (selector === "html") {
+    element = document.documentElement;
+  } else if (selector === "body") {
+    element = document.body;
+  } else {
+    element = document.querySelector(selector);
+  }
+
+  if (!element) return;
+
+  const value = step.value ? String(evaluate(step.value, evalCtx)) : "";
+
+  switch (step.operation) {
+    case "addClass":
+      if (value) element.classList.add(value);
+      break;
+    case "removeClass":
+      if (value) element.classList.remove(value);
+      break;
+    case "toggleClass":
+      if (value) element.classList.toggle(value);
+      break;
+    case "setAttribute":
+      if (step.attribute && value) element.setAttribute(step.attribute, value);
+      break;
+    case "removeAttribute":
+      if (step.attribute) element.removeAttribute(step.attribute);
+      break;
   }
 }

@@ -91,6 +91,21 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     ...(program.importData && { imports: program.importData }),
   };
 
+  // Create action context for lifecycle hooks
+  const actionCtx = {
+    state,
+    actions,
+    locals: {},
+  };
+
+  // Execute onMount lifecycle hook
+  if (program.lifecycle?.onMount) {
+    const onMountAction = actions[program.lifecycle.onMount];
+    if (onMountAction) {
+      void executeAction(onMountAction, actionCtx);
+    }
+  }
+
   // Hydrate the existing DOM
   const firstChild = container.firstElementChild;
   if (firstChild) {
@@ -103,6 +118,14 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
+
+      // Execute onUnmount lifecycle hook before cleanup
+      if (program.lifecycle?.onUnmount) {
+        const onUnmountAction = actions[program.lifecycle.onUnmount];
+        if (onUnmountAction) {
+          void executeAction(onUnmountAction, actionCtx);
+        }
+      }
 
       // Cleanup all effects
       for (const cleanup of cleanups) {

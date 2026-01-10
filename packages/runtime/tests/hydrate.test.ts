@@ -797,6 +797,333 @@ describe('hydrateApp', () => {
     });
   });
 
+  // ==================== Lifecycle Hooks ====================
+
+  describe('lifecycle hooks', () => {
+    describe('onMount', () => {
+      it('should execute onMount action when app is hydrated', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'initializeApp',
+          },
+          state: {
+            initialized: { type: 'boolean', initial: false },
+          },
+          actions: {
+            initializeApp: {
+              name: 'initializeApp',
+              steps: [
+                { do: 'set', target: 'initialized', value: { expr: 'lit', value: true } },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            props: { id: { expr: 'lit', value: 'hydrate-target' } },
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+
+        // Wait for lifecycle hook to execute
+        await Promise.resolve();
+
+        // Assert - onMount should have been executed, setting initialized to true
+        expect(app.getState('initialized')).toBe(true);
+      });
+
+      it('should execute onMount with multiple steps during hydration', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'complexInit',
+          },
+          state: {
+            step1: { type: 'boolean', initial: false },
+            step2: { type: 'boolean', initial: false },
+            step3: { type: 'boolean', initial: false },
+          },
+          actions: {
+            complexInit: {
+              name: 'complexInit',
+              steps: [
+                { do: 'set', target: 'step1', value: { expr: 'lit', value: true } },
+                { do: 'set', target: 'step2', value: { expr: 'lit', value: true } },
+                { do: 'set', target: 'step3', value: { expr: 'lit', value: true } },
+              ],
+            },
+          },
+          view: { kind: 'element', tag: 'div' },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert - All steps should have been executed
+        expect(app.getState('step1')).toBe(true);
+        expect(app.getState('step2')).toBe(true);
+        expect(app.getState('step3')).toBe(true);
+      });
+
+      it('should not break hydration if onMount action is missing', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'nonExistentAction', // This action doesn't exist
+          },
+          view: { kind: 'element', tag: 'div' },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Act & Assert - Should not throw
+        expect(() => {
+          hydrateApp({ program, container });
+        }).not.toThrow();
+      });
+
+      it('should allow onMount to update state that reflects in hydrated DOM', async () => {
+        // Arrange - This simulates the dark mode use case: loadTheme reads from localStorage
+        const program = createMinimalProgram({
+          lifecycle: {
+            onMount: 'loadTheme',
+          },
+          state: {
+            theme: { type: 'string', initial: 'light' },
+          },
+          actions: {
+            loadTheme: {
+              name: 'loadTheme',
+              steps: [
+                // Simulates reading from localStorage and setting theme to 'dark'
+                { do: 'set', target: 'theme', value: { expr: 'lit', value: 'dark' } },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            props: {
+              id: { expr: 'lit', value: 'themed-container' },
+              'data-theme': { expr: 'state', name: 'theme' },
+            },
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        // Initially SSR renders with 'light' theme
+        expect(container.querySelector('#themed-container')?.getAttribute('data-theme')).toBe('light');
+
+        // Act
+        const app = hydrateApp({ program, container });
+        await Promise.resolve();
+
+        // Assert - onMount should have updated theme to 'dark'
+        expect(app.getState('theme')).toBe('dark');
+        // The DOM should reflect the new theme after hydration
+        expect(container.querySelector('#themed-container')?.getAttribute('data-theme')).toBe('dark');
+      });
+    });
+
+    describe('onUnmount', () => {
+      it('should execute onUnmount action when app.destroy() is called', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onUnmount: 'cleanupApp',
+          },
+          state: {
+            cleanedUp: { type: 'boolean', initial: false },
+          },
+          actions: {
+            cleanupApp: {
+              name: 'cleanupApp',
+              steps: [
+                { do: 'set', target: 'cleanedUp', value: { expr: 'lit', value: true } },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            props: { id: { expr: 'lit', value: 'unmount-target' } },
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        const app = hydrateApp({ program, container });
+
+        // Verify initial state
+        expect(app.getState('cleanedUp')).toBe(false);
+
+        // Act
+        app.destroy();
+
+        // Assert - onUnmount should have been executed, setting cleanedUp to true
+        expect(app.getState('cleanedUp')).toBe(true);
+      });
+
+      it('should execute onUnmount with multiple steps when destroyed', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onUnmount: 'complexCleanup',
+          },
+          state: {
+            step1Done: { type: 'boolean', initial: false },
+            step2Done: { type: 'boolean', initial: false },
+            step3Done: { type: 'boolean', initial: false },
+          },
+          actions: {
+            complexCleanup: {
+              name: 'complexCleanup',
+              steps: [
+                { do: 'set', target: 'step1Done', value: { expr: 'lit', value: true } },
+                { do: 'set', target: 'step2Done', value: { expr: 'lit', value: true } },
+                { do: 'set', target: 'step3Done', value: { expr: 'lit', value: true } },
+              ],
+            },
+          },
+          view: { kind: 'element', tag: 'div' },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        const app = hydrateApp({ program, container });
+
+        // Verify initial state
+        expect(app.getState('step1Done')).toBe(false);
+        expect(app.getState('step2Done')).toBe(false);
+        expect(app.getState('step3Done')).toBe(false);
+
+        // Act
+        app.destroy();
+
+        // Assert - All cleanup steps should have been executed
+        expect(app.getState('step1Done')).toBe(true);
+        expect(app.getState('step2Done')).toBe(true);
+        expect(app.getState('step3Done')).toBe(true);
+      });
+
+      it('should not break destroy if onUnmount action is missing', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onUnmount: 'nonExistentAction', // This action doesn't exist
+          },
+          view: { kind: 'element', tag: 'div' },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        const app = hydrateApp({ program, container });
+
+        // Act & Assert - Should not throw
+        expect(() => {
+          app.destroy();
+        }).not.toThrow();
+
+        // Container should still be cleaned up
+        expect(container.children.length).toBe(0);
+      });
+
+      it('should execute onUnmount before DOM cleanup', async () => {
+        // Arrange - This test verifies the order of operations: onUnmount runs before DOM removal
+        // The onUnmount action can still access state before cleanup completes
+        const program = createMinimalProgram({
+          lifecycle: {
+            onUnmount: 'recordFinalState',
+          },
+          state: {
+            count: { type: 'number', initial: 42 },
+            finalCountRecorded: { type: 'number', initial: 0 },
+          },
+          actions: {
+            recordFinalState: {
+              name: 'recordFinalState',
+              steps: [
+                // Record the current count value during unmount
+                { do: 'set', target: 'finalCountRecorded', value: { expr: 'state', name: 'count' } },
+              ],
+            },
+          },
+          view: {
+            kind: 'element',
+            tag: 'div',
+            children: [{ kind: 'text', value: { expr: 'state', name: 'count' } }],
+          },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        const app = hydrateApp({ program, container });
+
+        // Change count before destroy
+        app.setState('count', 100);
+        await Promise.resolve();
+
+        // Act
+        app.destroy();
+
+        // Assert - onUnmount should have recorded the count value (100) before cleanup
+        expect(app.getState('finalCountRecorded')).toBe(100);
+      });
+
+      it('should only execute onUnmount once even if destroy is called multiple times', async () => {
+        // Arrange
+        const program = createMinimalProgram({
+          lifecycle: {
+            onUnmount: 'incrementCounter',
+          },
+          state: {
+            destroyCount: { type: 'number', initial: 0 },
+          },
+          actions: {
+            incrementCounter: {
+              name: 'incrementCounter',
+              steps: [
+                // This would increment each time if onUnmount were called multiple times
+                { do: 'set', target: 'destroyCount', value: { expr: 'lit', value: 1 } },
+              ],
+            },
+          },
+          view: { kind: 'element', tag: 'div' },
+        });
+
+        const ssrHtml = await renderToString(program);
+        container.innerHTML = ssrHtml;
+
+        const app = hydrateApp({ program, container });
+
+        // Act - Call destroy multiple times
+        app.destroy();
+        app.destroy();
+        app.destroy();
+
+        // Assert - onUnmount should have been executed only once
+        expect(app.getState('destroyCount')).toBe(1);
+      });
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

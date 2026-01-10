@@ -365,8 +365,67 @@ describe('generateHydrationScript', () => {
       // Assert
       // hydrateApp should appear before createApp for widgets
       const hydrateAppIndex = result.indexOf('hydrateApp({');
-      const createAppIndex = result.indexOf('createApp({');
+      const createAppIndex = result.indexOf('createApp(');
       expect(hydrateAppIndex).toBeLessThan(createAppIndex);
+    });
+
+    // ==================== Bug Fix: Positional Parameters ====================
+
+    it('should call createApp with positional parameters, not object format', () => {
+      // Arrange
+      // BUG: Current implementation generates:
+      //   createApp({ program: widgetProgram_xxx, container: container_xxx });
+      // But createApp() expects positional parameters:
+      //   createApp(program, mount)
+      const program = createMockProgram();
+      const widgetProgram = createMockProgram();
+      const widgets: WidgetConfig[] = [
+        { id: 'test-widget', program: widgetProgram },
+      ];
+
+      // Act
+      const result = generateHydrationScript(program, widgets);
+
+      // Assert
+      // The generated script should use positional parameters: createApp(widgetProgram_xxx, container_xxx)
+      expect(result).toMatch(/createApp\(widgetProgram_\w+,\s*container_\w+\)/);
+    });
+
+    it('should NOT use object format for createApp call', () => {
+      // Arrange
+      const program = createMockProgram();
+      const widgetProgram = createMockProgram();
+      const widgets: WidgetConfig[] = [
+        { id: 'my-widget', program: widgetProgram },
+      ];
+
+      // Act
+      const result = generateHydrationScript(program, widgets);
+
+      // Assert
+      // The generated script should NOT contain object-style call: createApp({
+      expect(result).not.toContain('createApp({');
+    });
+
+    it('should generate correct positional createApp call for multiple widgets', () => {
+      // Arrange
+      const program = createMockProgram();
+      const widget1Program = createMockProgram();
+      const widget2Program = createMockProgram();
+      const widgets: WidgetConfig[] = [
+        { id: 'widget-alpha', program: widget1Program },
+        { id: 'widget-beta', program: widget2Program },
+      ];
+
+      // Act
+      const result = generateHydrationScript(program, widgets);
+
+      // Assert
+      // Both widget mounts should use positional parameters
+      expect(result).toMatch(/createApp\(widgetProgram_widget_alpha,\s*container_widget_alpha\)/);
+      expect(result).toMatch(/createApp\(widgetProgram_widget_beta,\s*container_widget_beta\)/);
+      // Should not use object format
+      expect(result).not.toContain('createApp({');
     });
   });
 });

@@ -50,6 +50,7 @@ export type {
   CallStep,
   SubscribeStep,
   DisposeStep,
+  DomStep,
   // Event Handler
   EventHandler,
   // Action Definition

@@ -70,7 +70,8 @@ export type CompiledActionStep =
   | CompiledImportStep
   | CompiledCallStep
   | CompiledSubscribeStep
-  | CompiledDisposeStep;
+  | CompiledDisposeStep
+  | CompiledDomStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -171,6 +172,17 @@ export interface CompiledSubscribeStep {
 export interface CompiledDisposeStep {
   do: 'dispose';
   target: CompiledExpression;
+}
+
+/**
+ * Compiled DOM manipulation step
+ */
+export interface CompiledDomStep {
+  do: 'dom';
+  operation: 'addClass' | 'removeClass' | 'toggleClass' | 'setAttribute' | 'removeAttribute';
+  selector: CompiledExpression;  // CSS selector or 'html', 'body'
+  value?: CompiledExpression;    // class name or attribute value
+  attribute?: string;            // for setAttribute/removeAttribute
 }
 
 // ==================== Compiled View Node Types ====================
@@ -636,6 +648,17 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         do: 'dispose',
         target: transformExpression(disposeStep.target, emptyContext),
       } as CompiledDisposeStep;
+    }
+
+    case 'dom': {
+      const domStep = step as import('@constela/core').DomStep;
+      return {
+        do: 'dom',
+        operation: domStep.operation,
+        selector: transformExpression(domStep.selector, emptyContext),
+        ...(domStep.value && { value: transformExpression(domStep.value, emptyContext) }),
+        ...(domStep.attribute && { attribute: domStep.attribute }),
+      } as CompiledDomStep;
     }
   }
 }

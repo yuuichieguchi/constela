@@ -702,7 +702,7 @@ describe('generateHydrationScript with widgets', () => {
 
       // Assert
       expect(result).toContain("document.getElementById('my-widget-container')");
-      expect(result).toContain('createApp({');
+      expect(result).toMatch(/createApp\(widgetProgram_\w+,\s*container_\w+\)/);
     });
 
     it('should handle multiple widgets', async () => {
