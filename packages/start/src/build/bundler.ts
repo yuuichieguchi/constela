@@ -123,6 +123,7 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
         outfile: outFile,
         minify: options.minify ?? true,
         loader: { '.css': 'css' },
+        conditions: ['style'],
       });
     } else {
       // Multiple files: create a virtual entry that imports all CSS files
@@ -139,6 +140,7 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
         bundle: true,
         outfile: outFile,
         minify: options.minify ?? true,
+        conditions: ['style'],
       });
     }
   } catch (error) {

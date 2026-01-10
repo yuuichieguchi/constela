@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.5
+
+### Patch Changes
+
+- fix(build): add conditions: ['style'] to esbuild for Tailwind CSS v4 support
+
 ## 1.2.4
 
 ### Patch Changes
