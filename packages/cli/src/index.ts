@@ -36,12 +36,18 @@ program
   .description('Start development server')
   .option('-p, --port <number>', 'Port number (default: 3000)')
   .option('--host <string>', 'Host address')
+  .option('--routesDir <path>', 'Routes directory')
+  .option('--publicDir <path>', 'Public directory')
+  .option('--layoutsDir <path>', 'Layouts directory')
   .action(devCommand);
 
 program
   .command('build')
   .description('Build for production')
   .option('-o, --outDir <path>', 'Output directory (default: dist)')
+  .option('--routesDir <path>', 'Routes directory')
+  .option('--publicDir <path>', 'Public directory')
+  .option('--layoutsDir <path>', 'Layouts directory')
   .action(buildCommand);
 
 program

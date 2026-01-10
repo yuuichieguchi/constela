@@ -47,7 +47,7 @@ import { createDevServer } from '@constela/start';
 const server = await createDevServer({
   port: 3000,
   host: 'localhost',
-  routesDir: 'src/pages',
+  routesDir: 'src/routes',
   publicDir: 'public',
   layoutsDir: 'src/layouts',
   css: {
@@ -59,7 +59,7 @@ const server = await createDevServer({
 **DevServerOptions:**
 - `port?: number` - Server port (default: 3000)
 - `host?: string` - Server host (default: localhost)
-- `routesDir?: string` - Pages directory (default: src/pages)
+- `routesDir?: string` - Routes directory (default: src/routes)
 - `publicDir?: string` - Static files directory (default: public)
 - `layoutsDir?: string` - Layouts directory
 - `css?: { links?: string[] }` - CSS configuration
@@ -73,7 +73,7 @@ import { build } from '@constela/start';
 
 const result = await build({
   outDir: 'dist',
-  routesDir: 'src/pages',
+  routesDir: 'src/routes',
   publicDir: 'public',
   layoutsDir: 'src/layouts',
   css: { links: ['/styles/main.css'] },
@@ -100,7 +100,7 @@ Generates static HTML pages for SSG.
 import { generateStaticPages } from '@constela/start';
 
 const files = await generateStaticPages({
-  routesDir: 'src/pages',
+  routesDir: 'src/routes',
   outDir: 'dist',
   layoutsDir: 'src/layouts',
 });
@@ -115,7 +115,7 @@ Discovers routes from the file system.
 ```typescript
 import { scanRoutes } from '@constela/start';
 
-const routes = await scanRoutes('src/pages');
+const routes = await scanRoutes('src/routes');
 // [{ path: '/', file: 'index.json', type: 'page' }, ...]
 ```
 
@@ -150,7 +150,7 @@ Loads data from various sources.
 ```typescript
 import { DataLoader } from '@constela/start';
 
-const loader = new DataLoader('src/pages');
+const loader = new DataLoader('src/routes');
 
 // Glob pattern
 const posts = await loader.loadGlob('content/blog/*.mdx', 'mdx');

@@ -76,3 +76,7 @@ export type { GlobResult, MdxGlobResult, StaticPath } from './data/loader.js';
 // MDX transformation
 export { mdxToConstela } from './build/mdx.js';
 export type { ComponentDef, MDXToConstelaOptions } from './build/mdx.js';
+
+// Config loader
+export { loadConfig, resolveConfig } from './config/config-loader.js';
+export type { ConstelaConfigFile, CLIOptions } from './config/config-loader.js';

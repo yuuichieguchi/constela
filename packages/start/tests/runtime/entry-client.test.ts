@@ -20,6 +20,7 @@ vi.mock('@constela/runtime', () => ({
     destroy: vi.fn(),
     setState: vi.fn(),
     getState: vi.fn(),
+    subscribe: vi.fn(() => vi.fn()),
   })),
 }));
 
@@ -40,6 +41,7 @@ interface AppInstance {
   destroy(): void;
   setState(name: string, value: unknown): void;
   getState(name: string): unknown;
+  subscribe(name: string, fn: (value: unknown) => void): () => void;
 }
 
 interface InitClientOptions {
@@ -396,6 +398,14 @@ describe('initClient', () => {
 
       it('should return unsubscribe function from subscribe', async () => {
         // Arrange
+        const { hydrateApp } = await import('@constela/runtime');
+        (hydrateApp as Mock).mockReturnValue({
+          destroy: vi.fn(),
+          setState: vi.fn(),
+          getState: vi.fn(),
+          subscribe: vi.fn(() => vi.fn()),
+        });
+
         const { initClient } = await import('../../src/runtime/entry-client.js');
         const program = createMinimalProgram({
           state: {
@@ -428,8 +438,7 @@ describe('initClient', () => {
           destroy: vi.fn(),
           setState: vi.fn(),
           getState: vi.fn(),
-          // Note: hydrateApp returns AppInstance which doesn't have subscribe
-          // This test assumes EscapeContext.subscribe uses internal StateStore
+          subscribe: mockSubscribe,
         });
 
         const { initClient } = await import('../../src/runtime/entry-client.js');

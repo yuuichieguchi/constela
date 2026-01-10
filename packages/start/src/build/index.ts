@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile, cp, readdir, stat } from 'node:fs/promises';
-import { join, dirname, relative, basename } from 'node:path';
+import { join, dirname, relative, basename, isAbsolute, resolve } from 'node:path';
 import type { CompiledProgram } from '@constela/compiler';
 import type { BuildOptions, ScannedRoute } from '../types.js';
 import { scanRoutes, filePathToPattern } from '../router/file-router.js';
@@ -509,9 +509,21 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
   // Bundle runtime for production (only if there are pages to generate)
   const runtimePath = await bundleRuntime({ outDir });
 
+  // Resolve routesDir to absolute path
+  // This is needed to correctly calculate relative paths when routesDir is absolute
+  // (e.g., in tests where routesDir points to a temp directory)
+  const absoluteRoutesDir = isAbsolute(routesDir) ? routesDir : resolve(routesDir);
+
+  // Determine the project root from routesDir
+  // If routesDir is like "/tmp/.../src/routes", project root is "/tmp/..."
+  // We walk up from routesDir to find a reasonable project root
+  const projectRoot = dirname(dirname(absoluteRoutesDir));
+
   // Process each JSON page
   for (const route of jsonPages) {
-    const relPath = relative(routesDir, route.file);
+    // Calculate relative paths
+    const relPathFromRoutesDir = relative(absoluteRoutesDir, route.file);
+    const relPathFromProjectRoot = relative(projectRoot, route.file);
 
     // Read and validate JSON
     const content = readFileSync(route.file, 'utf-8');
@@ -538,10 +550,10 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const outputPath = paramsToOutputPath(route.pattern, params, outDir);
 
         // Create page loader for this page
-        const loader = new JsonPageLoader(routesDir);
+        const loader = new JsonPageLoader(projectRoot);
 
         // Load page info
-        let pageInfo = await loader.loadPage(relPath);
+        let pageInfo = await loader.loadPage(relPathFromProjectRoot);
 
         // Apply layouts if configured
         if (layoutsDir) {
@@ -570,13 +582,13 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       }
     } else {
       // Static page - generate single HTML file
-      const outputPath = getOutputPath(relPath, outDir);
+      const outputPath = getOutputPath(relPathFromRoutesDir, outDir);
 
       // Create page loader
-      const loader = new JsonPageLoader(routesDir);
+      const loader = new JsonPageLoader(projectRoot);
 
       // Load page info
-      let pageInfo = await loader.loadPage(relPath);
+      let pageInfo = await loader.loadPage(relPathFromProjectRoot);
 
       // Apply layouts if configured
       if (layoutsDir) {

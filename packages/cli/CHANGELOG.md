@@ -1,5 +1,15 @@
 # @constela/cli
 
+## 0.3.9
+
+### Patch Changes
+
+- fix(start): use projectRoot for path traversal check in build
+  fix(start): unify DEFAULT_ROUTES_DIR to src/routes
+  fix(cli): use config-loader to pass routesDir/publicDir/layoutsDir to build() and createDevServer()
+- Updated dependencies
+  - @constela/start@1.2.2
+
 ## 0.3.8
 
 ### Patch Changes

@@ -7,13 +7,19 @@
  *   constela build [options]
  *
  * Options:
- *   -o, --outDir <path>  Output directory (default: dist)
+ *   -o, --outDir <path>       Output directory (default: dist)
+ *   --routesDir <path>        Routes directory
+ *   --publicDir <path>        Public directory
+ *   --layoutsDir <path>       Layouts directory
  */
 
-import { build } from '@constela/start';
+import { build, loadConfig, resolveConfig } from '@constela/start';
 
 export interface BuildCommandOptions {
   outDir?: string;
+  routesDir?: string;
+  publicDir?: string;
+  layoutsDir?: string;
 }
 
 /**
@@ -22,12 +28,25 @@ export interface BuildCommandOptions {
  * @param options - Command options
  */
 export async function buildCommand(options: BuildCommandOptions): Promise<void> {
-  const outDir = options.outDir ?? 'dist';
-
   try {
     console.log('Building for production...');
 
-    const result = await build({ outDir });
+    // Load config from file and merge with CLI options
+    const fileConfig = await loadConfig(process.cwd());
+    const resolvedConfig = await resolveConfig(fileConfig, {
+      outDir: options.outDir,
+      routesDir: options.routesDir,
+      publicDir: options.publicDir,
+      layoutsDir: options.layoutsDir,
+    });
+
+    const result = await build({
+      outDir: resolvedConfig.build?.outDir ?? options.outDir ?? 'dist',
+      routesDir: resolvedConfig.routesDir,
+      publicDir: resolvedConfig.publicDir,
+      layoutsDir: resolvedConfig.layoutsDir,
+      css: resolvedConfig.css,
+    });
 
     console.log('Build completed: ' + result.outDir);
     if (result.routes.length > 0) {

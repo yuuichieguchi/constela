@@ -359,6 +359,174 @@ describe('build() - bundleRuntime Integration', () => {
     });
   });
 
+  // ==================== Path Traversal in Imports ====================
+
+  describe('imports outside routesDir', () => {
+    it('should allow importing JSON files from outside routesDir (e.g., ../data/)', async () => {
+      // Arrange
+      // Create directory structure:
+      // testDir/
+      //   src/
+      //     routes/
+      //       index.json (imports ../data/nav.json)
+      //     data/
+      //       nav.json
+      const srcDir = join(testDir, 'src');
+      const pagesDir = join(srcDir, 'routes');
+      const dataDir = join(srcDir, 'data');
+      const outDir = join(testDir, 'dist');
+
+      await mkdir(pagesDir, { recursive: true });
+      await mkdir(dataDir, { recursive: true });
+
+      // Create nav.json in src/data/
+      const navData = {
+        items: [
+          { label: 'Home', href: '/' },
+          { label: 'About', href: '/about' },
+        ],
+      };
+      await writeFile(join(dataDir, 'nav.json'), JSON.stringify(navData, null, 2));
+
+      // Create index.json that imports from ../data/nav.json
+      const pageWithExternalImport = {
+        version: '1.0',
+        imports: {
+          nav: '../data/nav.json',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'nav',
+          props: {},
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'import', name: 'nav', path: 'items' },
+              as: 'item',
+              body: {
+                kind: 'element',
+                tag: 'a',
+                props: {
+                  href: { expr: 'var', name: 'item', path: 'href' },
+                },
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'item', path: 'label' } },
+                ],
+              },
+            },
+          ],
+        },
+      };
+      await writeFile(
+        join(pagesDir, 'index.json'),
+        JSON.stringify(pageWithExternalImport, null, 2)
+      );
+
+      // Act & Assert
+      // The build should succeed without throwing path traversal error
+      await expect(
+        build({
+          routesDir: pagesDir,
+          outDir,
+        })
+      ).resolves.not.toThrow();
+
+      // Verify the HTML file was generated
+      const htmlPath = join(outDir, 'index.html');
+      expect(await fileExists(htmlPath)).toBe(true);
+
+      // Verify the imported data was used in the rendered HTML
+      const htmlContent = await readFile(htmlPath, 'utf-8');
+      expect(htmlContent).toContain('Home');
+      expect(htmlContent).toContain('About');
+    });
+
+    it('should allow importing from nested directory outside routesDir', async () => {
+      // Arrange
+      // Create directory structure:
+      // testDir/
+      //   src/
+      //     routes/
+      //       docs/
+      //         intro.json (imports ../../data/sidebar.json)
+      //     data/
+      //       sidebar.json
+      const srcDir = join(testDir, 'src');
+      const pagesDir = join(srcDir, 'routes');
+      const docsDir = join(pagesDir, 'docs');
+      const dataDir = join(srcDir, 'data');
+      const outDir = join(testDir, 'dist');
+
+      await mkdir(docsDir, { recursive: true });
+      await mkdir(dataDir, { recursive: true });
+
+      // Create sidebar.json in src/data/
+      const sidebarData = {
+        sections: [
+          { title: 'Getting Started', slug: 'getting-started' },
+          { title: 'Advanced', slug: 'advanced' },
+        ],
+      };
+      await writeFile(
+        join(dataDir, 'sidebar.json'),
+        JSON.stringify(sidebarData, null, 2)
+      );
+
+      // Create intro.json that imports from ../../data/sidebar.json
+      const pageWithNestedImport = {
+        version: '1.0',
+        imports: {
+          sidebar: '../../data/sidebar.json',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'aside',
+          props: {},
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'import', name: 'sidebar', path: 'sections' },
+              as: 'section',
+              body: {
+                kind: 'element',
+                tag: 'div',
+                props: {},
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'section', path: 'title' } },
+                ],
+              },
+            },
+          ],
+        },
+      };
+      await writeFile(
+        join(docsDir, 'intro.json'),
+        JSON.stringify(pageWithNestedImport, null, 2)
+      );
+
+      // Act & Assert
+      await expect(
+        build({
+          routesDir: pagesDir,
+          outDir,
+        })
+      ).resolves.not.toThrow();
+
+      // Verify the HTML file was generated
+      const htmlPath = join(outDir, 'docs', 'intro', 'index.html');
+      expect(await fileExists(htmlPath)).toBe(true);
+
+      // Verify the imported data was used
+      const htmlContent = await readFile(htmlPath, 'utf-8');
+      expect(htmlContent).toContain('Getting Started');
+      expect(htmlContent).toContain('Advanced');
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

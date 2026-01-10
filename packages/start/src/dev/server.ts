@@ -31,7 +31,7 @@ export interface DevServer {
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_PUBLIC_DIR = 'public';
-const DEFAULT_ROUTES_DIR = 'src/pages';
+const DEFAULT_ROUTES_DIR = 'src/routes';
 
 // ==================== Route Matching ====================
 
