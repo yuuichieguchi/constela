@@ -278,6 +278,104 @@ function normalizeViewNode(node: unknown): unknown {
 }
 
 /**
+ * Substitute param expressions with layout params in an expression
+ */
+function substituteLayoutParamsInExpr(
+  expr: unknown,
+  layoutParams: Record<string, unknown>
+): unknown {
+  if (!expr || typeof expr !== 'object') {
+    return expr;
+  }
+
+  const exprObj = expr as Record<string, unknown>;
+
+  // If this is a param expression, substitute it
+  if (exprObj['expr'] === 'param' && typeof exprObj['name'] === 'string') {
+    const paramName = exprObj['name'];
+    const paramValue = layoutParams[paramName];
+    if (paramValue !== undefined) {
+      // If param has a path, wrap the value in a get expression
+      if (typeof exprObj['path'] === 'string') {
+        return {
+          expr: 'get',
+          base: paramValue,
+          path: exprObj['path'],
+        };
+      }
+      return paramValue;
+    }
+  }
+
+  // Recursively substitute in nested expressions
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(exprObj)) {
+    if (key === 'expr') {
+      result[key] = value;
+    } else if (value && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        result[key] = value.map((item) => substituteLayoutParamsInExpr(item, layoutParams));
+      } else {
+        result[key] = substituteLayoutParamsInExpr(value, layoutParams);
+      }
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Substitute param expressions with layout params in a view node
+ */
+function substituteLayoutParamsInNode(
+  node: unknown,
+  layoutParams: Record<string, unknown>
+): unknown {
+  if (!node || typeof node !== 'object') {
+    return node;
+  }
+
+  const nodeObj = node as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(nodeObj)) {
+    if (key === 'children' && Array.isArray(value)) {
+      result[key] = value.map((child) => substituteLayoutParamsInNode(child, layoutParams));
+    } else if (key === 'props' && value && typeof value === 'object') {
+      const props: Record<string, unknown> = {};
+      for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
+        props[propKey] = substituteLayoutParamsInExpr(propValue, layoutParams);
+      }
+      result[key] = props;
+    } else if (key === 'value' && value && typeof value === 'object') {
+      // Handle text node value or other expression values
+      result[key] = substituteLayoutParamsInExpr(value, layoutParams);
+    } else if (key === 'items' && value && typeof value === 'object') {
+      // Handle each node items
+      result[key] = substituteLayoutParamsInExpr(value, layoutParams);
+    } else if (key === 'condition' && value && typeof value === 'object') {
+      // Handle if node condition
+      result[key] = substituteLayoutParamsInExpr(value, layoutParams);
+    } else if (key === 'content' && value && typeof value === 'object') {
+      // Handle markdown node content
+      result[key] = substituteLayoutParamsInExpr(value, layoutParams);
+    } else if (key === 'then' && value && typeof value === 'object') {
+      result[key] = substituteLayoutParamsInNode(value, layoutParams);
+    } else if (key === 'else' && value && typeof value === 'object') {
+      result[key] = substituteLayoutParamsInNode(value, layoutParams);
+    } else if (key === 'body' && value && typeof value === 'object') {
+      result[key] = substituteLayoutParamsInNode(value, layoutParams);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Replace slot node with content recursively
  */
 function replaceSlot(node: unknown, content: unknown): unknown {
@@ -322,7 +420,13 @@ async function processLayouts(
   const normalizedLayoutView = normalizeViewNode(structuredClone(layout.view));
 
   // Apply layout to page view
-  const wrappedView = applyLayout(pageInfo.page.view, normalizedLayoutView);
+  let wrappedView = applyLayout(pageInfo.page.view, normalizedLayoutView);
+
+  // Substitute layoutParams in the wrapped view
+  const layoutParams = pageInfo.page.route?.layoutParams;
+  if (layoutParams && Object.keys(layoutParams).length > 0) {
+    wrappedView = substituteLayoutParamsInNode(wrappedView, layoutParams);
+  }
 
   // Create updated route without layout property
   let updatedRoute: typeof pageInfo.page.route;

@@ -586,4 +586,58 @@ describe('loadJsonPage with relative data sources', () => {
       expect(docs[0].frontmatter.slug).toBe('test-doc');
     });
   });
+
+  // ==================== BUG: routesDir pattern resolution ====================
+
+  describe('BUG: routesDir option should not affect pattern base directory', () => {
+    /*
+     * This test exposes a bug in loadJsonPage where `routesDir` option
+     * incorrectly affects the base directory for resolving relative patterns.
+     *
+     * BUG LOCATION: packages/start/src/json-page-loader.ts:356
+     * CURRENT CODE: const patternBaseDir = options?.routesDir ?? pageDir;
+     * EXPECTED: Patterns should ALWAYS be resolved from pageDir (the directory
+     *           containing the page file), NOT from routesDir.
+     *
+     * SCENARIO:
+     * - Page file: pages-data/nested/page.json
+     * - routesDir: pages-data (simulating SSG routes directory)
+     * - Pattern: "../../content/GLOB/*.mdx"
+     *
+     * EXPECTED BEHAVIOR:
+     * - Pattern resolved from pageDir (pages-data/nested/)
+     * - Becomes "content/GLOB/*.mdx" (correct)
+     *
+     * BUG BEHAVIOR:
+     * - Pattern resolved from routesDir (pages-data/)
+     * - Becomes "../content/GLOB/*.mdx" (wrong - traverses outside project root)
+     */
+    it('should resolve relative patterns from pageDir when routesDir option is provided', async () => {
+      // Arrange
+      // Page file is at pages-data/nested/page.json
+      // Pattern in page: ../../content/**/*.mdx
+      // routesDir: pages-data (simulating SSG usage)
+      //
+      // Expected: Pattern should be resolved from pages-data/nested/
+      //           -> ../../content/**/*.mdx becomes content/**/*.mdx
+      //
+      // Bug behavior: Pattern is resolved from pages-data/ (routesDir)
+      //               -> ../../content/**/*.mdx becomes ../content/**/*.mdx
+      //               This causes path traversal error or wrong file resolution
+      const pagePath = 'pages-data/nested/page.json';
+      const routesDir = join(FIXTURES_DIR, 'pages-data');
+
+      // Act
+      const pageInfo = await loadJsonPage(FIXTURES_DIR, pagePath, { routesDir });
+
+      // Assert
+      // If the bug exists, this will either:
+      // 1. Throw "path traversal outside project root detected" error, or
+      // 2. Return empty docs array because pattern resolves to wrong location
+      expect(pageInfo.loadedData).toHaveProperty('docs');
+      const docs = pageInfo.loadedData.docs as Array<{ frontmatter: { title: string } }>;
+      expect(docs.length).toBeGreaterThan(0);
+      expect(docs[0].frontmatter.title).toBe('Test Document');
+    });
+  });
 });

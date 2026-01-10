@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/nested/:slug"
+  },
+  "data": {
+    "docs": {
+      "type": "glob",
+      "pattern": "../../content/**/*.mdx",
+      "transform": "mdx"
+    }
+  },
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Nested docs page" } }
+    ]
+  }
+}

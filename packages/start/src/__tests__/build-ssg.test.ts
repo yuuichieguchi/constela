@@ -1566,7 +1566,7 @@ describe('build() - Inline getStaticPaths in JSON Pages', () => {
         data: {
           posts: {
             type: 'glob',
-            pattern: '../../content/posts/*.mdx',
+            pattern: '../../../content/posts/*.mdx',
             transform: 'mdx',
           },
         },
@@ -1639,7 +1639,7 @@ describe('build() - Inline getStaticPaths in JSON Pages', () => {
         data: {
           docs: {
             type: 'glob',
-            pattern: '../../content/docs/*.mdx',
+            pattern: '../../../content/docs/*.mdx',
             transform: 'mdx',
           },
         },
@@ -1721,7 +1721,7 @@ describe('build() - Inline getStaticPaths in JSON Pages', () => {
         data: {
           articles: {
             type: 'glob',
-            pattern: '../../content/articles/*.mdx',
+            pattern: '../../../../content/articles/*.mdx',
             transform: 'mdx',
           },
         },

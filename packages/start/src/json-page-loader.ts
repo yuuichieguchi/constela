@@ -350,10 +350,7 @@ export async function loadJsonPage(
   const pageDir = dirname(filePath);
   const resolvedImports = await resolveImports(pageDir, page.imports, baseDir);
 
-  // Use routesDir for pattern resolution if provided, otherwise fall back to pageDir
-  // This allows patterns like "../../content/" to be resolved consistently from the routes directory
-  // rather than varying based on how deeply nested the page file is
-  const patternBaseDir = options?.routesDir ?? pageDir;
+  const patternBaseDir = pageDir;
 
   // Normalize data source patterns to be relative to baseDir
   const normalizedData = normalizeDataSourcePatterns(baseDir, patternBaseDir, page.data);
