@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.2.16
+
+### Patch Changes
+
+- fix: resolve layout import expressions in SSG build
+
+  Layout files with `imports` section now correctly resolve import expressions during SSG build. Previously, import expressions like `{ "expr": "import", "name": "nav", "path": "topNav" }` were evaluated as undefined in SSG output while working correctly in dev server.
+
+  Also adds support for nested layouts of any depth with circular reference detection.
+
 ## 1.2.15
 
 ### Patch Changes
