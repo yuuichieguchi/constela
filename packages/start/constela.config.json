@@ -1,5 +1,6 @@
 {
   "css": "src/styles/main.css",
+  "cssContent": ["./src/**/*.tsx", "./src/**/*.json"],
   "layoutsDir": "src/layouts",
   "routesDir": "src/pages",
   "publicDir": "public",

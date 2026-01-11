@@ -299,6 +299,108 @@ describe('loadConfig', () => {
   });
 });
 
+// ==================== cssContent Tests ====================
+
+describe('ConstelaConfigFile cssContent property', () => {
+  beforeEach(async () => {
+    const fs = await import('node:fs');
+    vi.mocked(fs.existsSync).mockReset();
+    vi.mocked(fs.readFileSync).mockReset();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('when config file contains cssContent', () => {
+    it('should load cssContent as string array from config file', async () => {
+      /**
+       * Given: A config file with cssContent array
+       * When: loadConfig is called
+       * Then: cssContent should be loaded as string array
+       */
+      // Arrange
+      const projectRoot = '/project';
+      const configWithCssContent: ConstelaConfigFile = {
+        css: './src/styles/main.css',
+        cssContent: ['./src/**/*.tsx', './src/**/*.json'],
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithCssContent));
+
+      // Act
+      const config = await loadConfig(projectRoot);
+
+      // Assert
+      expect(config.cssContent).toBeDefined();
+      expect(Array.isArray(config.cssContent)).toBe(true);
+      expect(config.cssContent).toEqual(['./src/**/*.tsx', './src/**/*.json']);
+    });
+
+    it('should handle empty cssContent array', async () => {
+      /**
+       * Given: A config file with empty cssContent array
+       * When: loadConfig is called
+       * Then: cssContent should be an empty array
+       */
+      // Arrange
+      const projectRoot = '/project';
+      const configWithEmptyCssContent: ConstelaConfigFile = {
+        css: './src/styles/main.css',
+        cssContent: [],
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithEmptyCssContent));
+
+      // Act
+      const config = await loadConfig(projectRoot);
+
+      // Assert
+      expect(config.cssContent).toEqual([]);
+    });
+
+    it('should load full config with cssContent property', async () => {
+      /**
+       * Given: A full config file including cssContent
+       * When: loadConfig is called
+       * Then: All properties including cssContent should be loaded
+       */
+      // Arrange
+      const projectRoot = '/project';
+      const fullConfigWithCssContent: ConstelaConfigFile = {
+        css: ['./src/styles/global.css', './src/styles/components.css'],
+        cssContent: ['./src/**/*.tsx', './components/**/*.tsx'],
+        layoutsDir: './src/layouts',
+        routesDir: './src/pages',
+        publicDir: './public',
+        build: {
+          outDir: './dist',
+        },
+        dev: {
+          port: 3000,
+          host: 'localhost',
+        },
+      };
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fullConfigWithCssContent));
+
+      // Act
+      const config = await loadConfig(projectRoot);
+
+      // Assert
+      expect(config.css).toEqual(['./src/styles/global.css', './src/styles/components.css']);
+      expect(config.cssContent).toEqual(['./src/**/*.tsx', './components/**/*.tsx']);
+      expect(config.layoutsDir).toBe('./src/layouts');
+    });
+  });
+});
+
 describe('resolveConfig', () => {
   // ==================== Setup ====================
 
@@ -505,6 +607,150 @@ describe('resolveConfig', () => {
 
       // Assert
       expect(resolved).toEqual({});
+    });
+  });
+
+  // ==================== cssContent Merging ====================
+
+  describe('when merging cssContent', () => {
+    it('should preserve cssContent from file config when CLI does not provide it', async () => {
+      /**
+       * Given: A file config with cssContent array
+       * When: CLI options do not include cssContent
+       * Then: File config cssContent should be preserved
+       */
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {
+        css: './styles.css',
+        cssContent: ['./src/**/*.tsx', './components/**/*.tsx'],
+      };
+      const cliOptions: CLIOptions = {
+        port: 3000,
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert
+      expect(resolved.cssContent).toEqual(['./src/**/*.tsx', './components/**/*.tsx']);
+    });
+
+    it('should convert CLI cssContent string to array and override file config', async () => {
+      /**
+       * Given: A file config with cssContent and CLI with cssContent string
+       * When: resolveConfig is called
+       * Then: CLI cssContent should be converted to array and take precedence
+       */
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {
+        css: './styles.css',
+        cssContent: ['./old/**/*.tsx'],
+      };
+      const cliOptions: CLIOptions = {
+        cssContent: './new/**/*.tsx',
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert
+      expect(resolved.cssContent).toEqual(['./new/**/*.tsx']);
+    });
+
+    it('should handle CLI cssContent when file config has no cssContent', async () => {
+      /**
+       * Given: A file config without cssContent
+       * When: CLI provides cssContent
+       * Then: CLI cssContent should be used (converted to array)
+       */
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {
+        css: './styles.css',
+      };
+      const cliOptions: CLIOptions = {
+        cssContent: './src/**/*.tsx',
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert
+      expect(resolved.cssContent).toEqual(['./src/**/*.tsx']);
+    });
+
+    it('should not modify cssContent when both file config and CLI are empty', async () => {
+      /**
+       * Given: A file config without cssContent and CLI without cssContent
+       * When: resolveConfig is called
+       * Then: cssContent should be undefined
+       */
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {
+        css: './styles.css',
+      };
+      const cliOptions: CLIOptions = {};
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert
+      expect(resolved.cssContent).toBeUndefined();
+    });
+
+    it('should handle comma-separated CLI cssContent values', async () => {
+      // Given: CLI cssContent with comma-separated paths
+      // When: resolveConfig is called
+      // Then: CSS content paths should be split into array
+      // Note: This tests --cssContent "./src/[glob].tsx,./components/[glob].tsx"
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {};
+      const cliOptions: CLIOptions = {
+        cssContent: './src/**/*.tsx,./components/**/*.tsx',
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert - should split comma-separated values into array
+      expect(resolved.cssContent).toEqual(['./src/**/*.tsx', './components/**/*.tsx']);
+    });
+
+    it('should trim whitespace from comma-separated CLI cssContent values', async () => {
+      // Given: CLI cssContent with spaces around commas
+      // When: resolveConfig is called
+      // Then: CSS content paths should be trimmed and split into array
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {};
+      const cliOptions: CLIOptions = {
+        cssContent: './src/**/*.tsx, ./components/**/*.tsx , ./pages/**/*.tsx',
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert - should trim whitespace from each path
+      expect(resolved.cssContent).toEqual([
+        './src/**/*.tsx',
+        './components/**/*.tsx',
+        './pages/**/*.tsx',
+      ]);
+    });
+
+    it('should filter empty strings from comma-separated CLI cssContent values', async () => {
+      // Given: CLI cssContent with trailing comma or double commas
+      // When: resolveConfig is called
+      // Then: Empty strings should be filtered out
+      // Arrange
+      const fileConfig: ConstelaConfigFile = {};
+      const cliOptions: CLIOptions = {
+        cssContent: './src/**/*.tsx,,./components/**/*.tsx,',
+      };
+
+      // Act
+      const resolved = await resolveConfig(fileConfig, cliOptions);
+
+      // Assert - should filter empty strings
+      expect(resolved.cssContent).toEqual(['./src/**/*.tsx', './components/**/*.tsx']);
     });
   });
 

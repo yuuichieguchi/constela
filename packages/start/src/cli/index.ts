@@ -9,6 +9,7 @@ type DevHandler = (options: { port: string; host?: string | undefined; css?: str
 type BuildHandler = (options: {
   outDir?: string | undefined;
   css?: string | undefined;
+  cssContent?: string[] | undefined;
   layoutsDir?: string | undefined
 }) => Promise<void>;
 type StartHandler = (options: {
@@ -47,6 +48,7 @@ let buildHandler: BuildHandler = async (options) => {
     outDir: options.outDir,
     layoutsDir: options.layoutsDir,
     css: options.css,
+    cssContent: options.cssContent,
   });
   console.log('Build complete');
 };
@@ -127,18 +129,21 @@ export function createCLI(): Command {
     .description('Build for production')
     .option('-o, --outDir <outDir>', 'Output directory')
     .option('-c, --css <path>', 'CSS entry point for Vite processing')
+    .option('--cssContent <paths>', 'Content paths for Tailwind CSS class scanning (comma-separated)')
     .option('-l, --layoutsDir <path>', 'Layouts directory for layout composition')
-    .action(async (options: { outDir?: string; css?: string; layoutsDir?: string }) => {
+    .action(async (options: { outDir?: string; css?: string; cssContent?: string; layoutsDir?: string }) => {
       const fileConfig = await loadConfig(process.cwd());
       const resolved = await resolveConfig(fileConfig, {
         outDir: options.outDir,
         css: options.css,
+        cssContent: options.cssContent,
         layoutsDir: options.layoutsDir,
       });
 
       const mergedOptions: {
         outDir?: string | undefined;
         css?: string | undefined;
+        cssContent?: string[] | undefined;
         layoutsDir?: string | undefined;
       } = {};
 
@@ -147,6 +152,9 @@ export function createCLI(): Command {
 
       const cssValue = options.css ?? (typeof resolved.css === 'string' ? resolved.css : resolved.css?.[0]);
       if (cssValue !== undefined) mergedOptions.css = cssValue;
+
+      const cssContentValue = resolved.cssContent;
+      if (cssContentValue !== undefined) mergedOptions.cssContent = cssContentValue;
 
       const layoutsDirValue = options.layoutsDir ?? resolved.layoutsDir;
       if (layoutsDirValue !== undefined) mergedOptions.layoutsDir = layoutsDirValue;

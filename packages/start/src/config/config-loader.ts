@@ -5,6 +5,7 @@ const CONFIG_FILENAME = 'constela.config.json';
 
 export interface ConstelaConfigFile {
   css?: string | string[];
+  cssContent?: string[];
   layoutsDir?: string;
   routesDir?: string;
   publicDir?: string;
@@ -19,6 +20,7 @@ export interface ConstelaConfigFile {
 
 export interface CLIOptions {
   css?: string | undefined;
+  cssContent?: string | undefined;
   layoutsDir?: string | undefined;
   routesDir?: string | undefined;
   publicDir?: string | undefined;
@@ -66,6 +68,13 @@ export async function resolveConfig(
   
   // Merge top-level options (CLI takes precedence for defined values)
   if (cliOptions.css !== undefined) result.css = cliOptions.css;
+  if (cliOptions.cssContent !== undefined) {
+    // Convert comma-separated string to array, trim whitespace, and filter empty strings
+    result.cssContent = cliOptions.cssContent
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
   if (cliOptions.layoutsDir !== undefined) result.layoutsDir = cliOptions.layoutsDir;
   if (cliOptions.routesDir !== undefined) result.routesDir = cliOptions.routesDir;
   if (cliOptions.publicDir !== undefined) result.publicDir = cliOptions.publicDir;

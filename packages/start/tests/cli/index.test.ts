@@ -272,6 +272,109 @@ describe('CLI Command Parsing', () => {
         })
       );
     });
+
+    // ==================== cssContent option tests ====================
+
+    it('should accept --cssContent option for build command', async () => {
+      /**
+       * Given: Build command with --cssContent option
+       * When: CLI is parsed
+       * Then: cssContent option should be recognized
+       */
+      // Arrange
+      simulateCliArgs(['build', '--cssContent', './src/**/*.tsx']);
+
+      // Act
+      const { createCLI } = await import('../../src/cli/index.js');
+      const program = createCLI();
+      const buildCommand = program.commands.find(cmd => cmd.name() === 'build');
+
+      // Assert
+      expect(buildCommand).toBeDefined();
+      const cssContentOption = buildCommand?.options.find(opt =>
+        opt.long === '--cssContent'
+      );
+      expect(cssContentOption).toBeDefined();
+    });
+
+    it('should pass --cssContent option to build handler as string array', async () => {
+      /**
+       * Given: Build command with --cssContent option
+       * When: Build handler is called
+       * Then: cssContent should be passed as string array
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync(['node', 'constela-start', 'build', '--cssContent', './src/**/*.tsx']);
+
+      // Assert
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({ cssContent: ['./src/**/*.tsx'] })
+      );
+    });
+
+    it('should handle comma-separated --cssContent values', async () => {
+      /**
+       * Given: Build command with comma-separated --cssContent values
+       * When: Build handler is called
+       * Then: cssContent should be split into array
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync([
+        'node', 'constela-start', 'build',
+        '--cssContent', './src/**/*.tsx,./components/**/*.tsx'
+      ]);
+
+      // Assert
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cssContent: ['./src/**/*.tsx', './components/**/*.tsx']
+        })
+      );
+    });
+
+    it('should accept all options including cssContent for build command', async () => {
+      /**
+       * Given: Build command with all options including --cssContent
+       * When: Build handler is called
+       * Then: All options should be passed to handler
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync([
+        'node', 'constela-start', 'build',
+        '--outDir', 'dist',
+        '--css', 'src/styles/main.css',
+        '--cssContent', './src/**/*.tsx',
+        '--layoutsDir', 'src/layouts'
+      ]);
+
+      // Assert
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outDir: 'dist',
+          css: 'src/styles/main.css',
+          cssContent: ['./src/**/*.tsx'],
+          layoutsDir: 'src/layouts'
+        })
+      );
+    });
   });
 
   // ==================== start command ====================
@@ -769,6 +872,87 @@ describe('CLI Config File Integration', () => {
         expect.objectContaining({
           port: '4000',
           layoutsDir: expect.any(String), // from config file
+        })
+      );
+    });
+  });
+
+  // ==================== cssContent config integration ====================
+
+  describe('cssContent config integration', () => {
+    it('should load cssContent from config file for build command', async () => {
+      /**
+       * Given: A config file with cssContent array
+       * When: Build command is executed without --cssContent option
+       * Then: Handler receives cssContent from config file
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync(['node', 'constela-start', 'build']);
+
+      // Assert - cssContent should come from config file
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cssContent: expect.any(Array),
+        })
+      );
+    });
+
+    it('should override config file cssContent with CLI --cssContent', async () => {
+      /**
+       * Given: A config file with cssContent array
+       * When: Build command is executed with --cssContent option
+       * Then: CLI cssContent should override config file value
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+      const cliCssContent = './cli/**/*.tsx';
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync([
+        'node', 'constela-start', 'build',
+        '--cssContent', cliCssContent
+      ]);
+
+      // Assert - CLI cssContent should take precedence
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cssContent: [cliCssContent],
+        })
+      );
+    });
+
+    it('should merge cssContent with other config options for build', async () => {
+      /**
+       * Given: A config file with css and cssContent
+       * When: Build command is executed with --outDir option
+       * Then: Handler receives outDir from CLI, css and cssContent from config
+       */
+      // Arrange
+      const mockBuild = vi.fn().mockResolvedValue(undefined);
+
+      // Act
+      const { createCLI, setBuildHandler } = await import('../../src/cli/index.js');
+      setBuildHandler(mockBuild);
+      const program = createCLI();
+      await program.parseAsync([
+        'node', 'constela-start', 'build',
+        '--outDir', 'dist'
+      ]);
+
+      // Assert - outDir from CLI, cssContent from config
+      expect(mockBuild).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outDir: 'dist',
+          cssContent: expect.any(Array),
         })
       );
     });
