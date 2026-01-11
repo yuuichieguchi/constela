@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.2.21
+
+### Patch Changes
+
+- fix(start): dynamically resolve query params and path from window.location in hydration script
+
+  SSG builds now correctly handle query parameters by extracting them from `window.location.search` at runtime instead of embedding static values during build. This fixes the Try in Playground feature where example code was not being loaded when navigating with query parameters.
+
 ## 1.2.20
 
 ### Patch Changes
