@@ -169,24 +169,18 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
       const postcss = (await import('postcss')).default;
       const tailwindPostcss = (await import('@tailwindcss/postcss')).default;
 
-      // Determine the base directory for package resolution
-      // Use CSS file directory if it's within the project, otherwise use process.cwd()
-      const projectRoot = process.cwd();
-      const isWithinProject = firstCssFile.startsWith(projectRoot);
-      const baseDir = isWithinProject ? sourceDir : projectRoot;
-
       // Process CSS with Tailwind PostCSS plugin
-      // - 'base' determines where to resolve packages and relative paths
-      // - 'from' is used for source maps and error reporting
+      // - 'base' must be the CSS file's directory for correct path resolution
+      // - 'from' must point to the actual CSS file for @plugin/@source resolution
       const result = await postcss([
         tailwindPostcss({
-          base: baseDir,
+          // base determines where to look for source files and resolve paths
+          base: sourceDir,
           optimize: options.minify ?? true,
         }),
       ]).process(processedCssInput, {
-        // Use a path within project root for package resolution
-        // This ensures tailwindcss can be resolved from node_modules
-        from: isWithinProject ? firstCssFile : join(projectRoot, 'styles.css'),
+        // from must be the actual CSS file path for correct package resolution
+        from: firstCssFile,
       });
 
       // Write processed CSS with esbuild for final bundling and @import resolution

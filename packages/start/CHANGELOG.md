@@ -1,5 +1,14 @@
 # @constela/start
 
+## 1.2.11
+
+### Patch Changes
+
+- fix(build): use actual CSS file path for PostCSS from option
+
+  - Remove isWithinProject check that caused incorrect path resolution
+  - Always use sourceDir for base and firstCssFile for from option
+
 ## 1.2.10
 
 ### Patch Changes
