@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "type": "layout",
+  "imports": {
+    "config": "../data/layout-config.json"
+  },
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": { "expr": "lit", "value": "layout-with-imports" }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "header",
+        "children": [
+          { "kind": "text", "value": { "expr": "import", "name": "config", "path": "siteName" } }
+        ]
+      },
+      { "kind": "slot" },
+      {
+        "kind": "element",
+        "tag": "a",
+        "props": {
+          "href": { "expr": "import", "name": "config", "path": "repoUrl" }
+        },
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "GitHub" } }
+        ]
+      }
+    ]
+  }
+}

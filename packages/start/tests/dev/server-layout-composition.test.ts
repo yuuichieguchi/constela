@@ -265,6 +265,30 @@ describe('Dev Server Layout Composition', () => {
     });
   });
 
+  // ==================== Layout Imports Resolution ====================
+
+  describe('layout imports should be resolved', () => {
+    it('should resolve import expressions in layout view', async () => {
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      server = await createDevServer({
+        port: 0,
+        routesDir: PAGES_LAYOUT_DIR,
+        layoutsDir: LAYOUTS_DIR,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/with-layout-imports`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(html).toContain('Test Site'); // Layout import resolved: config.siteName
+      expect(html).toContain('href="https://github.com/test/repo"'); // Layout import resolved: config.repoUrl
+    });
+  });
+
   // ==================== DevServerOptions layoutsDir ====================
 
   describe('DevServerOptions layoutsDir', () => {

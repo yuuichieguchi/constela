@@ -358,6 +358,16 @@ export async function createDevServer(
                       layoutParams,
                       slots
                     );
+
+                    // Merge layout importData into composed program for SSR
+                    // The layout resolver loads imports and attaches them as importData
+                    const layoutImportData = (layoutProgram as unknown as { importData?: Record<string, unknown> }).importData;
+                    if (layoutImportData) {
+                      (composedProgram as unknown as { importData?: Record<string, unknown> }).importData = {
+                        ...((composedProgram as unknown as { importData?: Record<string, unknown> }).importData ?? {}),
+                        ...layoutImportData,
+                      };
+                    }
                   }
                 }
               }

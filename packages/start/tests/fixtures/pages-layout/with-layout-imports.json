@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/with-layout-imports",
+    "layout": "with-imports"
+  },
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with Layout Imports" } }
+    ]
+  }
+}
