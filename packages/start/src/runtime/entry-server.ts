@@ -200,8 +200,13 @@ if (container_${jsId}) {
     : '';
 
   // Build route context if provided
+  // Note: params are static (from SSG), but query and path are dynamic (from browser)
   const routeDeclaration = route
-    ? `const route = ${escapeJsonForScript(JSON.stringify(route))};`
+    ? `const route = {
+  params: ${escapeJsonForScript(JSON.stringify(route.params || {}))},
+  query: Object.fromEntries(new URLSearchParams(window.location.search)),
+  path: window.location.pathname
+};`
     : '';
 
   // Build hydrateApp options

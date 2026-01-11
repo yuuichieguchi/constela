@@ -510,6 +510,72 @@ describe('generateHydrationScript', () => {
       expect(result).not.toContain('createApp({');
     });
   });
+
+  // ==================== Dynamic Route Context (Client-Side Extraction) ====================
+
+  describe('dynamic route context for SSG', () => {
+    it('should include dynamic query parameter extraction from window.location.search', () => {
+      // Arrange
+      // When route is provided, the generated script should extract query parameters
+      // dynamically from window.location.search instead of statically serializing them.
+      // This is critical for SSG where the HTML is pre-built but query params vary per request.
+      const program = createMockProgram();
+      const route = {
+        params: { slug: 'test-page' },
+        query: { foo: 'bar' }, // Static query - should be ignored in favor of dynamic extraction
+        path: '/docs/test-page',
+      };
+
+      // Act
+      const result = generateHydrationScript(program, undefined, route);
+
+      // Assert
+      // The script should use URLSearchParams(window.location.search) for dynamic query extraction
+      expect(result).toContain('URLSearchParams(window.location.search)');
+    });
+
+    it('should include dynamic path extraction from window.location.pathname', () => {
+      // Arrange
+      // When route is provided, the generated script should use window.location.pathname
+      // for the path instead of the statically provided path.
+      // This ensures the client always uses the actual URL path.
+      const program = createMockProgram();
+      const route = {
+        params: { id: '123' },
+        query: {},
+        path: '/users/123', // Static path - should be replaced with dynamic extraction
+      };
+
+      // Act
+      const result = generateHydrationScript(program, undefined, route);
+
+      // Assert
+      // The script should reference window.location.pathname for dynamic path extraction
+      expect(result).toContain('window.location.pathname');
+    });
+
+    it('should preserve static params in the route context', () => {
+      // Arrange
+      // While query and path should be dynamic, params extracted during SSG build
+      // should still be included statically as they are derived from the URL pattern.
+      const program = createMockProgram();
+      const route = {
+        params: { category: 'guides', slug: 'getting-started' },
+        query: {},
+        path: '/docs/guides/getting-started',
+      };
+
+      // Act
+      const result = generateHydrationScript(program, undefined, route);
+
+      // Assert
+      // Params should be serialized statically
+      expect(result).toContain('"category"');
+      expect(result).toContain('"guides"');
+      expect(result).toContain('"slug"');
+      expect(result).toContain('"getting-started"');
+    });
+  });
 });
 
 // ==================== renderPage Tests ====================
