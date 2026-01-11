@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.2.20
+
+### Patch Changes
+
+- Fix Examples page and Playground theme issues
+
+  - Only bind pathEntry.data for string sources in getStaticPaths (fixes Examples page)
+  - Add themeStorageKey and defaultTheme options to wrapHtml()
+  - Inject blocking script to prevent theme flash on page load
+
 ## 1.2.19
 
 ### Patch Changes
