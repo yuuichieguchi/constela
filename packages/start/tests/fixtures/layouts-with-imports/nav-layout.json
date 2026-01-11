@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "type": "layout",
+  "imports": {
+    "nav": "../data-layout/nav-config.json"
+  },
+  "state": {},
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "class": { "expr": "lit", "value": "layout-wrapper" }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "header",
+        "props": {},
+        "children": [
+          {
+            "kind": "text",
+            "value": { "expr": "import", "name": "nav", "path": "siteName" }
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "nav",
+        "props": {},
+        "children": [
+          {
+            "kind": "each",
+            "items": { "expr": "import", "name": "nav", "path": "navItems" },
+            "as": "item",
+            "body": {
+              "kind": "element",
+              "tag": "a",
+              "props": {
+                "href": { "expr": "var", "name": "item", "path": "href" }
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "value": { "expr": "var", "name": "item", "path": "label" }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      { "kind": "slot" },
+      {
+        "kind": "element",
+        "tag": "footer",
+        "props": {},
+        "children": [
+          {
+            "kind": "text",
+            "value": { "expr": "lit", "value": "Footer content" }
+          }
+        ]
+      }
+    ]
+  }
+}

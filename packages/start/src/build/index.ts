@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile, cp, readdir, stat } from 'node:fs/promises';
 import { join, dirname, relative, basename, isAbsolute, resolve } from 'node:path';
+import { resolveImports } from '../utils/import-resolver.js';
 import type { CompiledProgram } from '@constela/compiler';
 import type { BuildOptions, ScannedRoute } from '../types.js';
 import { scanRoutes, filePathToPattern } from '../router/file-router.js';
@@ -49,6 +50,14 @@ interface LayoutDefinition {
   version: string;
   layout?: string;
   view: unknown;
+}
+
+/**
+ * Layout definition with resolved imports
+ */
+interface LoadedLayoutDefinition extends LayoutDefinition {
+  imports?: Record<string, string>;
+  importData?: Record<string, unknown>;
 }
 
 /**
@@ -172,12 +181,12 @@ async function loadGetStaticPaths(
 }
 
 /**
- * Load a layout definition from file
+ * Load a layout definition from file with resolved imports
  */
 async function loadLayout(
   layoutName: string,
   layoutsDir: string
-): Promise<LayoutDefinition> {
+): Promise<LoadedLayoutDefinition> {
   const layoutPath = join(layoutsDir, `${layoutName}.json`);
 
   if (!existsSync(layoutPath)) {
@@ -186,8 +195,21 @@ async function loadLayout(
 
   try {
     const content = readFileSync(layoutPath, 'utf-8');
-    return JSON.parse(content) as LayoutDefinition;
-  } catch {
+    const parsed = JSON.parse(content) as LoadedLayoutDefinition;
+
+    // Resolve imports if defined (same as layout/resolver.ts)
+    if (parsed.imports && Object.keys(parsed.imports).length > 0) {
+      const layoutDir = dirname(layoutPath);
+      const resolvedImports = await resolveImports(layoutDir, parsed.imports);
+      return { ...parsed, importData: resolvedImports };
+    }
+
+    return parsed;
+  } catch (error) {
+    // Re-throw import resolution errors with context
+    if (error instanceof Error && error.message.includes('not found')) {
+      throw error;
+    }
     throw new Error(`Invalid JSON in layout file: ${layoutPath}`);
   }
 }
@@ -402,7 +424,34 @@ function replaceSlot(node: unknown, content: unknown): unknown {
 }
 
 /**
- * Recursively process layouts (handle nested layouts)
+ * Recursively collect layout chain from innermost to outermost
+ * Returns layouts in order: [innermost, ..., outermost]
+ */
+async function collectLayoutChain(
+  layoutName: string,
+  layoutsDir: string,
+  visited: Set<string> = new Set()
+): Promise<LoadedLayoutDefinition[]> {
+  // Prevent infinite loops from circular layout references
+  if (visited.has(layoutName)) {
+    throw new Error(`Circular layout reference detected: ${layoutName}`);
+  }
+  visited.add(layoutName);
+
+  const layout = await loadLayout(layoutName, layoutsDir);
+  const chain: LoadedLayoutDefinition[] = [layout];
+
+  // Recursively collect parent layouts
+  if (layout.layout) {
+    const parentChain = await collectLayoutChain(layout.layout, layoutsDir, visited);
+    chain.push(...parentChain);
+  }
+
+  return chain;
+}
+
+/**
+ * Recursively process layouts (handle nested layouts of any depth)
  */
 async function processLayouts(
   pageInfo: PageInfo,
@@ -414,18 +463,34 @@ async function processLayouts(
     return pageInfo;
   }
 
-  const layout = await loadLayout(layoutName, layoutsDir);
+  // Collect all layouts in chain (innermost to outermost)
+  const layoutChain = await collectLayoutChain(layoutName, layoutsDir);
 
-  // Normalize layout view (convert raw props to expression format)
-  const normalizedLayoutView = normalizeViewNode(structuredClone(layout.view));
+  // Start with page's resolved imports
+  let mergedImports = { ...pageInfo.resolvedImports };
 
-  // Apply layout to page view
-  let wrappedView = applyLayout(pageInfo.page.view, normalizedLayoutView);
+  // Merge importData from all layouts (outermost first, so inner layouts can override)
+  for (let i = layoutChain.length - 1; i >= 0; i--) {
+    const layout = layoutChain[i];
+    if (layout?.importData) {
+      mergedImports = {
+        ...layout.importData,
+        ...mergedImports, // Inner layout/page imports take precedence
+      };
+    }
+  }
 
-  // Substitute layoutParams in the wrapped view
+  // Apply layouts from innermost to outermost
+  let currentView: typeof pageInfo.page.view = pageInfo.page.view;
+  for (const layout of layoutChain) {
+    const normalizedLayoutView = normalizeViewNode(structuredClone(layout.view));
+    currentView = applyLayout(currentView, normalizedLayoutView) as typeof pageInfo.page.view;
+  }
+
+  // Substitute layoutParams in the final wrapped view
   const layoutParams = pageInfo.page.route?.layoutParams;
   if (layoutParams && Object.keys(layoutParams).length > 0) {
-    wrappedView = substituteLayoutParamsInNode(wrappedView, layoutParams);
+    currentView = substituteLayoutParamsInNode(currentView, layoutParams) as typeof pageInfo.page.view;
   }
 
   // Create updated route without layout property
@@ -436,29 +501,15 @@ async function processLayouts(
   }
 
   // Create updated page info
-  let updatedPageInfo: PageInfo = {
+  const updatedPageInfo: PageInfo = {
     ...pageInfo,
+    resolvedImports: mergedImports,
     page: {
       ...pageInfo.page,
-      view: wrappedView as typeof pageInfo.page.view,
+      view: currentView as typeof pageInfo.page.view,
       route: updatedRoute,
     },
   };
-
-  // If layout has a parent layout, process it recursively
-  if (layout.layout) {
-    const parentLayout = await loadLayout(layout.layout, layoutsDir);
-    const normalizedParentLayoutView = normalizeViewNode(structuredClone(parentLayout.view));
-    const doubleWrappedView = applyLayout(updatedPageInfo.page.view, normalizedParentLayoutView);
-
-    updatedPageInfo = {
-      ...updatedPageInfo,
-      page: {
-        ...updatedPageInfo.page,
-        view: doubleWrappedView as typeof pageInfo.page.view,
-      },
-    };
-  }
 
   return updatedPageInfo;
 }
