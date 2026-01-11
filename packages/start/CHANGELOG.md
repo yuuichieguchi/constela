@@ -1,5 +1,17 @@
 # @constela/start
 
+## 1.2.12
+
+### Patch Changes
+
+- fix(build): resolve tailwindcss/index.css for PostCSS processing
+
+  - Fix CRITICAL-1: Resolve tailwindcss CSS entry point instead of JS entry
+  - Fix WARNING-1: Document multiple CSS files limitation in JSDoc
+  - Fix WARNING-2: Convert glob patterns to directory-level @source
+  - Fix WARNING-3: Add explicit error message for missing @tailwindcss/postcss
+  - Fix WARNING-4: Extract shouldMinify variable for consistency
+
 ## 1.2.11
 
 ### Patch Changes

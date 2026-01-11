@@ -8,6 +8,7 @@
 import * as esbuild from 'esbuild';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { join, dirname, isAbsolute, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,6 +98,11 @@ export interface BundleCSSOptions {
  * is enabled. The content paths are used to scan for class usage and generate
  * only the required utility classes.
  *
+ * **Limitation**: When multiple CSS files are provided with the `content` option,
+ * the first CSS file's directory is used as the base for all path resolutions.
+ * For complex multi-file CSS setups, consider using a single entry CSS file
+ * that imports other CSS files.
+ *
  * @param options - Bundle options
  * @returns The relative path for HTML link reference (always "/_constela/styles.css")
  * @throws Error if the output directory cannot be created, CSS files don't exist, or bundling fails
@@ -104,12 +110,13 @@ export interface BundleCSSOptions {
 export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
   const cssFiles = Array.isArray(options.css) ? options.css : [options.css];
   const outFile = join(options.outDir, '_constela', 'styles.css');
+  const shouldMinify = options.minify ?? true;
 
   // Ensure output directory exists
   await mkdir(dirname(outFile), { recursive: true });
 
   // Resolve CSS file paths (handle both absolute and relative paths)
-  const resolvedCssFiles = cssFiles.map((f) => isAbsolute(f) ? f : join(process.cwd(), f));
+  const resolvedCssFiles = cssFiles.map((f) => (isAbsolute(f) ? f : join(process.cwd(), f)));
 
   // Validate CSS files exist
   for (const fullPath of resolvedCssFiles) {
@@ -120,63 +127,93 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
 
   // PostCSS processing when content option is provided
   if (options.content !== undefined) {
+    // Read CSS content
+    const firstCssFile = resolvedCssFiles[0];
+    if (!firstCssFile) {
+      throw new Error('No CSS files provided');
+    }
+
+    let cssContent: string;
+    if (resolvedCssFiles.length === 1) {
+      cssContent = await readFile(firstCssFile, 'utf-8');
+    } else {
+      cssContent = resolvedCssFiles.map((f) => `@import "${f}";`).join('\n');
+    }
+
+    // Resolve tailwindcss CSS entry point for temp directory compatibility (CRITICAL-1)
+    // When CSS files are in temp directories, `from` points to the CSS file's directory
+    // which may not have access to node_modules. Use createRequire to resolve from this module.
+    // IMPORTANT: We must resolve 'tailwindcss/index.css' (the CSS entry point), NOT 'tailwindcss'
+    // which would resolve to the JavaScript entry point (lib.js) and cause "Invalid declaration" errors.
+    const require = createRequire(import.meta.url);
     try {
-      // Read CSS content
-      const firstCssFile = resolvedCssFiles[0];
-      if (!firstCssFile) {
-        throw new Error('No CSS files provided');
-      }
+      const tailwindcssCssPath = require.resolve('tailwindcss/index.css');
+      cssContent = cssContent.replace(
+        /@import\s+["']tailwindcss["']/g,
+        `@import "${tailwindcssCssPath}"`
+      );
+    } catch {
+      // tailwindcss not installed, continue without replacement
+      // The error will be caught later if the @import is actually used
+    }
 
-      let cssContent: string;
-      if (resolvedCssFiles.length === 1) {
-        cssContent = await readFile(firstCssFile, 'utf-8');
-      } else {
-        cssContent = resolvedCssFiles.map((f) => `@import "${f}";`).join('\n');
-      }
-
-      // Validate content files exist (at least one match required for non-empty content)
-      if (options.content.length > 0) {
-        const fg = (await import('fast-glob')).default;
-        const resolvedContentPaths = options.content.map((p) =>
-          isAbsolute(p) ? p : join(process.cwd(), p)
+    // Validate content files exist (at least one match required for non-empty content)
+    if (options.content.length > 0) {
+      const fg = (await import('fast-glob')).default;
+      const resolvedContentPaths = options.content.map((p) =>
+        isAbsolute(p) ? p : join(process.cwd(), p)
+      );
+      const matchedFiles = await fg(resolvedContentPaths, { onlyFiles: true });
+      if (matchedFiles.length === 0) {
+        throw new Error(
+          `No content files matched the provided patterns: ${options.content.join(', ')}`
         );
-        const matchedFiles = await fg(resolvedContentPaths, { onlyFiles: true });
-        if (matchedFiles.length === 0) {
-          throw new Error(
-            `No content files matched the provided patterns: ${options.content.join(', ')}`
-          );
-        }
       }
+    }
 
-      // Prepend @source directives for Tailwind CSS v4 content scanning
-      // These directives tell Tailwind where to scan for class usage
-      const sourceDir = dirname(firstCssFile);
-      const sourceDirectives = options.content
-        .map((contentPath) => {
-          // Convert to relative path from CSS file directory
-          const absolutePath = isAbsolute(contentPath)
-            ? contentPath
-            : join(process.cwd(), contentPath);
-          const relativePath = relative(sourceDir, absolutePath);
-          return `@source "${relativePath}";`;
-        })
-        .join('\n');
+    // Prepend @source directives for Tailwind CSS v4 content scanning
+    // These directives tell Tailwind where to scan for class usage
+    const sourceDir = dirname(firstCssFile);
+    const sourceDirectives = options.content
+      .map((contentPath) => {
+        // Convert to relative path from CSS file directory
+        const absolutePath = isAbsolute(contentPath) ? contentPath : join(process.cwd(), contentPath);
+        // Convert glob patterns to directory-level sources (WARNING-2)
+        // Glob patterns like `**/*.tsx` should be converted to directory paths
+        const srcPath = absolutePath.includes('*')
+          ? dirname(absolutePath.split('*')[0] ?? absolutePath)
+          : absolutePath;
+        const relativePath = relative(sourceDir, srcPath);
+        return `@source "${relativePath}";`;
+      })
+      .join('\n');
 
-      // Combine @source directives with original CSS content
-      const processedCssInput = sourceDirectives + '\n' + cssContent;
+    // Combine @source directives with original CSS content
+    const processedCssInput = sourceDirectives + '\n' + cssContent;
 
-      // Process with PostCSS + Tailwind CSS v4
-      const postcss = (await import('postcss')).default;
-      const tailwindPostcss = (await import('@tailwindcss/postcss')).default;
+    // Process with PostCSS + Tailwind CSS v4
+    const postcss = (await import('postcss')).default;
 
-      // Process CSS with Tailwind PostCSS plugin
-      // - 'base' must be the CSS file's directory for correct path resolution
-      // - 'from' must point to the actual CSS file for @plugin/@source resolution
+    // Import @tailwindcss/postcss with explicit error handling (WARNING-3)
+    type TailwindPostcssPlugin = import('postcss').PluginCreator<{ base?: string; optimize?: boolean }>;
+    let tailwindPostcss: TailwindPostcssPlugin;
+    try {
+      tailwindPostcss = (await import('@tailwindcss/postcss')).default as TailwindPostcssPlugin;
+    } catch {
+      throw new Error(
+        'PostCSS processing requires @tailwindcss/postcss. Please install it: npm install @tailwindcss/postcss'
+      );
+    }
+
+    // Process CSS with Tailwind PostCSS plugin
+    // - 'base' must be the CSS file's directory for correct path resolution
+    // - 'from' must point to the actual CSS file for @plugin/@source resolution
+    try {
       const result = await postcss([
         tailwindPostcss({
           // base determines where to look for source files and resolve paths
           base: sourceDir,
-          optimize: options.minify ?? true,
+          optimize: shouldMinify,
         }),
       ]).process(processedCssInput, {
         // from must be the actual CSS file path for correct package resolution
@@ -192,7 +229,7 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
         },
         bundle: true,
         outfile: outFile,
-        minify: options.minify ?? true,
+        minify: shouldMinify,
         conditions: ['style'],
       });
     } catch (error) {
@@ -210,15 +247,13 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
           entryPoints: resolvedCssFiles,
           bundle: true,
           outfile: outFile,
-          minify: options.minify ?? true,
+          minify: shouldMinify,
           loader: { '.css': 'css' },
           conditions: ['style'],
         });
       } else {
         // Multiple files: create a virtual entry that imports all CSS files
-        const virtualEntry = resolvedCssFiles
-          .map((f) => `@import "${f}";`)
-          .join('\n');
+        const virtualEntry = resolvedCssFiles.map((f) => `@import "${f}";`).join('\n');
 
         await esbuild.build({
           stdin: {
@@ -228,7 +263,7 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
           },
           bundle: true,
           outfile: outFile,
-          minify: options.minify ?? true,
+          minify: shouldMinify,
           conditions: ['style'],
         });
       }
