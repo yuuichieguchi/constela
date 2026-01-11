@@ -1,6 +1,6 @@
 {
   "name": "@constela/start",
-  "version": "1.2.16",
+  "version": "1.2.17",
   "description": "Meta-framework for Constela applications",
   "type": "module",
   "main": "./dist/index.js",

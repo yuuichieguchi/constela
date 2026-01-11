@@ -3,6 +3,7 @@ import { mkdir, writeFile, cp, readdir, stat } from 'node:fs/promises';
 import { join, dirname, relative, basename, isAbsolute, resolve } from 'node:path';
 import { resolveImports } from '../utils/import-resolver.js';
 import type { CompiledProgram } from '@constela/compiler';
+import type { ViewNode } from '@constela/core';
 import type { BuildOptions, ScannedRoute } from '../types.js';
 import { scanRoutes, filePathToPattern } from '../router/file-router.js';
 import {
@@ -219,10 +220,64 @@ async function loadLayout(
  */
 function applyLayout(
   pageView: unknown,
-  layoutView: unknown
+  layoutView: unknown,
+  namedSlots?: Record<string, unknown>
 ): unknown {
   // Find and replace the slot in layout with page content
-  return replaceSlot(layoutView, pageView);
+  return replaceSlot(layoutView, pageView, namedSlots);
+}
+
+/**
+ * Extract MDX content slot from loaded data.
+ *
+ * Looks for a matching item in the data source array based on slug parameter,
+ * and returns the content as a slot for layout composition.
+ *
+ * @param loadedData - The loaded data from the page
+ * @param dataSourceName - The name of the data source (e.g., 'docs')
+ * @param routeParams - Route parameters containing the slug
+ * @returns Record with 'mdx-content' slot if found, undefined otherwise
+ */
+export function extractMdxContentSlot(
+  loadedData: Record<string, unknown>,
+  dataSourceName: string,
+  routeParams: Record<string, string>
+): Record<string, ViewNode> | undefined {
+  const dataSource = loadedData[dataSourceName];
+  if (!Array.isArray(dataSource)) {
+    return undefined;
+  }
+
+  // Default to 'index' for empty slug (e.g., /docs -> index.mdx)
+  const slug = routeParams['slug'] || 'index';
+
+  const item = dataSource.find(
+    (entry: unknown) =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      'slug' in entry &&
+      (entry as { slug: unknown }).slug === slug
+  );
+
+  if (!item || typeof item !== 'object' || !('content' in item)) {
+    return undefined;
+  }
+
+  return { 'mdx-content': (item as { content: ViewNode }).content };
+}
+
+/**
+ * Check if a value is an event handler in { event, action } format
+ */
+function isEventHandler(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'event' in value &&
+    typeof (value as { event: unknown }).event === 'string' &&
+    'action' in value &&
+    typeof (value as { action: unknown }).action === 'string'
+  );
 }
 
 /**
@@ -238,6 +293,9 @@ function normalizeProps(props: unknown): Record<string, unknown> {
   for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
     if (value && typeof value === 'object' && 'expr' in value) {
       // Already in expression format
+      normalized[key] = value;
+    } else if (isEventHandler(value)) {
+      // Event handlers should be kept as-is (not wrapped in lit expression)
       normalized[key] = value;
     } else if (value !== undefined && value !== null) {
       // Convert to literal expression
@@ -400,7 +458,11 @@ function substituteLayoutParamsInNode(
 /**
  * Replace slot node with content recursively
  */
-function replaceSlot(node: unknown, content: unknown): unknown {
+function replaceSlot(
+  node: unknown,
+  content: unknown,
+  namedSlots?: Record<string, unknown>
+): unknown {
   if (!node || typeof node !== 'object') {
     return node;
   }
@@ -409,14 +471,27 @@ function replaceSlot(node: unknown, content: unknown): unknown {
 
   // Check if this is a slot node
   if (nodeObj['kind'] === 'slot') {
-    return content;
+    const slotName = nodeObj['name'] as string | undefined;
+
+    // Named slot - check if we have content for it
+    if (slotName && namedSlots && slotName in namedSlots) {
+      return namedSlots[slotName];
+    }
+
+    // Default slot (no name or name === 'default') - use main content
+    if (!slotName || slotName === 'default') {
+      return content;
+    }
+
+    // Named slot with no matching content - keep as-is (fallback)
+    return node;
   }
 
   // If node has children, process them recursively
   if (Array.isArray(nodeObj['children'])) {
     return {
       ...nodeObj,
-      children: nodeObj['children'].map((child) => replaceSlot(child, content)),
+      children: nodeObj['children'].map((child) => replaceSlot(child, content, namedSlots)),
     };
   }
 
@@ -455,7 +530,8 @@ async function collectLayoutChain(
  */
 async function processLayouts(
   pageInfo: PageInfo,
-  layoutsDir: string | undefined
+  layoutsDir: string | undefined,
+  routeParams: Record<string, string> = {}
 ): Promise<PageInfo> {
   const layoutName = pageInfo.page.route?.layout;
 
@@ -480,11 +556,68 @@ async function processLayouts(
     }
   }
 
+  // Extract MDX content slots from loadedData
+  // Try to find MDX content in any data source that has content with slug
+  let namedSlots: Record<string, unknown> | undefined;
+
+  // Infer slug from route path if not provided in routeParams
+  // e.g., "/docs/intro" -> "intro", "/test" -> "test"
+  let effectiveRouteParams = routeParams;
+  if (!routeParams['slug'] && pageInfo.page.route?.path) {
+    const pathSegments = pageInfo.page.route.path.split('/').filter(Boolean);
+    const lastSegment = pathSegments[pathSegments.length - 1];
+    if (lastSegment && !lastSegment.startsWith(':')) {
+      effectiveRouteParams = { ...routeParams, slug: lastSegment };
+    }
+  }
+
+  // Check loadedData for MDX content
+  if (pageInfo.loadedData && Object.keys(pageInfo.loadedData).length > 0) {
+    for (const dataSourceName of Object.keys(pageInfo.loadedData)) {
+      const slots = extractMdxContentSlot(pageInfo.loadedData, dataSourceName, effectiveRouteParams);
+      if (slots) {
+        namedSlots = namedSlots ? { ...namedSlots, ...slots } : slots;
+        break; // Use first matching data source
+      }
+    }
+  }
+
+  // Also check resolvedImports for MDX content (when data is loaded via imports)
+  if (!namedSlots && pageInfo.resolvedImports && Object.keys(pageInfo.resolvedImports).length > 0) {
+    for (const importName of Object.keys(pageInfo.resolvedImports)) {
+      const slots = extractMdxContentSlot(
+        pageInfo.resolvedImports as Record<string, unknown>,
+        importName,
+        effectiveRouteParams
+      );
+      if (slots) {
+        namedSlots = slots;
+        break;
+      }
+    }
+  }
+
+  // Also check page.importData for MDX content (when data is embedded directly in page JSON)
+  const pageWithImportData = pageInfo.page as unknown as { importData?: Record<string, unknown> };
+  if (!namedSlots && pageWithImportData.importData && Object.keys(pageWithImportData.importData).length > 0) {
+    for (const importName of Object.keys(pageWithImportData.importData)) {
+      const slots = extractMdxContentSlot(
+        pageWithImportData.importData,
+        importName,
+        effectiveRouteParams
+      );
+      if (slots) {
+        namedSlots = slots;
+        break;
+      }
+    }
+  }
+
   // Apply layouts from innermost to outermost
   let currentView: typeof pageInfo.page.view = pageInfo.page.view;
   for (const layout of layoutChain) {
     const normalizedLayoutView = normalizeViewNode(structuredClone(layout.view));
-    currentView = applyLayout(currentView, normalizedLayoutView) as typeof pageInfo.page.view;
+    currentView = applyLayout(currentView, normalizedLayoutView, namedSlots) as typeof pageInfo.page.view;
   }
 
   // Substitute layoutParams in the final wrapped view
@@ -733,18 +866,19 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         continue;
       }
 
-      // Apply layouts if configured (once, outside loop)
-      if (layoutsDir) {
-        pageInfo = await processLayouts(pageInfo, layoutsDir);
-      }
-
       // Generate page for each path
       for (const pathEntry of staticPathsResult) {
         const params = pathEntry.params;
         const outputPath = paramsToOutputPath(route.pattern, params, outDir);
 
+        // Apply layouts if configured (inside loop to extract MDX content per params)
+        let processedPageInfo = pageInfo;
+        if (layoutsDir) {
+          processedPageInfo = await processLayouts(pageInfo, layoutsDir, params);
+        }
+
         // Convert to compiled program
-        const program = await convertToCompiledProgram(pageInfo);
+        const program = await convertToCompiledProgram(processedPageInfo);
 
         // Render to HTML
         const html = await renderPageToHtml(program, params, runtimePath, cssPath);
@@ -765,17 +899,30 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       }
     } else {
       // Static page - generate single HTML file
-      const outputPath = getOutputPath(relPathFromRoutesDir, outDir);
-
       // Create page loader with routesDir for consistent pattern resolution
       const loader = new JsonPageLoader(projectRoot, { routesDir: absoluteRoutesDir });
 
       // Load page info
       let pageInfo = await loader.loadPage(relPathFromProjectRoot);
 
+      // Determine output path: use route.path if defined, otherwise use file path
+      let outputPath: string;
+      if (pageInfo.page.route?.path) {
+        // Use route.path to determine output directory
+        const routePath = pageInfo.page.route.path;
+        const relativePath = routePath.startsWith('/') ? routePath.slice(1) : routePath;
+        if (relativePath === '' || relativePath === '/') {
+          outputPath = join(outDir, 'index.html');
+        } else {
+          outputPath = join(outDir, relativePath, 'index.html');
+        }
+      } else {
+        outputPath = getOutputPath(relPathFromRoutesDir, outDir);
+      }
+
       // Apply layouts if configured
       if (layoutsDir) {
-        pageInfo = await processLayouts(pageInfo, layoutsDir);
+        pageInfo = await processLayouts(pageInfo, layoutsDir, {});
       }
 
       // Convert to compiled program
@@ -805,3 +952,6 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
     generatedFiles,
   };
 }
+
+// Export for testing
+export { normalizeProps };

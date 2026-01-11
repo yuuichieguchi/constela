@@ -1,5 +1,17 @@
 # @constela/start
 
+## 1.2.17
+
+### Patch Changes
+
+- fix(start): preserve event handlers in SSG build and add MDX slot support
+
+  - Fix onClick event handlers being serialized as `[object Object]` in SSG build output
+  - Add `isEventHandler()` helper to detect `{ event, action }` format in `normalizeProps()`
+  - Add `extractMdxContentSlot()` function for MDX content slot extraction
+  - Modify `replaceSlot()` to handle named slots (e.g., `mdx-content`)
+  - Update `processLayouts()` to pass route params and extract MDX slots
+
 ## 1.2.16
 
 ### Patch Changes
