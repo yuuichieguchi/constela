@@ -738,7 +738,8 @@ async function renderPageToHtml(
   program: CompiledProgram,
   params: Record<string, string>,
   runtimePath?: string,
-  cssPath?: string
+  cssPath?: string,
+  externalImports?: Record<string, string>
 ): Promise<string> {
   // Normalize the view to handle legacy expression formats
   const normalizedProgram: CompiledProgram = {
@@ -765,7 +766,22 @@ async function renderPageToHtml(
   const cssLinkTag = cssPath ? `<link rel="stylesheet" href="${cssPath}">` : undefined;
 
   const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
-  return wrapHtml(content, hydrationScript, cssLinkTag, runtimePath ? { runtimePath } : undefined);
+
+  // Build wrapHtml options
+  const wrapOptions: { runtimePath?: string; importMap?: Record<string, string> } = {};
+  if (runtimePath) {
+    wrapOptions.runtimePath = runtimePath;
+  }
+  if (externalImports && Object.keys(externalImports).length > 0) {
+    wrapOptions.importMap = externalImports;
+  }
+
+  return wrapHtml(
+    content,
+    hydrationScript,
+    cssLinkTag,
+    Object.keys(wrapOptions).length > 0 ? wrapOptions : undefined
+  );
 }
 
 /**
@@ -986,13 +1002,37 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const program = await convertToCompiledProgram(processedPageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params, runtimePath, cssPath);
+        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
         await writeFile(outputPath, html, 'utf-8');
 
         generatedFiles.push(outputPath);
+
+        /**
+         * Generate parent directory index.html for cleaner URLs.
+         *
+         * When slug='index', both paths are generated:
+         * - /docs/index/index.html (canonical path)
+         * - /docs/index.html (parent directory, for /docs URL)
+         *
+         * This enables clean URLs: /docs serves the same content as /docs/index
+         */
+        const slugValue = params['slug'];
+        if (slugValue && (slugValue === 'index' || slugValue.endsWith('/index'))) {
+          // Calculate parent directory path
+          // For slug='index': /docs/index/index.html -> /docs/index.html
+          // For slug='guides/index': /docs/guides/index/index.html -> /docs/guides/index.html
+          const parentOutputPath = join(dirname(dirname(outputPath)), 'index.html');
+
+          // Only write if not already generated (don't overwrite static pages)
+          if (!generatedFiles.includes(parentOutputPath)) {
+            await mkdir(dirname(parentOutputPath), { recursive: true });
+            await writeFile(parentOutputPath, html, 'utf-8');
+            generatedFiles.push(parentOutputPath);
+          }
+        }
 
         // Build route path from params
         let routePath = route.pattern;
@@ -1034,7 +1074,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {}, runtimePath, cssPath);
+      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });

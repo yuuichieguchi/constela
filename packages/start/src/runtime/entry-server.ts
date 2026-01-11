@@ -260,7 +260,11 @@ export function wrapHtml(
       /from\s+['"]@constela\/runtime['"]/g,
       `from '${options.runtimePath}'`
     );
-    // No importmap in production mode
+    // In production mode with runtimePath, still generate importmap for external imports if provided
+    if (options?.importMap && Object.keys(options.importMap).length > 0) {
+      const importMapJson = JSON.stringify({ imports: options.importMap }, null, 2);
+      importMapScript = `<script type="importmap">\n${importMapJson}\n</script>\n`;
+    }
   } else if (options?.importMap && Object.keys(options.importMap).length > 0) {
     // Development mode: use importmap
     const importMapJson = JSON.stringify({ imports: options.importMap }, null, 2);

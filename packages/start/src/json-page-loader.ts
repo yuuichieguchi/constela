@@ -39,6 +39,9 @@ export interface CompiledWidget {
   program: CompiledProgram;
 }
 
+/** CDN URL string for external module imports */
+export type CDNUrl = string & { __brand: 'CDNUrl' };
+
 /**
  * JSON Page definition structure
  */
@@ -63,6 +66,8 @@ export interface JsonPage {
     onMount?: string;
     onUnmount?: string;
   } | undefined;
+  /** External module import map for SSG builds (e.g., CDN URLs for monaco-editor) */
+  externalImports?: Record<string, CDNUrl> | undefined;
 }
 
 /**

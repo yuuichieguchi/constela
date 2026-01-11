@@ -1958,3 +1958,929 @@ describe('build() - CSS Processing', () => {
     });
   });
 });
+
+// ==================== Feature: externalImports for importMap Generation ====================
+
+describe('build() - externalImports for importMap Generation', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await createTestDir();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDir(testDir);
+  });
+
+  /**
+   * Feature: JSON pages can define externalImports field to generate importMap in HTML.
+   *
+   * When a page JSON has an externalImports field, the generated HTML should include
+   * a <script type="importmap"> with the specified import mappings.
+   */
+  describe('importMap generation from externalImports', () => {
+    it('should include importmap script when externalImports is defined', async () => {
+      /**
+       * Given: A JSON page with externalImports field
+       * When: build() is called
+       * Then: Generated HTML should contain <script type="importmap"> with the imports
+       */
+
+      // Arrange
+      const pageWithExternalImports = {
+        version: '1.0',
+        externalImports: {
+          'monaco-editor': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Code Editor Page' } },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'editor.json': pageWithExternalImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'editor', 'index.html'), 'utf-8');
+
+      // Should contain importmap script tag
+      expect(htmlContent).toContain('<script type="importmap">');
+
+      // Should contain the import mapping
+      expect(htmlContent).toContain('"monaco-editor"');
+      expect(htmlContent).toContain('https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/+esm');
+    });
+
+    it('should generate valid JSON in importmap script', async () => {
+      /**
+       * Given: A JSON page with externalImports field
+       * When: build() generates HTML
+       * Then: The importmap script should contain valid JSON
+       */
+
+      // Arrange
+      const pageWithExternalImports = {
+        version: '1.0',
+        externalImports: {
+          'lodash-es': 'https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': pageWithExternalImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'index.html'), 'utf-8');
+
+      // Extract importmap content
+      const importmapMatch = htmlContent.match(/<script type="importmap">\s*([\s\S]*?)\s*<\/script>/);
+      expect(importmapMatch).not.toBeNull();
+
+      // Parse as JSON to validate structure
+      const importmapContent = importmapMatch![1];
+      const importmap = JSON.parse(importmapContent);
+
+      expect(importmap).toHaveProperty('imports');
+      expect(importmap.imports).toHaveProperty('lodash-es');
+      expect(importmap.imports['lodash-es']).toBe('https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/+esm');
+    });
+
+    it('should handle multiple import entries', async () => {
+      /**
+       * Given: A JSON page with multiple externalImports entries
+       * When: build() is called
+       * Then: All imports should be included in the importmap
+       */
+
+      // Arrange
+      const pageWithMultipleImports = {
+        version: '1.0',
+        externalImports: {
+          'monaco-editor': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/+esm',
+          'lodash-es': 'https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/+esm',
+          'three': 'https://cdn.jsdelivr.net/npm/three@0.169.0/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'playground.json': pageWithMultipleImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'playground', 'index.html'), 'utf-8');
+
+      // Extract and parse importmap
+      const importmapMatch = htmlContent.match(/<script type="importmap">\s*([\s\S]*?)\s*<\/script>/);
+      expect(importmapMatch).not.toBeNull();
+
+      const importmap = JSON.parse(importmapMatch![1]);
+      expect(Object.keys(importmap.imports)).toHaveLength(3);
+      expect(importmap.imports['monaco-editor']).toBe('https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/+esm');
+      expect(importmap.imports['lodash-es']).toBe('https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/+esm');
+      expect(importmap.imports['three']).toBe('https://cdn.jsdelivr.net/npm/three@0.169.0/+esm');
+    });
+
+    it('should NOT include importmap when externalImports is not defined', async () => {
+      /**
+       * Given: A JSON page WITHOUT externalImports field
+       * When: build() is called
+       * Then: Generated HTML should NOT contain importmap script
+       */
+
+      // Arrange - Page without externalImports
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': SIMPLE_PAGE_JSON, // Uses the fixture without externalImports
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'index.html'), 'utf-8');
+      expect(htmlContent).not.toContain('<script type="importmap">');
+      expect(htmlContent).not.toContain('importmap');
+    });
+
+    it('should NOT include importmap when externalImports is empty object', async () => {
+      /**
+       * Given: A JSON page with empty externalImports object
+       * When: build() is called
+       * Then: Generated HTML should NOT contain importmap script
+       */
+
+      // Arrange
+      const pageWithEmptyExternalImports = {
+        version: '1.0',
+        externalImports: {},
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': pageWithEmptyExternalImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'index.html'), 'utf-8');
+      expect(htmlContent).not.toContain('<script type="importmap">');
+    });
+
+    it('should place importmap script before module scripts in head', async () => {
+      /**
+       * Given: A JSON page with externalImports
+       * When: build() generates HTML
+       * Then: importmap script should appear before any module scripts
+       *       (importmap must be defined before modules that use it)
+       */
+
+      // Arrange
+      const pageWithExternalImports = {
+        version: '1.0',
+        externalImports: {
+          'chart.js': 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'charts.json': pageWithExternalImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'charts', 'index.html'), 'utf-8');
+
+      const importmapIndex = htmlContent.indexOf('<script type="importmap">');
+      const moduleScriptIndex = htmlContent.indexOf('<script type="module">');
+
+      expect(importmapIndex).toBeGreaterThan(-1);
+      expect(moduleScriptIndex).toBeGreaterThan(-1);
+      // importmap MUST come before module scripts
+      expect(importmapIndex).toBeLessThan(moduleScriptIndex);
+    });
+
+    it('should work with layout composition', async () => {
+      /**
+       * Given: A JSON page with externalImports AND a layout
+       * When: build() is called
+       * Then: Generated HTML should include importmap and layout content
+       */
+
+      // Arrange
+      const pageWithExternalImportsAndLayout = {
+        version: '1.0',
+        route: {
+          path: '/visualizer',
+          layout: 'main',
+        },
+        externalImports: {
+          'd3': 'https://cdn.jsdelivr.net/npm/d3@7.8.5/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { id: 'visualizer' },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'D3 Visualization' } },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'visualizer.json': pageWithExternalImportsAndLayout,
+        },
+        layouts: {
+          'main.json': MAIN_LAYOUT_JSON,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+        layoutsDir: join(testDir, 'src', 'layouts'),
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'visualizer', 'index.html'), 'utf-8');
+
+      // Should have importmap
+      expect(htmlContent).toContain('<script type="importmap">');
+      expect(htmlContent).toContain('"d3"');
+      expect(htmlContent).toContain('https://cdn.jsdelivr.net/npm/d3@7.8.5/+esm');
+
+      // Should have layout content
+      expect(htmlContent).toContain('Header');
+      expect(htmlContent).toContain('Footer');
+      expect(htmlContent).toContain('D3 Visualization');
+    });
+
+    it('should work with dynamic routes using getStaticPaths', async () => {
+      /**
+       * Given: A dynamic route page with externalImports
+       * When: build() generates multiple pages via getStaticPaths
+       * Then: Each generated HTML should include the importmap
+       */
+
+      // Arrange
+      const contentDir = join(testDir, 'content', 'demos');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'charts.mdx'),
+        '---\nslug: charts\ntitle: Chart Demo\n---\n# Charts'
+      );
+      await writeFile(
+        join(contentDir, 'graphs.mdx'),
+        '---\nslug: graphs\ntitle: Graph Demo\n---\n# Graphs'
+      );
+
+      const dynamicPageWithExternalImports = {
+        version: '1.0',
+        route: {
+          path: '/demos/:slug',
+        },
+        externalImports: {
+          'chart.js': 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm',
+        },
+        data: {
+          demos: {
+            type: 'glob',
+            pattern: '../../../content/demos/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'demos',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Demo Page' } },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'demos/[slug].json': dynamicPageWithExternalImports,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Both generated pages should have importmap
+      const chartsHtml = await readFile(join(outDir, 'demos', 'charts', 'index.html'), 'utf-8');
+      const graphsHtml = await readFile(join(outDir, 'demos', 'graphs', 'index.html'), 'utf-8');
+
+      expect(chartsHtml).toContain('<script type="importmap">');
+      expect(chartsHtml).toContain('"chart.js"');
+
+      expect(graphsHtml).toContain('<script type="importmap">');
+      expect(graphsHtml).toContain('"chart.js"');
+    });
+
+    it('should escape special characters in importmap JSON', async () => {
+      /**
+       * Given: externalImports with URL containing special characters
+       * When: build() generates HTML
+       * Then: The importmap JSON should be properly escaped
+       */
+
+      // Arrange
+      const pageWithSpecialChars = {
+        version: '1.0',
+        externalImports: {
+          'my-lib': 'https://example.com/lib.js?version=1.0&format=esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'index.json': pageWithSpecialChars,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'index.html'), 'utf-8');
+
+      // Extract and parse importmap to verify it's valid JSON
+      const importmapMatch = htmlContent.match(/<script type="importmap">\s*([\s\S]*?)\s*<\/script>/);
+      expect(importmapMatch).not.toBeNull();
+
+      // Should not throw when parsing
+      const importmap = JSON.parse(importmapMatch![1]);
+      expect(importmap.imports['my-lib']).toBe('https://example.com/lib.js?version=1.0&format=esm');
+    });
+
+    it('should support scoped package names in externalImports', async () => {
+      /**
+       * Given: externalImports with scoped package names (e.g., @scope/package)
+       * When: build() generates HTML
+       * Then: The importmap should correctly include scoped packages
+       */
+
+      // Arrange
+      const pageWithScopedPackages = {
+        version: '1.0',
+        externalImports: {
+          '@codemirror/state': 'https://cdn.jsdelivr.net/npm/@codemirror/state@6.4.0/+esm',
+          '@codemirror/view': 'https://cdn.jsdelivr.net/npm/@codemirror/view@6.23.0/+esm',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'editor.json': pageWithScopedPackages,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert
+      const htmlContent = await readFile(join(outDir, 'editor', 'index.html'), 'utf-8');
+
+      const importmapMatch = htmlContent.match(/<script type="importmap">\s*([\s\S]*?)\s*<\/script>/);
+      expect(importmapMatch).not.toBeNull();
+
+      const importmap = JSON.parse(importmapMatch![1]);
+      expect(importmap.imports['@codemirror/state']).toBe('https://cdn.jsdelivr.net/npm/@codemirror/state@6.4.0/+esm');
+      expect(importmap.imports['@codemirror/view']).toBe('https://cdn.jsdelivr.net/npm/@codemirror/view@6.23.0/+esm');
+    });
+  });
+});
+
+// ==================== Bug #3: Parent Directory index.html for slug='index' ====================
+
+describe('build() - Parent Directory index.html Generation', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await createTestDir();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDir(testDir);
+  });
+
+  /**
+   * Bug: When a dynamic route has slug='index', only dist/docs/index/index.html is generated.
+   * Expected: Both dist/docs/index/index.html AND dist/docs/index.html should be generated.
+   *
+   * This is important for clean URLs: /docs should serve the index content without
+   * requiring /docs/index in the URL.
+   */
+  describe('slug="index" generates parent directory index.html', () => {
+    it('should generate parent directory index.html when slug is "index"', async () => {
+      /**
+       * Given: A dynamic route /docs/:slug with a content item having slug='index'
+       * When: build() is called
+       * Then: Both dist/docs/index/index.html AND dist/docs/index.html should be generated
+       *
+       * This allows /docs to serve the index content directly.
+       */
+
+      // Arrange - Create content files
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(contentDir, { recursive: true });
+
+      // Create MDX content with slug='index' (the main docs landing page)
+      await writeFile(
+        join(contentDir, 'index.mdx'),
+        '---\nslug: index\ntitle: Documentation Home\n---\n# Welcome to Docs'
+      );
+
+      // Create another doc for comparison
+      await writeFile(
+        join(contentDir, 'getting-started.mdx'),
+        '---\nslug: getting-started\ntitle: Getting Started\n---\n# Getting Started'
+      );
+
+      // Create a dynamic page with inline getStaticPaths
+      const docsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs/:slug',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../../content/docs/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'article',
+          props: {},
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Documentation content' },
+            },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/[slug].json': docsPage,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Both files should be generated for slug='index'
+      // Primary path: /docs/index -> dist/docs/index/index.html
+      expect(await fileExists(join(outDir, 'docs', 'index', 'index.html'))).toBe(true);
+
+      // Parent path: /docs -> dist/docs/index.html (NEW BEHAVIOR)
+      expect(await fileExists(join(outDir, 'docs', 'index.html'))).toBe(true);
+
+      // Regular slug should only have its own path
+      expect(await fileExists(join(outDir, 'docs', 'getting-started', 'index.html'))).toBe(true);
+      // getting-started should NOT create a parent index.html
+      expect(await fileExists(join(outDir, 'docs', 'getting-started.html'))).toBe(false);
+    });
+
+    it('should generate parent directory index.html for nested catch-all route with slug="index"', async () => {
+      /**
+       * Given: A catch-all route /docs/:slug* with slug='guides/index'
+       * When: build() is called
+       * Then: Both dist/docs/guides/index/index.html AND dist/docs/guides/index.html should be generated
+       */
+
+      // Arrange - Create nested content files
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(join(contentDir, 'guides'), { recursive: true });
+
+      // Create MDX with nested slug ending in 'index'
+      await writeFile(
+        join(contentDir, 'guides', 'index.mdx'),
+        '---\nslug: guides/index\ntitle: Guides Overview\n---\n# Guides'
+      );
+
+      // Create regular nested doc
+      await writeFile(
+        join(contentDir, 'guides', 'first-guide.mdx'),
+        '---\nslug: guides/first-guide\ntitle: First Guide\n---\n# First Guide'
+      );
+
+      // Create catch-all page
+      const docsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs/*',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../../content/docs/**/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'article',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/[...slug].json': docsPage,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Both files should be generated for slug='guides/index'
+      // Primary path: /docs/guides/index -> dist/docs/guides/index/index.html
+      expect(await fileExists(join(outDir, 'docs', 'guides', 'index', 'index.html'))).toBe(true);
+
+      // Parent path: /docs/guides -> dist/docs/guides/index.html (NEW BEHAVIOR)
+      expect(await fileExists(join(outDir, 'docs', 'guides', 'index.html'))).toBe(true);
+
+      // Regular nested slug should only have its own path
+      expect(await fileExists(join(outDir, 'docs', 'guides', 'first-guide', 'index.html'))).toBe(true);
+    });
+
+    it('should generate identical content in both index.html files', async () => {
+      /**
+       * Given: A dynamic route with slug='index'
+       * When: build() generates both index.html files
+       * Then: Both files should have identical content
+       */
+
+      // Arrange
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'index.mdx'),
+        '---\nslug: index\ntitle: Docs Index\n---\n# Docs Index Content'
+      );
+
+      const docsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs/:slug',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../../content/docs/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { id: 'docs-content' },
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Docs Index Page' },
+            },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/[slug].json': docsPage,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Both files should exist and have identical content
+      const primaryPath = join(outDir, 'docs', 'index', 'index.html');
+      const parentPath = join(outDir, 'docs', 'index.html');
+
+      expect(await fileExists(primaryPath)).toBe(true);
+      expect(await fileExists(parentPath)).toBe(true);
+
+      const primaryContent = await readFile(primaryPath, 'utf-8');
+      const parentContent = await readFile(parentPath, 'utf-8');
+
+      expect(primaryContent).toBe(parentContent);
+    });
+
+    it('should include both paths in generatedFiles result', async () => {
+      /**
+       * Given: A dynamic route with slug='index'
+       * When: build() is called
+       * Then: BuildResult.generatedFiles should include both paths
+       */
+
+      // Arrange
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'index.mdx'),
+        '---\nslug: index\ntitle: Docs Index\n---\n# Index'
+      );
+
+      const docsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs/:slug',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../../content/docs/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/[slug].json': docsPage,
+        },
+      });
+
+      // Act
+      const result = await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - generatedFiles should include both paths
+      expect(result.generatedFiles).toContain(join(outDir, 'docs', 'index', 'index.html'));
+      expect(result.generatedFiles).toContain(join(outDir, 'docs', 'index.html'));
+    });
+
+    it('should not overwrite existing static index page', async () => {
+      /**
+       * Given: A static page at /docs/index.json AND a dynamic route with slug='index'
+       * When: build() is called
+       * Then: The static page should take precedence for dist/docs/index.html
+       *       and dynamic route creates dist/docs/index/index.html only
+       *
+       * This prevents accidental overwrites when both static and dynamic routes exist.
+       */
+
+      // Arrange
+      const contentDir = join(testDir, 'content', 'docs');
+      await mkdir(contentDir, { recursive: true });
+
+      await writeFile(
+        join(contentDir, 'index.mdx'),
+        '---\nslug: index\ntitle: Dynamic Docs Index\n---\n# Dynamic Index'
+      );
+
+      // Static page for /docs
+      const staticDocsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs',
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Static Docs Page' },
+            },
+          ],
+        },
+      };
+
+      // Dynamic page for /docs/:slug
+      const dynamicDocsPage = {
+        version: '1.0',
+        route: {
+          path: '/docs/:slug',
+        },
+        data: {
+          docs: {
+            type: 'glob',
+            pattern: '../../../content/docs/*.mdx',
+            transform: 'mdx',
+          },
+        },
+        getStaticPaths: {
+          source: 'docs',
+          params: {
+            slug: { expr: 'var', name: 'item', path: 'frontmatter.slug' },
+          },
+        },
+        state: {},
+        actions: {},
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Dynamic Docs Content' },
+            },
+          ],
+        },
+      };
+
+      const { pagesDir, outDir } = await setupTestProject(testDir, {
+        pages: {
+          'docs/index.json': staticDocsPage,
+          'docs/[slug].json': dynamicDocsPage,
+        },
+      });
+
+      // Act
+      await build({
+        routesDir: pagesDir,
+        outDir,
+      });
+
+      // Assert - Static page should be at dist/docs/index.html
+      const docsIndexHtml = await readFile(join(outDir, 'docs', 'index.html'), 'utf-8');
+      expect(docsIndexHtml).toContain('Static Docs Page');
+
+      // Dynamic index should still be at dist/docs/index/index.html
+      const docsIndexIndexHtml = await readFile(join(outDir, 'docs', 'index', 'index.html'), 'utf-8');
+      expect(docsIndexIndexHtml).toContain('Dynamic Docs Content');
+    });
+  });
+});

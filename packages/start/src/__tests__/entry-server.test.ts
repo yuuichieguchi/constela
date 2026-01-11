@@ -108,9 +108,9 @@ describe('wrapHtml', () => {
       expect(result).toContain("document.getElementById('app')");
     });
 
-    // ==================== Import Map Exclusion ====================
+    // ==================== Import Map with runtimePath ====================
 
-    it('should not include importmap when runtimePath is provided', () => {
+    it('should include importmap for external imports even when runtimePath is provided', () => {
       // Arrange
       const content = '<div>Hello</div>';
       const hydrationScript = createTestHydrationScript();
@@ -126,12 +126,15 @@ describe('wrapHtml', () => {
       });
 
       // Assert
-      // When runtimePath is provided, importmap should NOT be included
-      expect(result).not.toContain('<script type="importmap">');
-      expect(result).not.toContain('"imports"');
+      // When runtimePath is provided with importMap, importmap should still be included
+      // for external imports (e.g., esm.sh dependencies in playground)
+      expect(result).toContain('<script type="importmap">');
+      expect(result).toContain('"imports"');
+      // runtimePath replacement should work
+      expect(result).toContain(`from '${runtimePath}'`);
     });
 
-    it('should not include importmap even when importMap option is provided alongside runtimePath', () => {
+    it('should include all external imports in importmap when runtimePath is provided', () => {
       // Arrange
       const content = '<div>Hello</div>';
       const hydrationScript = createTestHydrationScript();
@@ -148,8 +151,10 @@ describe('wrapHtml', () => {
       });
 
       // Assert
-      expect(result).not.toContain('type="importmap"');
-      // But runtimePath replacement should still work
+      // importmap should be included for external imports
+      expect(result).toContain('type="importmap"');
+      expect(result).toContain('some-other-module');
+      // runtimePath replacement should still work
       expect(result).toContain(`from '${runtimePath}'`);
     });
 

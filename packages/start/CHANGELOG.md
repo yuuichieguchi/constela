@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.2.19
+
+### Patch Changes
+
+- fix(build): generate parent directory index.html for slug='index' routes
+
+  fix(build): add externalImports field for SSG dynamic imports
+
 ## 1.2.18
 
 ### Patch Changes
