@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.14
+
+### Patch Changes
+
+- Fix layout import expressions not being resolved during SSR in dev server
+
 ## 1.2.13
 
 ### Patch Changes
