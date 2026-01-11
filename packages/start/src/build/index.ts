@@ -13,6 +13,7 @@ import {
   type PageInfo,
   type JsonPage,
   type StaticPathResult,
+  type CompiledWidget,
 } from '../json-page-loader.js';
 import {
   renderPage,
@@ -20,6 +21,7 @@ import {
   generateHydrationScript,
   type SSRContext,
   type WrapHtmlOptions,
+  type WidgetConfig,
 } from '../runtime/entry-server.js';
 import { bundleRuntime, bundleCSS } from './bundler.js';
 
@@ -740,7 +742,8 @@ async function renderPageToHtml(
   params: Record<string, string>,
   runtimePath?: string,
   cssPath?: string,
-  externalImports?: Record<string, string>
+  externalImports?: Record<string, string>,
+  widgets?: CompiledWidget[]
 ): Promise<string> {
   // Normalize the view to handle legacy expression formats
   const normalizedProgram: CompiledProgram = {
@@ -766,7 +769,9 @@ async function renderPageToHtml(
   // Generate CSS link tag if cssPath is provided
   const cssLinkTag = cssPath ? `<link rel="stylesheet" href="${cssPath}">` : undefined;
 
-  const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
+  // Convert CompiledWidget[] to WidgetConfig[] for generateHydrationScript
+  const widgetConfigs: WidgetConfig[] | undefined = widgets?.map(w => ({ id: w.id, program: w.program }));
+  const hydrationScript = generateHydrationScript(normalizedProgram, widgetConfigs, routeContext);
 
   // Build wrapHtml options
   const wrapOptions: WrapHtmlOptions = {};
@@ -1010,7 +1015,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const program = await convertToCompiledProgram(processedPageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports);
+        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports, processedPageInfo.widgets);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
@@ -1082,7 +1087,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports);
+      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports, pageInfo.widgets);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });

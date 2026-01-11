@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.23
+
+### Patch Changes
+
+- fix(start): pass widgets to generateHydrationScript in SSG build
+
 ## 1.2.22
 
 ### Patch Changes
