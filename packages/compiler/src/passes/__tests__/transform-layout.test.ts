@@ -232,6 +232,55 @@ describe('transformLayoutPass', () => {
       // Should not throw, importData can be undefined
       expect(result.importData === undefined || Object.keys(result.importData).length === 0).toBe(true);
     });
+
+    it('should preserve param expressions in actions for later resolution', () => {
+      /**
+       * Given: Layout has an action that uses a param expression in a step value
+       * When: transformLayoutPass is called
+       * Then: The param expressions should be preserved in the compiled layout,
+       *       NOT converted to null literals. Param expressions are resolved later
+       *       during composition when layoutParams are provided.
+       *
+       * Bug: transformExpression() converts param expressions to { expr: 'lit', value: null }
+       *      but param expressions should be preserved for later resolution.
+       */
+      // Arrange
+      const layout: LayoutProgram = {
+        version: '1.0',
+        type: 'layout',
+        state: {
+          configValue: { type: 'string', initial: '' },
+        },
+        actions: [
+          {
+            name: 'initLayout',
+            steps: [
+              {
+                do: 'set',
+                target: 'configValue',
+                value: { expr: 'param', name: 'config' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'slot' },
+      } as unknown as LayoutProgram;
+
+      const context = createLayoutContext();
+
+      // Act
+      const result = transformLayoutPass(layout, context);
+
+      // Assert - param expression should be preserved, not converted to null
+      const initAction = result.actions.find(a => a.name === 'initLayout');
+      expect(initAction).toBeDefined();
+
+      const setStep = initAction!.steps[0] as { do: string; target: string; value: unknown };
+      expect(setStep.do).toBe('set');
+
+      // The param expression should be preserved for later resolution in composeLayoutWithPage
+      expect(setStep.value).toEqual({ expr: 'param', name: 'config' });
+    });
   });
 });
 

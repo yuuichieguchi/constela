@@ -131,9 +131,14 @@ function transformExpression(expr: Expression): CompiledExpression {
       }
       return dataExpr;
     }
-    case 'param':
-      // Param expressions should be resolved during composition, return as-is for now
-      return { expr: 'lit', value: null };
+    case 'param': {
+      // Param expressions are preserved and resolved during composition by resolveParamExpressions
+      const paramExpr: CompiledExpression = { expr: 'param', name: expr.name };
+      if (expr.path) {
+        (paramExpr as { path?: string }).path = expr.path;
+      }
+      return paramExpr;
+    }
     case 'ref':
       return { expr: 'ref', name: expr.name };
     default:
