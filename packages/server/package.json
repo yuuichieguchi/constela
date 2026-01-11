@@ -23,7 +23,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.7.0"
+    "@constela/compiler": "^0.7.1"
   },
   "dependencies": {
     "isomorphic-dompurify": "^2.35.0",

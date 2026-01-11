@@ -176,6 +176,12 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       return dataValue;
     }
 
+    case 'param': {
+      // Param expressions should be resolved during layout composition.
+      // If one reaches runtime, it means layoutParams was missing - return undefined.
+      return undefined;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

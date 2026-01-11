@@ -191,6 +191,12 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return (base as Record<string | number, unknown>)[key as string | number];
     }
 
+    case 'param': {
+      // Param expressions should be resolved during layout composition.
+      // If one reaches SSR, it means layoutParams was missing - return undefined.
+      return undefined;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

@@ -1,5 +1,11 @@
 # @constela/compiler
 
+## 0.7.1
+
+### Patch Changes
+
+- Fix param expressions being converted to null during layout transformation
+
 ## 0.7.0
 
 ### Minor Changes
