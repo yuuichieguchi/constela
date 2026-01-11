@@ -969,13 +969,6 @@ pnpm test
 
 ## Roadmap
 
-- [x] SSR (Server-Side Rendering) - `@constela/server`
-- [x] Route definition in DSL
-- [x] Layout composition
-- [x] Build-time data loading
-- [x] Browser actions (storage, clipboard, navigate)
-- [x] Lifecycle hooks
-- [ ] External library integration (dynamic import, event subscription)
 - [ ] Style system integration
 - [ ] TypeScript builder API
 
