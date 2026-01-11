@@ -27,6 +27,15 @@ import { createEffect } from '../reactive/effect.js';
 import { evaluate } from '../expression/evaluator.js';
 import { executeAction } from '../action/executor.js';
 
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+const SVG_TAGS = new Set([
+  'svg', 'path', 'line', 'circle', 'rect', 'ellipse', 'polyline', 'polygon',
+  'g', 'defs', 'use', 'text', 'tspan', 'clipPath', 'mask', 'linearGradient',
+  'radialGradient', 'stop', 'pattern', 'symbol', 'marker', 'image', 'filter',
+  'foreignObject', 'animate', 'animateTransform', 'desc', 'title',
+]);
+function isSvgTag(tag: string): boolean { return SVG_TAGS.has(tag); }
+
 export interface RenderContext {
   state: StateStore;
   actions: Record<string, CompiledAction>;
@@ -34,6 +43,7 @@ export interface RenderContext {
   imports?: Record<string, unknown>;
   cleanups?: (() => void)[];
   refs?: Record<string, Element>;
+  inSvg?: boolean;
 }
 
 // Type guard for event handlers
@@ -65,8 +75,14 @@ export function render(node: CompiledNode, ctx: RenderContext): Node {
   }
 }
 
-function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLElement {
-  const el = document.createElement(node.tag);
+function renderElement(node: CompiledElementNode, ctx: RenderContext): Element {
+  const tag = node.tag;
+  const inSvgContext = ctx.inSvg || tag === 'svg';
+  const useSvgNamespace = inSvgContext && isSvgTag(tag);
+
+  const el = useSvgNamespace
+    ? document.createElementNS(SVG_NAMESPACE, tag)
+    : document.createElement(tag);
 
   // Collect ref if specified
   if (node.ref && ctx.refs) {
@@ -125,7 +141,7 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
         // Apply prop with effect for reactivity
         const cleanup = createEffect(() => {
           const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
-          applyProp(el, propName, value);
+          applyProp(el, propName, value, useSvgNamespace);
         });
         ctx.cleanups?.push(cleanup);
       }
@@ -134,8 +150,10 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
 
   // Render children
   if (node.children) {
+    const childInSvg = tag === 'foreignObject' ? false : inSvgContext;
+    const childCtx = childInSvg !== ctx.inSvg ? { ...ctx, inSvg: childInSvg } : ctx;
     for (const child of node.children) {
-      const childNode = render(child, ctx);
+      const childNode = render(child, childCtx);
       el.appendChild(childNode);
     }
   }
@@ -143,10 +161,20 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): HTMLEleme
   return el;
 }
 
-function applyProp(el: HTMLElement, propName: string, value: unknown): void {
+function applyProp(el: Element, propName: string, value: unknown, isSvg: boolean = false): void {
+  // Handle SVG className separately (SVG elements don't have className as a string property)
+  if (isSvg && propName === 'className') {
+    if (value) {
+      el.setAttribute('class', String(value));
+    } else {
+      el.removeAttribute('class');
+    }
+    return;
+  }
+
   // Handle special props
   if (propName === 'className') {
-    el.className = String(value ?? '');
+    (el as HTMLElement).className = String(value ?? '');
   } else if (propName === 'style' && typeof value === 'string') {
     el.setAttribute('style', value);
   } else if (propName === 'disabled') {

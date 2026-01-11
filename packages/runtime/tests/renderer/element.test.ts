@@ -808,6 +808,263 @@ describe('render element node', () => {
     });
   });
 
+  // ==================== SVG Namespace Rendering ====================
+
+  describe('SVG namespace rendering', () => {
+    const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+    it('should create SVG element with correct namespace', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context);
+
+      // Assert
+      expect(result.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(result).toBeInstanceOf(SVGSVGElement);
+    });
+
+    it('should create path inside svg with correct namespace', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'path',
+            props: {
+              d: { expr: 'lit', value: 'M10 10 H 90 V 90 H 10 Z' },
+              fill: { expr: 'lit', value: 'black' },
+            },
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as SVGSVGElement;
+      const path = result.firstChild as Element;
+
+      // Assert
+      expect(path.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(path.tagName).toBe('path');
+      expect(path.getAttribute('d')).toBe('M10 10 H 90 V 90 H 10 Z');
+    });
+
+    it('should create line inside svg with correct namespace', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'line',
+            props: {
+              x1: { expr: 'lit', value: '0' },
+              y1: { expr: 'lit', value: '0' },
+              x2: { expr: 'lit', value: '100' },
+              y2: { expr: 'lit', value: '100' },
+              stroke: { expr: 'lit', value: 'black' },
+            },
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as SVGSVGElement;
+      const line = result.firstChild as Element;
+
+      // Assert
+      expect(line.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(line.tagName).toBe('line');
+    });
+
+    it('should create circle inside svg with correct namespace', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'circle',
+            props: {
+              cx: { expr: 'lit', value: '50' },
+              cy: { expr: 'lit', value: '50' },
+              r: { expr: 'lit', value: '40' },
+              fill: { expr: 'lit', value: 'red' },
+            },
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as SVGSVGElement;
+      const circle = result.firstChild as Element;
+
+      // Assert
+      expect(circle.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(circle.tagName).toBe('circle');
+    });
+
+    it('should create rect inside svg with correct namespace', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'rect',
+            props: {
+              x: { expr: 'lit', value: '10' },
+              y: { expr: 'lit', value: '10' },
+              width: { expr: 'lit', value: '80' },
+              height: { expr: 'lit', value: '80' },
+              fill: { expr: 'lit', value: 'blue' },
+            },
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as SVGSVGElement;
+      const rect = result.firstChild as Element;
+
+      // Assert
+      expect(rect.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(rect.tagName).toBe('rect');
+    });
+
+    it('should create g (group) inside svg with correct namespace and propagate to nested children', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'svg',
+        props: {
+          width: { expr: 'lit', value: '100' },
+          height: { expr: 'lit', value: '100' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'g',
+            props: {
+              transform: { expr: 'lit', value: 'translate(10, 10)' },
+            },
+            children: [
+              {
+                kind: 'element',
+                tag: 'circle',
+                props: {
+                  cx: { expr: 'lit', value: '25' },
+                  cy: { expr: 'lit', value: '25' },
+                  r: { expr: 'lit', value: '20' },
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as SVGSVGElement;
+      const g = result.firstChild as Element;
+      const circle = g.firstChild as Element;
+
+      // Assert
+      expect(g.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(g.tagName).toBe('g');
+      expect(circle.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(circle.tagName).toBe('circle');
+    });
+
+    it('should NOT affect HTML elements when SVG is nested inside', () => {
+      // Arrange
+      const node: CompiledElementNode = {
+        kind: 'element',
+        tag: 'div',
+        props: {
+          className: { expr: 'lit', value: 'container' },
+        },
+        children: [
+          {
+            kind: 'element',
+            tag: 'span',
+            children: [
+              { kind: 'text', value: { expr: 'lit', value: 'Icon: ' } },
+            ],
+          },
+          {
+            kind: 'element',
+            tag: 'svg',
+            props: {
+              width: { expr: 'lit', value: '24' },
+              height: { expr: 'lit', value: '24' },
+            },
+            children: [
+              {
+                kind: 'element',
+                tag: 'path',
+                props: {
+                  d: { expr: 'lit', value: 'M12 2L2 12h10z' },
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const context = createContext();
+
+      // Act
+      const result = render(node, context) as HTMLElement;
+      const span = result.children[0] as Element;
+      const svg = result.children[1] as Element;
+      const path = svg.firstChild as Element;
+
+      // Assert - HTML elements should have HTML namespace
+      expect(result).toBeInstanceOf(HTMLDivElement);
+      expect(span).toBeInstanceOf(HTMLSpanElement);
+
+      // Assert - SVG elements should have SVG namespace
+      expect(svg).toBeInstanceOf(SVGSVGElement);
+      expect(svg.namespaceURI).toBe(SVG_NAMESPACE);
+      expect(path.tagName).toBe('path');
+      expect(path.namespaceURI).toBe(SVG_NAMESPACE);
+    });
+  });
+
   // ==================== Ref Collection ====================
 
   describe('ref collection', () => {

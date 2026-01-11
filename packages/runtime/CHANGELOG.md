@@ -1,5 +1,11 @@
 # @constela/runtime
 
+## 0.10.3
+
+### Patch Changes
+
+- fix(runtime): render SVG elements with correct namespace using createElementNS
+
 ## 0.10.2
 
 ### Patch Changes
