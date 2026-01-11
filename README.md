@@ -66,167 +66,6 @@ if (result.ok) {
 }
 ```
 
-## FAQ
-
-### Why JSON instead of JavaScript?
-
-Because JSON is **structural, enumerable, and statically verifiable**.
-
-Constela is designed for a world where UI is increasingly *generated* by AI.
-JSON makes it possible to:
-- validate structure with JSON Schema
-- statically analyze references and updates
-- reject invalid UI *before execution*
-
-JavaScript is still the execution target — it’s just no longer the authoring language.
-
----
-
-### Why is the DSL so limited?
-
-The limitations are intentional.
-
-A constrained DSL:
-- reduces the chance of invalid generated code
-- makes static analysis and validation possible
-- keeps behavior predictable and deterministic
-
-Constela trades expressiveness for **verifiability**.
-
----
-
-### Can I write custom logic or functions?
-
-No, not inside the DSL.
-
-Constela deliberately does **not** allow user-defined functions or arbitrary logic
-inside the DSL. This keeps the language small, verifiable, and safe for
-AI-generated UI.
-
-If you need custom or domain-specific logic, it should live **outside** the DSL,
-in regular JavaScript or TypeScript, and interact with the Constela program
-through explicit state updates.
-
-### Example
-
-```ts
-// External JavaScript logic
-import { compile } from '@constela/compiler';
-import { createApp } from '@constela/runtime';
-
-const result = compile(program);
-const app = createApp(result.program, mountNode);
-
-// Custom logic outside the DSL
-function calculateTotal(items, taxRate) {
-  return items.reduce((sum, i) => sum + i.price, 0) * taxRate;
-}
-
-// Pass the result into Constela via a state update
-app.setState('total', calculateTotal(items, 1.1));
-```
-
-```json
-// DSL only consumes and displays the computed value
-{
-  "kind": "text",
-  "value": { "expr": "state", "name": "total" }
-}
-```
-
-The DSL remains declarative and statically verifiable,
-while complex logic stays flexible outside the language boundary.
-
----
-
-### What happens when I need something not supported?
-
-You have three options:
-1. Use existing built-in operations
-2. Compose higher-level behavior using components
-3. Extend Constela itself (by adding new operations or expressions)
-
-Constela is designed to be **extended deliberately**, not bypassed casually.
-
----
-
-### Is this similar to low-code / no-code tools?
-
-No.
-
-Constela does not hide logic behind a visual editor.
-It exposes UI behavior explicitly as data, with:
-- named state
-- named actions
-- explicit structure
-
-It is closer to a **UI programming language** than a visual builder.
-
----
-
-### Is this usable in production?
-
-Constela is actively evolving and its APIs may change as the design
-is refined.
-
-The current focus is on:
-- correctness guarantees
-- compiler-driven UI architecture
-- AI-generated UI workflows
-
-Production readiness depends on your requirements,
-but the core design is intentionally conservative and deterministic.
-
----
-
-### Why do compile-time errors matter so much here?
-
-Because runtime errors are too late for generated UI.
-
-With Constela, many issues can be detected *before execution*:
-- missing state references
-- invalid update operations
-- broken component usage
-- unsupported expressions
-
-This is especially important when humans are not the primary authors.
-
----
-
-### How is this different from just using TypeScript?
-
-TypeScript helps, but it still allows:
-- arbitrary control flow
-- runtime-only failures
-- side effects in UI code
-
-Constela goes further by **removing entire classes of invalid programs**
-through a constrained language and compiler-first design.
-
----
-
-### Why not just generate React code with AI?
-
-That works — until it doesn’t.
-
-Generated React code can look correct but still:
-- reference missing state
-- update invalid structures
-- fail only at runtime
-
-Constela explores whether a *restricted target* leads to more reliable
-AI-generated UIs.
-
----
-
-### Who is this for?
-
-- People experimenting with AI-generated frontends
-- Developers interested in compiler-first UI design
-- Anyone curious about treating UI as verifiable data
-
-If you enjoy pushing boundaries, this might be interesting.
-
 ## DSL Overview
 
 Constela programs are JSON documents with this structure:
@@ -933,12 +772,12 @@ export default { fetch: adapter.fetch };
 | Package | Version | Description |
 |---------|---------|-------------|
 | `@constela/core` | 0.7.0 | AST types, JSON Schema, validator, 47 type guards, error codes |
-| `@constela/compiler` | 0.7.0 | 3-pass compiler: validate → analyze → transform |
-| `@constela/runtime` | 0.10.1 | DOM renderer, hydration, reactive signals, Markdown/Code support |
+| `@constela/compiler` | 0.7.1 | 3-pass compiler: validate → analyze → transform |
+| `@constela/runtime` | 0.10.3 | DOM renderer, hydration, reactive signals, Markdown/Code support |
 | `@constela/router` | 8.0.0 | History API routing, dynamic params, catch-all routes |
-| `@constela/server` | 3.0.0 | SSR with Shiki dual-theme syntax highlighting |
-| `@constela/start` | 1.2.1 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
-| `@constela/cli` | 0.3.8 | CLI: compile, dev, build, start commands |
+| `@constela/server` | 3.0.1 | SSR with Shiki dual-theme syntax highlighting |
+| `@constela/start` | 1.2.22 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/cli` | 0.3.29 | CLI: compile, dev, build, start commands |
 
 See each package's README for detailed API documentation.
 
