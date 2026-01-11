@@ -1,5 +1,17 @@
 # @constela/start
 
+## 1.2.18
+
+### Patch Changes
+
+- fix(start): merge layout state/actions/lifecycle and bind dynamic route data in SSG build
+
+  - Merge state, actions, and lifecycle from layouts into pages during SSG build
+  - Bind pathEntry.data to loadedData for dynamic routes, enabling expr:data expressions
+  - Replace named slots (mdx-content) in final view after layout application
+  - Fix onClick handlers not working in SSG builds
+  - Fix MDX content not rendering in docs pages
+
 ## 1.2.17
 
 ### Patch Changes
