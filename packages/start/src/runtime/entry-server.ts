@@ -20,6 +20,10 @@ export interface WrapHtmlOptions {
   importMap?: Record<string, string>;
   /** Path to bundled runtime for production builds. When provided, replaces @constela/runtime imports and excludes importmap. */
   runtimePath?: string;
+  /** localStorage key for theme persistence. When provided, generates anti-flash script. */
+  themeStorageKey?: string;
+  /** Default theme to use when no stored preference exists */
+  defaultTheme?: 'dark' | 'light';
 }
 
 export interface WidgetConfig {
@@ -244,7 +248,8 @@ export function wrapHtml(
   head?: string,
   options?: WrapHtmlOptions
 ): string {
-  const htmlClass = options?.theme === 'dark' ? ' class="dark"' : '';
+  // Determine html class: use defaultTheme if set, otherwise fall back to theme option
+  const htmlClass = options?.defaultTheme === 'dark' || options?.theme === 'dark' ? ' class="dark"' : '';
 
   // Production mode: use bundled runtime, no importmap
   let processedScript = hydrationScript;
@@ -271,12 +276,34 @@ export function wrapHtml(
     importMapScript = `<script type="importmap">\n${importMapJson}\n</script>\n`;
   }
 
+  // Generate anti-flash script for theme persistence
+  let themeScript = '';
+  if (options?.themeStorageKey) {
+    // Validate themeStorageKey to prevent injection attacks
+    if (!/^[a-zA-Z0-9_-]+$/.test(options.themeStorageKey)) {
+      throw new Error(`Invalid themeStorageKey: ${options.themeStorageKey}. Only alphanumeric characters, underscores, and hyphens are allowed.`);
+    }
+    themeScript = `<script>
+(function() {
+  try {
+    var theme = localStorage.getItem('${options.themeStorageKey}');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    }
+  } catch (e) {}
+})();
+</script>
+`;
+  }
+
   return `<!DOCTYPE html>
 <html${htmlClass}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${importMapScript}${head ?? ''}
+${themeScript}${importMapScript}${head ?? ''}
 </head>
 <body>
 <div id="app">${content}</div>

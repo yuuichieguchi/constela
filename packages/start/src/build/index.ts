@@ -19,6 +19,7 @@ import {
   wrapHtml,
   generateHydrationScript,
   type SSRContext,
+  type WrapHtmlOptions,
 } from '../runtime/entry-server.js';
 import { bundleRuntime, bundleCSS } from './bundler.js';
 
@@ -768,12 +769,19 @@ async function renderPageToHtml(
   const hydrationScript = generateHydrationScript(normalizedProgram, undefined, routeContext);
 
   // Build wrapHtml options
-  const wrapOptions: { runtimePath?: string; importMap?: Record<string, string> } = {};
+  const wrapOptions: WrapHtmlOptions = {};
   if (runtimePath) {
     wrapOptions.runtimePath = runtimePath;
   }
   if (externalImports && Object.keys(externalImports).length > 0) {
     wrapOptions.importMap = externalImports;
+  }
+
+  // Detect theme state from program
+  const themeState = program.state?.['theme'] as { initial?: string } | undefined;
+  if (themeState?.initial) {
+    wrapOptions.defaultTheme = themeState.initial as 'dark' | 'light';
+    wrapOptions.themeStorageKey = 'theme';
   }
 
   return wrapHtml(
@@ -977,16 +985,16 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         let boundPageInfo = pageInfo;
         if (pathEntry.data && pageInfo.page.getStaticPaths?.source) {
           const source = pageInfo.page.getStaticPaths.source;
-          const sourceName = typeof source === 'string'
-            ? source
-            : (source as { name?: string }).name;
 
-          if (sourceName) {
+          // Only bind pathEntry.data for string sources (direct data references)
+          // Expression sources (like { expr: "import", name: "examples", path: "examples" })
+          // should NOT be bound because they may access sibling properties via index expressions
+          if (typeof source === 'string') {
             boundPageInfo = {
               ...pageInfo,
               loadedData: {
                 ...pageInfo.loadedData,
-                [sourceName]: pathEntry.data,  // Replace array with current item
+                [source]: pathEntry.data,  // Replace array with current item
               },
             };
           }

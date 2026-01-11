@@ -5,6 +5,7 @@
  * - wrapHtml dark class when theme is 'dark'
  * - wrapHtml no dark class when theme is 'light'
  * - wrapHtml backward compatibility without theme option
+ * - wrapHtml theme anti-flash script support (themeStorageKey option)
  * - generateHydrationScript backward compatibility (no widgets)
  * - generateHydrationScript widget mounting support
  *
@@ -193,6 +194,87 @@ describe('wrapHtml', () => {
       expect(result).toContain('<script type="module">');
       expect(result).toContain(hydrationScript);
       expect(result).toContain('</script>');
+    });
+  });
+
+  // ==================== Theme Anti-Flash Script Support ====================
+
+  describe('theme anti-flash script support', () => {
+    it('should include anti-flash script when themeStorageKey is provided', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme' };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Should include a blocking script that reads localStorage to prevent flash
+      expect(result).toContain('localStorage');
+      expect(result).toContain('theme');
+      // The anti-flash script should be a blocking script (not type="module")
+      expect(result).toMatch(/<script>[\s\S]*localStorage[\s\S]*<\/script>/);
+    });
+
+    it('should set dark class on html element when defaultTheme is dark', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme', defaultTheme: 'dark' as const };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // HTML element should have dark class as default
+      expect(result).toMatch(/<html[^>]*class="[^"]*dark[^"]*"/);
+    });
+
+    it('should not include anti-flash script when themeStorageKey is not provided', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+
+      // Act
+      const result = wrapHtml(content, hydrationScript);
+
+      // Assert
+      // Should not contain localStorage script for theme detection
+      expect(result).not.toMatch(/<script>[\s\S]*localStorage[\s\S]*<\/script>/);
+    });
+
+    it('should place anti-flash script before body content to prevent FOUC', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme' };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Anti-flash script should appear before the main content
+      const scriptMatch = result.match(/<script>[\s\S]*localStorage[\s\S]*<\/script>/);
+      const contentIndex = result.indexOf(content);
+      expect(scriptMatch).not.toBeNull();
+      const scriptIndex = result.indexOf(scriptMatch![0]);
+      expect(scriptIndex).toBeLessThan(contentIndex);
+    });
+
+    it('should use custom themeStorageKey in localStorage access', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const customKey = 'my-custom-theme-key';
+      const options = { themeStorageKey: customKey };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Should use the custom key in localStorage.getItem call
+      expect(result).toContain(customKey);
     });
   });
 

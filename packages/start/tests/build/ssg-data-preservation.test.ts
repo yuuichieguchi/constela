@@ -1140,6 +1140,323 @@ describe('processLayouts must preserve loadedData', () => {
   });
 });
 
+// ==================== Expression Source in getStaticPaths Tests ====================
+
+describe('getStaticPaths with expression source should not bind pathEntry.data', () => {
+  /**
+   * Bug context:
+   * When getStaticPaths.source is an expression like:
+   *   { "expr": "import", "name": "examples", "path": "examples" }
+   *
+   * The current code incorrectly binds pathEntry.data for ALL source types,
+   * replacing the entire import (e.g., "examples") with the single array item.
+   *
+   * This breaks expressions like:
+   *   - examples.codeStrings[slug]
+   *   - examples.items[slug]
+   *
+   * Because after binding, "examples" becomes just the single item object,
+   * so "examples.codeStrings" and "examples.items" are undefined.
+   *
+   * The fix: Only bind pathEntry.data when source is a STRING (referencing data source),
+   * NOT when source is an expression (referencing import).
+   */
+
+  let tempDir: string;
+  let outDir: string;
+  let routesDir: string;
+  let layoutsDir: string;
+  let dataDir: string;
+
+  beforeEach(async () => {
+    tempDir = await createTempDir();
+    outDir = join(tempDir, 'dist');
+    routesDir = join(tempDir, 'src', 'routes');
+    layoutsDir = join(tempDir, 'src', 'layouts');
+    dataDir = join(tempDir, 'src', 'data');
+
+    await mkdir(outDir, { recursive: true });
+    await mkdir(routesDir, { recursive: true });
+    await mkdir(layoutsDir, { recursive: true });
+    await mkdir(dataDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('should preserve full import object when source is an expression', async () => {
+    /**
+     * Given: Page with getStaticPaths.source as expression (e.g., { expr: "import", name: "examples", path: "examples" })
+     * And: View uses index expressions to access sibling properties (e.g., examples.codeStrings[slug])
+     * When: SSG build runs
+     * Then: The sibling properties should resolve correctly (not undefined)
+     *
+     * This test MUST FAIL with the current implementation because:
+     * - pathEntry.data is bound for expression sources (line 978-992 in build/index.ts)
+     * - This replaces "examples" with just { slug: "counter", title: "Counter", ... }
+     * - So examples.codeStrings becomes undefined
+     *
+     * After the fix:
+     * - pathEntry.data should NOT be bound when source is an expression
+     * - "examples" remains the full object with { examples: [...], items: {...}, codeStrings: {...} }
+     * - examples.codeStrings[slug] resolves correctly
+     */
+
+    // Arrange
+    await writeFile(
+      join(layoutsDir, 'simple.json'),
+      JSON.stringify(simpleLayout, null, 2)
+    );
+
+    // Create examples data file with structure matching real Examples page
+    const examplesData = {
+      examples: [
+        { slug: 'counter', title: 'Counter', description: 'A counter example' },
+        { slug: 'todo-list', title: 'Todo List', description: 'A todo list example' },
+      ],
+      items: {
+        counter: { slug: 'counter', title: 'Counter', description: 'A counter example', features: ['State', 'Actions'] },
+        'todo-list': { slug: 'todo-list', title: 'Todo List', description: 'A todo list example', features: ['List state', 'Each loop'] },
+      },
+      codeStrings: {
+        counter: '{ "version": "1.0", "state": { "count": 0 } }',
+        'todo-list': '{ "version": "1.0", "state": { "todos": [] } }',
+      },
+    };
+    await writeFile(
+      join(dataDir, 'examples.json'),
+      JSON.stringify(examplesData, null, 2)
+    );
+
+    // Create examples routes directory
+    await mkdir(join(routesDir, 'examples'), { recursive: true });
+
+    // Create dynamic page that uses expression source in getStaticPaths
+    // This mimics the real Examples page structure
+    const examplesPage = {
+      version: '1.0',
+      route: {
+        path: '/examples/:slug',
+        layout: 'simple',
+      },
+      imports: {
+        examples: '../../data/examples.json',
+      },
+      getStaticPaths: {
+        // Expression source - this references examples.examples (the array)
+        source: { expr: 'import', name: 'examples', path: 'examples' },
+        params: {
+          slug: { expr: 'var', name: 'item', path: 'slug' },
+        },
+      },
+      state: {},
+      actions: [],
+      view: {
+        kind: 'element',
+        tag: 'article',
+        props: { class: { expr: 'lit', value: 'example-page' } },
+        children: [
+          // Title from items[slug]
+          {
+            kind: 'element',
+            tag: 'h1',
+            props: { class: { expr: 'lit', value: 'example-title' } },
+            children: [
+              {
+                kind: 'text',
+                // This uses index expression: examples.items[slug].title
+                value: {
+                  expr: 'get',
+                  base: {
+                    expr: 'index',
+                    base: { expr: 'import', name: 'examples', path: 'items' },
+                    key: { expr: 'route', name: 'slug' },
+                  },
+                  path: 'title',
+                },
+              },
+            ],
+          },
+          // Code string from codeStrings[slug]
+          {
+            kind: 'element',
+            tag: 'pre',
+            props: { class: { expr: 'lit', value: 'example-code' } },
+            children: [
+              {
+                kind: 'text',
+                // This uses index expression: examples.codeStrings[slug]
+                value: {
+                  expr: 'index',
+                  base: { expr: 'import', name: 'examples', path: 'codeStrings' },
+                  key: { expr: 'route', name: 'slug' },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await writeFile(
+      join(routesDir, 'examples', '[slug].json'),
+      JSON.stringify(examplesPage, null, 2)
+    );
+
+    // Act
+    const { build } = await import('../../src/build/index.js');
+
+    await build({
+      outDir,
+      routesDir,
+      layoutsDir,
+    });
+
+    // Assert
+    const counterHtmlPath = join(outDir, 'examples', 'counter', 'index.html');
+    const counterHtml = await readFile(counterHtmlPath, 'utf-8');
+
+    // The title should be resolved from examples.items[counter].title
+    expect(counterHtml).toContain('Counter');
+    expect(counterHtml).toContain('example-title');
+
+    // The code string should be resolved from examples.codeStrings[counter]
+    // This is the critical assertion - if binding occurs incorrectly, this will be empty/undefined
+    expect(counterHtml).toContain('{ &quot;version&quot;: &quot;1.0&quot;');
+    expect(counterHtml).toContain('example-code');
+
+    // Check program importData preserves full examples object
+    const programMatch = counterHtml.match(/const program = ({[\s\S]*?});/);
+    expect(programMatch).toBeTruthy();
+
+    const programData = JSON.parse(programMatch![1]);
+    expect(programData.importData).toBeDefined();
+    expect(programData.importData.examples).toBeDefined();
+
+    // The examples import should contain the FULL object, not just the single item
+    // This assertion will FAIL with current implementation
+    expect(programData.importData.examples.items).toBeDefined();
+    expect(programData.importData.examples.codeStrings).toBeDefined();
+    expect(programData.importData.examples.items.counter).toBeDefined();
+    expect(programData.importData.examples.codeStrings.counter).toBeDefined();
+  });
+
+  it('should still bind pathEntry.data when source is a string', async () => {
+    /**
+     * This test ensures the fix does NOT break the existing behavior for string sources.
+     *
+     * Given: Page with getStaticPaths.source as string (e.g., "docs")
+     * When: SSG build runs
+     * Then: pathEntry.data should be bound to the source name (existing behavior)
+     */
+
+    // Arrange
+    await writeFile(
+      join(layoutsDir, 'simple.json'),
+      JSON.stringify(simpleLayout, null, 2)
+    );
+
+    // Create content directory and MDX files
+    const contentDocsDir = join(tempDir, 'src', 'content', 'docs');
+    await mkdir(contentDocsDir, { recursive: true });
+
+    await writeFile(
+      join(contentDocsDir, 'intro.mdx'),
+      `---
+slug: intro
+title: Introduction
+---
+
+# Introduction
+
+Welcome to the docs.
+`
+    );
+
+    // Create docs routes directory
+    await mkdir(join(routesDir, 'docs'), { recursive: true });
+
+    // Create dynamic page with STRING source in getStaticPaths
+    const docsPage = {
+      version: '1.0',
+      route: {
+        path: '/docs/:slug',
+        layout: 'simple',
+      },
+      data: {
+        docs: {
+          type: 'glob',
+          pattern: '../../content/docs/*.mdx',
+          transform: 'mdx',
+        },
+      },
+      getStaticPaths: {
+        // String source - this references the "docs" data source
+        source: 'docs',
+        params: {
+          slug: { expr: 'var', name: 'item', path: 'slug' },
+        },
+      },
+      state: {},
+      actions: [],
+      view: {
+        kind: 'element',
+        tag: 'article',
+        props: { class: { expr: 'lit', value: 'doc-page' } },
+        children: [
+          {
+            kind: 'element',
+            tag: 'h1',
+            props: {},
+            children: [
+              {
+                kind: 'text',
+                // This uses data expression - should resolve to single item's title
+                value: { expr: 'data', name: 'docs', path: 'frontmatter.title' },
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await writeFile(
+      join(routesDir, 'docs', '[slug].json'),
+      JSON.stringify(docsPage, null, 2)
+    );
+
+    // Act
+    const { build } = await import('../../src/build/index.js');
+
+    await build({
+      outDir,
+      routesDir,
+      layoutsDir,
+    });
+
+    // Assert
+    const introHtmlPath = join(outDir, 'docs', 'intro', 'index.html');
+    const introHtml = await readFile(introHtmlPath, 'utf-8');
+
+    // The title should be resolved from the bound single item
+    expect(introHtml).toContain('Introduction');
+    expect(introHtml).toContain('doc-page');
+
+    // Check program importData has bound docs as single object (not array)
+    const programMatch = introHtml.match(/const program = ({[\s\S]*?});/);
+    expect(programMatch).toBeTruthy();
+
+    const programData = JSON.parse(programMatch![1]);
+    expect(programData.importData).toBeDefined();
+    expect(programData.importData.docs).toBeDefined();
+
+    // For string source, docs should be bound as single object
+    expect(programData.importData.docs.slug).toBe('intro');
+    expect(programData.importData.docs.frontmatter.title).toBe('Introduction');
+  });
+});
+
 // ==================== Integration Test: Full SSG Pipeline ====================
 
 describe('Full SSG pipeline with loadedData', () => {

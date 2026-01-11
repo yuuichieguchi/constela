@@ -7,6 +7,7 @@ import {
   generateHydrationScript,
   wrapHtml,
   type SSRContext,
+  type WrapHtmlOptions,
 } from '../runtime/entry-server.js';
 import { resolvePageExport } from '../utils/resolve-page.js';
 
@@ -162,8 +163,23 @@ async function generateSinglePage(
   // Generate hydration script
   const hydrationScript = generateHydrationScript(program, undefined, routeContext);
 
+  // Build wrapHtml options with theme support
+  const wrapOptions: WrapHtmlOptions = {};
+
+  // Detect theme state from program
+  const themeState = program.state?.['theme'] as { initial?: string } | undefined;
+  if (themeState?.initial) {
+    wrapOptions.defaultTheme = themeState.initial as 'dark' | 'light';
+    wrapOptions.themeStorageKey = 'theme';
+  }
+
   // Wrap in full HTML document
-  const html = wrapHtml(content, hydrationScript);
+  const html = wrapHtml(
+    content,
+    hydrationScript,
+    undefined,
+    Object.keys(wrapOptions).length > 0 ? wrapOptions : undefined
+  );
 
   // Write to file
   await writeFile(outputPath, html, 'utf-8');
