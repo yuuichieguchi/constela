@@ -250,6 +250,16 @@ export function extractMdxContentSlot(
   routeParams: Record<string, string>
 ): Record<string, ViewNode> | undefined {
   const dataSource = loadedData[dataSourceName];
+
+  // Handle single object (when pathEntry.data has been bound)
+  if (dataSource && typeof dataSource === 'object' && !Array.isArray(dataSource)) {
+    if ('content' in dataSource) {
+      return { 'mdx-content': (dataSource as { content: ViewNode }).content };
+    }
+    return undefined;
+  }
+
+  // Handle array (original behavior - find by slug)
   if (!Array.isArray(dataSource)) {
     return undefined;
   }
@@ -686,6 +696,11 @@ async function processLayouts(
     currentView = applyLayout(currentView, normalizedLayoutView, namedSlots) as typeof pageInfo.page.view;
   }
 
+  // Replace any remaining named slots in the final view (e.g., mdx-content in page's view)
+  if (namedSlots && Object.keys(namedSlots).length > 0) {
+    currentView = replaceSlot(currentView, currentView, namedSlots) as typeof pageInfo.page.view;
+  }
+
   // Substitute layoutParams in the final wrapped view
   const layoutParams = pageInfo.page.route?.layoutParams;
   if (layoutParams && Object.keys(layoutParams).length > 0) {
@@ -940,10 +955,31 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const params = pathEntry.params;
         const outputPath = paramsToOutputPath(route.pattern, params, outDir);
 
+        // Bind current item data to the data source name BEFORE processLayouts
+        // This allows extractMdxContentSlot to get the current item's content
+        // and { "expr": "data", ... } to resolve to the current item
+        let boundPageInfo = pageInfo;
+        if (pathEntry.data && pageInfo.page.getStaticPaths?.source) {
+          const source = pageInfo.page.getStaticPaths.source;
+          const sourceName = typeof source === 'string'
+            ? source
+            : (source as { name?: string }).name;
+
+          if (sourceName) {
+            boundPageInfo = {
+              ...pageInfo,
+              loadedData: {
+                ...pageInfo.loadedData,
+                [sourceName]: pathEntry.data,  // Replace array with current item
+              },
+            };
+          }
+        }
+
         // Apply layouts if configured (inside loop to extract MDX content per params)
-        let processedPageInfo = pageInfo;
+        let processedPageInfo = boundPageInfo;
         if (layoutsDir) {
-          processedPageInfo = await processLayouts(pageInfo, layoutsDir, params);
+          processedPageInfo = await processLayouts(boundPageInfo, layoutsDir, params);
         }
 
         // Convert to compiled program

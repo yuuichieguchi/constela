@@ -348,9 +348,9 @@ describe('extractMdxContentSlot utility function', () => {
       expect(slots).toBeUndefined();
     });
 
-    it('should return undefined when data source is not an array', async () => {
-      // Arrange
-      const invalidLoadedData = {
+    it('should extract content from single object (not array) when content property exists', async () => {
+      // Arrange - single object with content (used when pathEntry.data is bound)
+      const singleObjectData = {
         docs: { slug: 'intro', content: mdxIntroContent }, // Object instead of array
       };
       const routeParams = { slug: 'intro' };
@@ -365,13 +365,14 @@ describe('extractMdxContentSlot utility function', () => {
       expect(extractMdxContentSlot).toBeDefined();
 
       const slots = extractMdxContentSlot(
-        invalidLoadedData as unknown as Record<string, unknown>,
+        singleObjectData as unknown as Record<string, unknown>,
         dataSourceName,
         routeParams
       );
 
-      // Assert
-      expect(slots).toBeUndefined();
+      // Assert - should extract content from single object
+      expect(slots).toBeDefined();
+      expect(slots?.['mdx-content']).toEqual(mdxIntroContent);
     });
   });
 });
