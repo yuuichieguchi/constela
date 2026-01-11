@@ -25,46 +25,54 @@ Constela is optimized for:
 ### Installation
 
 ```bash
-# Basic usage
+# Recommended: Full-stack development
+npm install @constela/start
+
+# Low-level API (advanced)
 npm install @constela/runtime @constela/compiler
-
-# With routing
-npm install @constela/runtime @constela/compiler @constela/router
-
-# With CLI tools
-npm install @constela/runtime @constela/compiler @constela/cli
 ```
 
 ### Basic Usage
 
-```typescript
-import { compile } from '@constela/compiler';
-import { createApp } from '@constela/runtime';
+1. Create a project:
 
-const program = {
-  version: "1.0",
-  state: {
-    count: { type: "number", initial: 0 }
+```bash
+mkdir my-app && cd my-app
+npm init -y
+npm install @constela/start
+mkdir -p src/routes
+```
+
+2. Create a page (`src/routes/index.json`):
+
+```json
+{
+  "version": "1.0",
+  "state": {
+    "count": { "type": "number", "initial": 0 }
   },
-  actions: [
+  "actions": [
     {
-      name: "increment",
-      steps: [{ do: "update", target: "count", operation: "increment" }]
+      "name": "increment",
+      "steps": [{ "do": "update", "target": "count", "operation": "increment" }]
     }
   ],
-  view: {
-    kind: "element",
-    tag: "button",
-    props: { onClick: { event: "click", action: "increment" } },
-    children: [{ kind: "text", value: { expr: "state", name: "count" } }]
+  "view": {
+    "kind": "element",
+    "tag": "button",
+    "props": { "onClick": { "event": "click", "action": "increment" } },
+    "children": [{ "kind": "text", "value": { "expr": "state", "name": "count" } }]
   }
-};
-
-const result = compile(program);
-if (result.ok) {
-  createApp(result.program, document.getElementById('app'));
 }
 ```
+
+3. Start the dev server:
+
+```bash
+npx constela dev
+```
+
+Open http://localhost:3000 to see your app.
 
 ## DSL Overview
 
