@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.13
+
+### Patch Changes
+
+- Add cssContent option to CLI and config file for Tailwind CSS v4 PostCSS processing
+
 ## 1.2.12
 
 ### Patch Changes
