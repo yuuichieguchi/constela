@@ -51,6 +51,12 @@ interface LayoutDefinition {
   version: string;
   layout?: string;
   view: unknown;
+  state?: Record<string, unknown>;
+  actions?: unknown[];
+  lifecycle?: {
+    onMount?: string;
+    onUnmount?: string;
+  };
 }
 
 /**
@@ -556,6 +562,66 @@ async function processLayouts(
     }
   }
 
+  // Merge state from layouts (outermost first, so inner layouts and page take precedence)
+  let mergedState: Record<string, unknown> = {};
+  for (let i = layoutChain.length - 1; i >= 0; i--) {
+    const layout = layoutChain[i];
+    if (layout?.state) {
+      mergedState = {
+        ...mergedState,
+        ...layout.state,
+      };
+    }
+  }
+  // Page state takes precedence over layout state
+  if (pageInfo.page.state) {
+    mergedState = {
+      ...mergedState,
+      ...pageInfo.page.state,
+    };
+  }
+
+  // Merge actions from layouts (outermost first, so inner layouts and page take precedence)
+  // Actions are arrays, so we need to merge by name
+  let mergedActionsMap: Map<string, unknown> = new Map();
+  for (let i = layoutChain.length - 1; i >= 0; i--) {
+    const layout = layoutChain[i];
+    if (layout?.actions && Array.isArray(layout.actions)) {
+      for (const action of layout.actions) {
+        const actionDef = action as { name: string };
+        // Inner layouts override outer layouts
+        mergedActionsMap.set(actionDef.name, action);
+      }
+    }
+  }
+  // Page actions take precedence over layout actions
+  if (pageInfo.page.actions && Array.isArray(pageInfo.page.actions)) {
+    for (const action of pageInfo.page.actions) {
+      const actionDef = action as { name: string };
+      mergedActionsMap.set(actionDef.name, action);
+    }
+  }
+  const mergedActions: unknown[] = Array.from(mergedActionsMap.values());
+
+  // Merge lifecycle from layouts (outermost first, so inner layouts and page take precedence)
+  let mergedLifecycle: { onMount?: string; onUnmount?: string } | undefined;
+  for (let i = layoutChain.length - 1; i >= 0; i--) {
+    const layout = layoutChain[i];
+    if (layout?.lifecycle) {
+      mergedLifecycle = {
+        ...mergedLifecycle,
+        ...layout.lifecycle,
+      };
+    }
+  }
+  // Page lifecycle takes precedence over layout lifecycle
+  if (pageInfo.page.lifecycle) {
+    mergedLifecycle = {
+      ...mergedLifecycle,
+      ...pageInfo.page.lifecycle,
+    };
+  }
+
   // Extract MDX content slots from loadedData
   // Try to find MDX content in any data source that has content with slug
   let namedSlots: Record<string, unknown> | undefined;
@@ -633,7 +699,7 @@ async function processLayouts(
     updatedRoute = routeWithoutLayout;
   }
 
-  // Create updated page info
+  // Create updated page info with merged state, actions, and lifecycle
   const updatedPageInfo: PageInfo = {
     ...pageInfo,
     resolvedImports: mergedImports,
@@ -641,6 +707,9 @@ async function processLayouts(
       ...pageInfo.page,
       view: currentView as typeof pageInfo.page.view,
       route: updatedRoute,
+      state: Object.keys(mergedState).length > 0 ? mergedState : undefined,
+      actions: mergedActions.length > 0 ? mergedActions : undefined,
+      lifecycle: mergedLifecycle,
     },
   };
 
