@@ -12,20 +12,163 @@ npm install @constela/router
 - `@constela/compiler` ^0.7.0
 - `@constela/runtime` ^0.10.1
 
-## Overview
+## Route Definition
 
-This package provides History API-based client-side routing without changes to the core DSL. Features:
+Define routes in your JSON program:
 
-- **Dynamic Routes** - Parameter extraction (`:id`)
-- **Catch-all Routes** - Wildcard patterns (`*`)
-- **Programmatic Navigation** - Navigate via API
-- **Browser Integration** - Back/forward button support
+```json
+{
+  "route": {
+    "path": "/users/:id",
+    "title": { "expr": "bin", "op": "+", "left": { "expr": "lit", "value": "User: " }, "right": { "expr": "route", "name": "id" } },
+    "layout": "MainLayout",
+    "meta": {
+      "description": { "expr": "lit", "value": "User profile page" }
+    }
+  },
+  "state": { ... },
+  "actions": [ ... ],
+  "view": { ... }
+}
+```
 
-## API Reference
+## Accessing Route Parameters
+
+Use the `route` expression in your JSON:
+
+**URL parameter** (e.g., `/users/123` → `"123"`):
+```json
+{ "expr": "route", "name": "id", "source": "param" }
+```
+
+**Query string parameter** (e.g., `?tab=settings` → `"settings"`):
+```json
+{ "expr": "route", "name": "tab", "source": "query" }
+```
+
+**Full path**:
+```json
+{ "expr": "route", "source": "path" }
+```
+
+## Route Patterns
+
+| Pattern | Example Path | Params |
+|---------|--------------|--------|
+| `/` | `/` | `{}` |
+| `/about` | `/about` | `{}` |
+| `/users/:id` | `/users/123` | `{ id: "123" }` |
+| `/posts/:id/comments/:cid` | `/posts/1/comments/5` | `{ id: "1", cid: "5" }` |
+| `/docs/*` | `/docs/getting-started/intro` | Catch-all |
+
+## File-Based Routing
+
+With `@constela/start`, routes are derived from file paths:
+
+| File | Route |
+|------|-------|
+| `src/routes/index.json` | `/` |
+| `src/routes/about.json` | `/about` |
+| `src/routes/users/[id].json` | `/users/:id` |
+| `src/routes/docs/[...slug].json` | `/docs/*` |
+
+## Example: Dynamic Page
+
+```json
+{
+  "version": "1.0",
+  "route": {
+    "path": "/users/:id"
+  },
+  "state": {
+    "user": { "type": "object", "initial": null },
+    "loading": { "type": "boolean", "initial": true }
+  },
+  "lifecycle": {
+    "onMount": "fetchUser"
+  },
+  "actions": [
+    {
+      "name": "fetchUser",
+      "steps": [
+        {
+          "do": "fetch",
+          "url": {
+            "expr": "bin",
+            "op": "+",
+            "left": { "expr": "lit", "value": "https://api.example.com/users/" },
+            "right": { "expr": "route", "name": "id" }
+          },
+          "method": "GET",
+          "onSuccess": [
+            { "do": "set", "target": "user", "value": { "expr": "var", "name": "data" } },
+            { "do": "set", "target": "loading", "value": { "expr": "lit", "value": false } }
+          ]
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "if",
+    "condition": { "expr": "state", "name": "loading" },
+    "then": { "kind": "text", "value": { "expr": "lit", "value": "Loading..." } },
+    "else": {
+      "kind": "element",
+      "tag": "h1",
+      "children": [
+        { "kind": "text", "value": { "expr": "get", "base": { "expr": "state", "name": "user" }, "path": "name" } }
+      ]
+    }
+  }
+}
+```
+
+## Navigation
+
+Navigate using the `navigate` action step:
+
+**Basic navigation**:
+```json
+{
+  "name": "goToProfile",
+  "steps": [
+    { "do": "navigate", "url": { "expr": "lit", "value": "/profile" } }
+  ]
+}
+```
+
+**With dynamic URL**:
+```json
+{
+  "name": "goToUser",
+  "steps": [
+    {
+      "do": "navigate",
+      "url": {
+        "expr": "bin",
+        "op": "+",
+        "left": { "expr": "lit", "value": "/users/" },
+        "right": { "expr": "state", "name": "selectedUserId" }
+      }
+    }
+  ]
+}
+```
+
+**Replace history** (no back button):
+```json
+{
+  "do": "navigate",
+  "url": { "expr": "lit", "value": "/login" },
+  "replace": true
+}
+```
+
+## Internal API
+
+> For framework developers only. End users should use the CLI.
 
 ### createRouter
-
-Creates a router instance.
 
 ```typescript
 import { createRouter } from '@constela/router';
@@ -35,190 +178,33 @@ const router = createRouter({
     { path: '/', program: homeProgram, title: 'Home' },
     { path: '/about', program: aboutProgram, title: 'About' },
     { path: '/users/:id', program: userProgram, title: (ctx) => `User ${ctx.params.id}` },
-    { path: '/docs/*', program: docsProgram, title: 'Documentation' },
   ],
-  basePath: '/app', // Optional base path
-  fallback: notFoundProgram, // 404 page
-  onRouteChange: (ctx) => {
-    console.log('Route changed:', ctx.path);
-  },
+  basePath: '/app',
+  fallback: notFoundProgram,
+  onRouteChange: (ctx) => console.log('Route changed:', ctx.path),
 });
-```
 
-**RouterOptions:**
-- `routes: RouteDef[]` - Route definitions
-- `basePath?: string` - Optional URL prefix
-- `fallback?: CompiledProgram` - 404 fallback program
-- `onRouteChange?: (ctx: RouteContext) => void` - Route change callback
-
-### RouterInstance
-
-```typescript
-interface RouterInstance {
-  mount(element: HTMLElement): { destroy: () => void };
-  navigate(to: string, options?: { replace?: boolean }): void;
-  getContext(): RouteContext;
-}
-```
-
-#### mount(element)
-
-Mounts the router to a DOM element.
-
-```typescript
 const { destroy } = router.mount(document.getElementById('app'));
-
-// Later: cleanup
-destroy();
+router.navigate('/about');
 ```
 
-#### navigate(to, options?)
-
-Programmatic navigation.
+### Helper Functions
 
 ```typescript
-// Push to history
-router.navigate('/users/123');
+import { bindLink, createLink, matchRoute, parseParams } from '@constela/router';
 
-// Replace current entry
-router.navigate('/login', { replace: true });
-```
+// Bind existing anchor to router
+bindLink(router, document.querySelector('a[href="/about"]'), '/about');
 
-#### getContext()
-
-Gets current route context.
-
-```typescript
-const ctx = router.getContext();
-console.log(ctx.path);   // '/users/123'
-console.log(ctx.params); // { id: '123' }
-console.log(ctx.query);  // URLSearchParams
-```
-
-### RouteDef
-
-```typescript
-interface RouteDef {
-  path: string;
-  program: CompiledProgram;
-  title?: string | ((ctx: RouteContext) => string);
-}
-```
-
-### RouteContext
-
-```typescript
-interface RouteContext {
-  path: string;
-  params: Record<string, string>;
-  query: URLSearchParams;
-}
-```
-
-## Helper Functions
-
-### bindLink
-
-Binds an anchor element to router navigation.
-
-```typescript
-import { bindLink } from '@constela/router';
-
-const anchor = document.querySelector('a[href="/about"]');
-bindLink(router, anchor, '/about');
-```
-
-Prevents default navigation and uses client-side routing instead.
-
-### createLink
-
-Creates a router-aware anchor element.
-
-```typescript
-import { createLink } from '@constela/router';
-
+// Create router-aware anchor
 const link = createLink(router, '/users/123', 'View User');
-document.body.appendChild(link);
-```
 
-### matchRoute
+// Match route pattern
+const match = matchRoute('/users/:id', '/users/123'); // { id: '123' }
 
-Matches a path against a route pattern.
-
-```typescript
-import { matchRoute } from '@constela/router';
-
-const match = matchRoute('/users/:id', '/users/123');
-// match = { id: '123' } or null if no match
-```
-
-### parseParams
-
-Extracts parameters from a matched path.
-
-```typescript
-import { parseParams } from '@constela/router';
-
+// Parse params from path
 const params = parseParams('/users/:id/posts/:postId', '/users/123/posts/456');
-// params = { id: '123', postId: '456' }
-```
-
-## Route Patterns
-
-| Pattern | Example Path | Params |
-|---------|--------------|--------|
-| `/` | `/` | `{}` |
-| `/about` | `/about` | `{}` |
-| `/users/:id` | `/users/123` | `{ id: '123' }` |
-| `/posts/:id/comments/:cid` | `/posts/1/comments/5` | `{ id: '1', cid: '5' }` |
-| `/docs/*` | `/docs/getting-started/intro` | Catch-all |
-
-## Usage with DSL
-
-Route parameters are accessible in DSL expressions:
-
-```json
-{
-  "route": {
-    "path": "/users/:id"
-  },
-  "view": {
-    "kind": "text",
-    "value": { "expr": "route", "name": "id", "source": "param" }
-  }
-}
-```
-
-**Route Sources:**
-- `param` - URL parameters (default)
-- `query` - Query string parameters
-- `path` - Full path string
-
-## Example
-
-```typescript
-import { compile } from '@constela/compiler';
-import { createRouter, bindLink } from '@constela/router';
-
-// Compile pages
-const homeProgram = compile(homeAst).program;
-const aboutProgram = compile(aboutAst).program;
-
-// Create router
-const router = createRouter({
-  routes: [
-    { path: '/', program: homeProgram, title: 'Home' },
-    { path: '/about', program: aboutProgram, title: 'About' },
-  ],
-});
-
-// Mount
-const { destroy } = router.mount(document.getElementById('app'));
-
-// Bind existing links
-document.querySelectorAll('a[data-route]').forEach((a) => {
-  bindLink(router, a, a.getAttribute('href'));
-});
+// { id: '123', postId: '456' }
 ```
 
 ## License

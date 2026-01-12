@@ -1,6 +1,6 @@
 # @constela/compiler
 
-Compiler for the Constela UI framework - transforms AST to optimized runtime programs.
+Transforms Constela JSON programs into optimized runtime code.
 
 ## Installation
 
@@ -8,96 +8,88 @@ Compiler for the Constela UI framework - transforms AST to optimized runtime pro
 npm install @constela/compiler
 ```
 
-## Overview
+## Usage
 
-This package transforms validated Constela AST into optimized `CompiledProgram` structures for runtime execution. It implements a three-pass compiler pipeline:
+```bash
+constela compile app.json --out dist/app.compiled.json
+```
 
-1. **Validate Pass** - Schema and syntax validation
-2. **Analyze Pass** - Semantic analysis and context collection
-3. **Transform Pass** - AST-to-Program transformation
+## JSON Input
 
-## API Reference
-
-### compile
-
-Main compilation function that orchestrates the entire pipeline.
-
-```typescript
-import { compile } from '@constela/compiler';
-
-const result = compile(input);
-
-if (result.ok) {
-  // Success
-  console.log(result.program);
-} else {
-  // Failure - array of errors
-  console.error(result.errors);
+```json
+{
+  "version": "1.0",
+  "state": {
+    "count": { "type": "number", "initial": 0 }
+  },
+  "actions": [
+    {
+      "name": "increment",
+      "steps": [{ "do": "update", "target": "count", "operation": "increment" }]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "button",
+    "props": { "onClick": { "event": "click", "action": "increment" } },
+    "children": [{ "kind": "text", "value": { "expr": "state", "name": "count" } }]
+  }
 }
 ```
 
-**Parameters:**
-- `input: unknown` - Raw program input (typically parsed JSON)
+## Compiler Pipeline
 
-**Returns:** `CompileResult`
-- Success: `{ ok: true, program: CompiledProgram }`
-- Failure: `{ ok: false, errors: ConstelaError[] }`
+The compiler transforms JSON programs through three passes:
 
-### Individual Passes
+1. **Validate** - JSON Schema validation
+2. **Analyze** - Semantic analysis (state, actions, components, routes)
+3. **Transform** - AST to optimized runtime program
 
-#### validatePass
+## CompiledProgram Structure
 
-```typescript
-import { validatePass } from '@constela/compiler';
-
-const result = validatePass(input);
-if (result.ok) {
-  // result.program is a validated Program
+```json
+{
+  "version": "1.0",
+  "route": {
+    "path": "/users/:id",
+    "params": ["id"],
+    "title": { ... },
+    "layout": "MainLayout"
+  },
+  "lifecycle": {
+    "onMount": "loadData",
+    "onUnmount": "cleanup"
+  },
+  "state": {
+    "count": { "type": "number", "initial": 0 }
+  },
+  "actions": {
+    "increment": {
+      "name": "increment",
+      "steps": [{ "do": "update", "target": "count", "operation": "increment" }]
+    }
+  },
+  "view": { ... }
 }
-```
-
-#### analyzePass
-
-```typescript
-import { analyzePass } from '@constela/compiler';
-
-const result = analyzePass(validatedProgram);
-if (result.ok) {
-  // result.context contains analysis results
-  console.log(result.context.stateNames);
-  console.log(result.context.actionNames);
-}
-```
-
-**AnalysisContext:**
-- `stateNames: Set<string>` - State field identifiers
-- `actionNames: Set<string>` - Action names
-- `componentNames: Set<string>` - Component identifiers
-- `routeParams: Set<string>` - Route parameter names
-- `importNames: Set<string>` - External import names
-- `dataNames: Set<string>` - Data source names
-- `refNames: Set<string>` - DOM element reference names
-
-#### transformPass
-
-```typescript
-import { transformPass } from '@constela/compiler';
-
-const compiledProgram = transformPass(program, analysisContext);
 ```
 
 ## Layout Compilation
 
-Layouts have a separate compilation path with additional validation.
+Layouts are compiled separately with slot validation:
 
-### analyzeLayoutPass
-
-```typescript
-import { analyzeLayoutPass } from '@constela/compiler';
-
-const result = analyzeLayoutPass(layoutProgram);
-if (result.ok) {
-  // result.context contains layout-specific analysis
+```json
+{
+  "version": "1.0",
+  "type": "layout",
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      { "kind": "component", "name": "Header" },
+      { "kind": "slot" },
+      { "kind": "component", "name": "Footer" }
+    ]
+  }
 }
 ```
 
@@ -107,170 +99,72 @@ if (result.ok) {
 - No duplicate default slots
 - Slots not inside loops
 
-### transformLayoutPass
-
-```typescript
-import { transformLayoutPass } from '@constela/compiler';
-
-const compiledLayout = transformLayoutPass(layoutProgram, layoutContext);
-```
-
-### composeLayoutWithPage
-
-Composes a compiled layout with a page program.
-
-```typescript
-import { composeLayoutWithPage } from '@constela/compiler';
-
-const composedProgram = composeLayoutWithPage(compiledLayout, compiledPage);
-```
-
-**Composition Process:**
-- Merges state from both layout and page
-- Merges actions from both
-- Replaces slot nodes with page content
-- Named slots match by name
-
-## CompiledProgram Structure
-
-```typescript
-interface CompiledProgram {
-  version: '1.0';
-  route?: {
-    path: string;
-    params: string[];
-    title?: CompiledExpression;
-    layout?: string;
-    layoutParams?: Record<string, CompiledExpression>;
-    meta?: Record<string, CompiledExpression>;
-  };
-  lifecycle?: {
-    onMount?: string;
-    onUnmount?: string;
-    onRouteEnter?: string;
-    onRouteLeave?: string;
-  };
-  state: Record<string, {
-    type: 'number' | 'string' | 'list' | 'boolean' | 'object';
-    initial: unknown;
-  }>;
-  actions: Record<string, CompiledAction>;
-  view: CompiledNode;
-  importData?: Record<string, unknown>;
-}
-```
-
-## Compiled Types
-
-### CompiledExpression (13 types)
-
-All expression types are preserved with optimizations:
-
-```typescript
-type CompiledExpression =
-  | CompiledLitExpr
-  | CompiledStateExpr
-  | CompiledVarExpr
-  | CompiledBinExpr
-  | CompiledNotExpr
-  | CompiledCondExpr
-  | CompiledGetExpr
-  | CompiledRouteExpr
-  | CompiledImportExpr
-  | CompiledDataExpr
-  | CompiledRefExpr
-  | CompiledIndexExpr
-  | CompiledParamExpr;
-```
-
-### CompiledNode (7 types)
-
-```typescript
-type CompiledNode =
-  | CompiledElementNode
-  | CompiledTextNode
-  | CompiledIfNode
-  | CompiledEachNode
-  | CompiledMarkdownNode
-  | CompiledCodeNode
-  | CompiledSlotNode;
-```
-
-### CompiledAction
-
-```typescript
-interface CompiledAction {
-  name: string;
-  params?: Record<string, { type: string }>;
-  steps: CompiledStep[];
-}
-```
-
-### CompiledStep (12 types)
-
-```typescript
-type CompiledStep =
-  | CompiledSetStep
-  | CompiledUpdateStep
-  | CompiledFetchStep
-  | CompiledStorageStep
-  | CompiledClipboardStep
-  | CompiledNavigateStep
-  | CompiledImportStep
-  | CompiledCallStep
-  | CompiledSubscribeStep
-  | CompiledDisposeStep
-  | CompiledDomStep
-  | CompiledIfStep;
-```
-
 ## Error Handling
 
-The compiler collects multiple errors during the analyze pass:
+Structured errors with JSON Pointer paths:
 
-```typescript
-const result = compile(input);
-
-if (!result.ok) {
-  for (const error of result.errors) {
-    console.log(`[${error.code}] ${error.message}`);
-    console.log(`  at ${error.path}`);
-  }
+```json
+{
+  "code": "UNDEFINED_STATE",
+  "message": "State \"count\" is not defined",
+  "path": "/view/children/0/props/onClick"
 }
 ```
 
-Errors include JSON Pointer paths for precise location reporting.
+**Error Codes:**
+- `SCHEMA_INVALID` - JSON Schema validation error
+- `UNDEFINED_STATE` - Reference to undefined state
+- `UNDEFINED_ACTION` - Reference to undefined action
+- `DUPLICATE_ACTION` - Duplicate action name
+- `VAR_UNDEFINED` - Undefined variable reference
+- `COMPONENT_NOT_FOUND` - Undefined component
+- `COMPONENT_PROP_MISSING` - Missing required prop
+- `COMPONENT_CYCLE` - Circular component reference
+- `OPERATION_INVALID_FOR_TYPE` - Invalid operation for state type
+- `LAYOUT_MISSING_SLOT` - Layout missing slot node
+- `LAYOUT_NOT_FOUND` - Referenced layout not found
 
-## Example
+## Internal API
+
+> For framework developers only. End users should use the CLI.
+
+### compile
 
 ```typescript
 import { compile } from '@constela/compiler';
 
-const program = {
-  version: '1.0',
-  state: {
-    count: { type: 'number', initial: 0 }
-  },
-  actions: [
-    {
-      name: 'increment',
-      steps: [{ do: 'update', target: 'count', operation: 'increment' }]
-    }
-  ],
-  view: {
-    kind: 'element',
-    tag: 'button',
-    props: { onClick: { event: 'click', action: 'increment' } },
-    children: [{ kind: 'text', value: { expr: 'state', name: 'count' } }]
-  }
-};
-
-const result = compile(program);
+const result = compile(jsonInput);
 
 if (result.ok) {
-  // result.program is ready for runtime
-  console.log(result.program.actions.increment);
+  console.log(result.program);
+} else {
+  console.error(result.errors);
 }
+```
+
+### Individual Passes
+
+```typescript
+import { validatePass, analyzePass, transformPass } from '@constela/compiler';
+
+// Step 1: Validate
+const validated = validatePass(input);
+
+// Step 2: Analyze
+const analyzed = analyzePass(validated.program);
+
+// Step 3: Transform
+const compiled = transformPass(analyzed.program, analyzed.context);
+```
+
+### Layout Compilation
+
+```typescript
+import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
+
+const layoutResult = analyzeLayoutPass(layoutProgram);
+const compiledLayout = transformLayoutPass(layoutProgram, layoutResult.context);
+const composedProgram = composeLayoutWithPage(compiledLayout, compiledPage);
 ```
 
 ## License

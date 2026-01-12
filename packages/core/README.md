@@ -1,6 +1,6 @@
 # @constela/core
 
-Core types, schema validation, and error handling for the Constela UI framework.
+Core types and validation for Constela JSON programs.
 
 ## Installation
 
@@ -8,174 +8,159 @@ Core types, schema validation, and error handling for the Constela UI framework.
 npm install @constela/core
 ```
 
-## Overview
+## JSON Program Structure
 
-This package provides the foundational AST (Abstract Syntax Tree) types and validation infrastructure for Constela programs. It defines:
-
-- **AST Type Definitions** - All expression, node, step, and state types
-- **Type Guards** - Runtime type checking functions
-- **Error Types** - Structured error handling with error codes
-- **Validation** - Schema-based AST validation
-
-## API Reference
-
-### validateAst
-
-Validates raw input against the Constela AST schema.
-
-```typescript
-import { validateAst } from '@constela/core';
-
-const result = validateAst(input);
-if (result.ok) {
-  console.log('Valid program:', result.program);
-} else {
-  console.error('Validation failed:', result.error);
+```json
+{
+  "version": "1.0",
+  "route": { "path": "/", "layout": "MainLayout" },
+  "imports": { "config": "./data/config.json" },
+  "data": { "posts": { "type": "glob", "pattern": "content/*.mdx" } },
+  "lifecycle": { "onMount": "loadData" },
+  "state": { ... },
+  "actions": [ ... ],
+  "view": { ... },
+  "components": { ... }
 }
 ```
 
-**Returns:** `ValidationResult`
-- Success: `{ ok: true, program: Program }`
-- Failure: `{ ok: false, error: ConstelaError }`
+All fields except `version`, `state`, `actions`, and `view` are optional.
 
-## Type Definitions
+## State Types
 
-### Expression Types (12 kinds)
+5 supported state types:
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `LitExpr` | Literal values | `{ expr: "lit", value: "Hello" }` |
-| `StateExpr` | State field reference | `{ expr: "state", name: "count" }` |
-| `VarExpr` | Loop/event variable | `{ expr: "var", name: "item" }` |
-| `BinExpr` | Binary operation | `{ expr: "bin", op: "+", left: ..., right: ... }` |
-| `NotExpr` | Logical negation | `{ expr: "not", operand: ... }` |
-| `ParamExpr` | Component parameter | `{ expr: "param", name: "title" }` |
-| `CondExpr` | Conditional | `{ expr: "cond", if: ..., then: ..., else: ... }` |
-| `GetExpr` | Property access | `{ expr: "get", base: ..., path: "user.name" }` |
-| `RouteExpr` | Route parameter | `{ expr: "route", name: "id", source: "param" }` |
-| `ImportExpr` | External data | `{ expr: "import", name: "config" }` |
-| `DataExpr` | Build-time data | `{ expr: "data", name: "posts" }` |
-| `RefExpr` | DOM element ref | `{ expr: "ref", name: "inputEl" }` |
+```json
+{
+  "count": { "type": "number", "initial": 0 },
+  "query": { "type": "string", "initial": "" },
+  "items": { "type": "list", "initial": [] },
+  "isVisible": { "type": "boolean", "initial": true },
+  "form": { "type": "object", "initial": { "name": "", "email": "" } }
+}
+```
+
+## Expression Types
+
+12 expression types for constrained computation:
+
+| Type | JSON Example | Description |
+|------|-------------|-------------|
+| `lit` | `{ "expr": "lit", "value": "Hello" }` | Literal value |
+| `state` | `{ "expr": "state", "name": "count" }` | State reference |
+| `var` | `{ "expr": "var", "name": "item" }` | Loop/event variable |
+| `bin` | `{ "expr": "bin", "op": "+", "left": ..., "right": ... }` | Binary operation |
+| `not` | `{ "expr": "not", "operand": ... }` | Logical negation |
+| `param` | `{ "expr": "param", "name": "title" }` | Component parameter |
+| `cond` | `{ "expr": "cond", "if": ..., "then": ..., "else": ... }` | Conditional |
+| `get` | `{ "expr": "get", "base": ..., "path": "user.name" }` | Property access |
+| `route` | `{ "expr": "route", "name": "id", "source": "param" }` | Route parameter |
+| `import` | `{ "expr": "import", "name": "config" }` | External data |
+| `data` | `{ "expr": "data", "name": "posts" }` | Build-time data |
+| `ref` | `{ "expr": "ref", "name": "inputEl" }` | DOM element ref |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
-### State Field Types (5 kinds)
+## View Node Types
 
-| Type | Description |
-|------|-------------|
-| `NumberField` | `{ type: "number", initial: 0 }` |
-| `StringField` | `{ type: "string", initial: "" }` |
-| `ListField` | `{ type: "list", initial: [] }` |
-| `BooleanField` | `{ type: "boolean", initial: false }` |
-| `ObjectField` | `{ type: "object", initial: {} }` |
+8 node types for building UI:
 
-### View Node Types (8 kinds)
+```json
+// Element node
+{ "kind": "element", "tag": "div", "props": { ... }, "children": [ ... ] }
 
-| Type | Description |
-|------|-------------|
-| `ElementNode` | HTML elements with props and events |
-| `TextNode` | Text content with expressions |
-| `IfNode` | Conditional rendering |
-| `EachNode` | List rendering |
-| `ComponentNode` | Component invocation |
-| `SlotNode` | Layout slot placeholder |
-| `MarkdownNode` | Markdown content |
-| `CodeNode` | Syntax-highlighted code |
+// Text node
+{ "kind": "text", "value": { "expr": "state", "name": "count" } }
 
-### Action Step Types (11 kinds)
+// Conditional node
+{ "kind": "if", "condition": { ... }, "then": { ... }, "else": { ... } }
 
-| Type | Description |
-|------|-------------|
-| `SetStep` | Set state value |
-| `UpdateStep` | Update with operation (increment, push, etc.) |
-| `FetchStep` | HTTP requests |
-| `StorageStep` | localStorage/sessionStorage |
-| `ClipboardStep` | Clipboard operations |
-| `NavigateStep` | Page navigation |
-| `ImportStep` | Dynamic module import |
-| `CallStep` | External function call |
-| `SubscribeStep` | Event subscription |
-| `DisposeStep` | Resource disposal |
-| `DomStep` | DOM manipulation |
+// Loop node
+{ "kind": "each", "items": { "expr": "state", "name": "todos" }, "as": "item", "body": { ... } }
+
+// Component node
+{ "kind": "component", "name": "Button", "props": { "label": { ... } } }
+
+// Slot node (for layouts)
+{ "kind": "slot" }
+{ "kind": "slot", "name": "sidebar" }
+
+// Markdown node
+{ "kind": "markdown", "content": { "expr": "state", "name": "content" } }
+
+// Code block node
+{ "kind": "code", "code": { ... }, "language": { ... } }
+```
+
+## Action Step Types
+
+11 step types for declarative actions:
+
+```json
+// Set state value
+{ "do": "set", "target": "query", "value": { "expr": "lit", "value": "" } }
+
+// Update with operation
+{ "do": "update", "target": "count", "operation": "increment" }
+{ "do": "update", "target": "todos", "operation": "push", "value": { ... } }
+
+// HTTP request
+{ "do": "fetch", "url": { ... }, "method": "GET", "onSuccess": [ ... ], "onError": [ ... ] }
+
+// Storage operation
+{ "do": "storage", "operation": "get", "key": { ... }, "storage": "local" }
+
+// Clipboard operation
+{ "do": "clipboard", "operation": "write", "value": { ... } }
+
+// Navigation
+{ "do": "navigate", "url": { ... } }
+
+// Dynamic import
+{ "do": "import", "module": "chart.js", "result": "Chart" }
+
+// External function call
+{ "do": "call", "ref": "Chart", "method": "create", "args": [ ... ] }
+
+// Event subscription
+{ "do": "subscribe", "ref": "eventSource", "event": "message", "action": "handleMessage" }
+
+// Resource disposal
+{ "do": "dispose", "ref": "chartInstance" }
+
+// DOM manipulation
+{ "do": "dom", "operation": "addClass", "ref": "myElement", "value": { ... } }
+```
 
 **Update Operations:**
-- Number: `increment`, `decrement`
-- List: `push`, `pop`, `remove`, `replaceAt`, `insertAt`, `splice`
-- Boolean: `toggle`
-- Object: `merge`
 
-### Lifecycle Hooks
+| Operation | State Type | Description |
+|-----------|------------|-------------|
+| `increment` | number | Add to number |
+| `decrement` | number | Subtract from number |
+| `push` | list | Add item to end |
+| `pop` | list | Remove last item |
+| `remove` | list | Remove by value/index |
+| `toggle` | boolean | Flip boolean |
+| `merge` | object | Shallow merge |
+| `replaceAt` | list | Replace at index |
+| `insertAt` | list | Insert at index |
+| `splice` | list | Delete/insert items |
 
-```typescript
-interface LifecycleHooks {
-  onMount?: string;      // Action name
-  onUnmount?: string;    // Action name
-  onRouteEnter?: string; // Action name
-  onRouteLeave?: string; // Action name
+## Lifecycle Hooks
+
+```json
+{
+  "lifecycle": {
+    "onMount": "loadData",
+    "onUnmount": "cleanup",
+    "onRouteEnter": "fetchData",
+    "onRouteLeave": "saveState"
+  }
 }
 ```
 
-## Type Guards
-
-47 type guard functions for runtime type checking:
-
-```typescript
-import {
-  // Expressions
-  isLitExpr,
-  isStateExpr,
-  isVarExpr,
-  isBinExpr,
-  isNotExpr,
-  isParamExpr,
-  isCondExpr,
-  isGetExpr,
-  isRouteExpr,
-  isImportExpr,
-  isDataExpr,
-  isRefExpr,
-
-  // View nodes
-  isElementNode,
-  isTextNode,
-  isIfNode,
-  isEachNode,
-  isComponentNode,
-  isSlotNode,
-  isMarkdownNode,
-  isCodeNode,
-  isNamedSlotNode,
-
-  // Action steps
-  isSetStep,
-  isUpdateStep,
-  isFetchStep,
-  isStorageStep,
-  isClipboardStep,
-  isNavigateStep,
-  isImportStep,
-  isCallStep,
-  isSubscribeStep,
-  isDisposeStep,
-  isDomStep,
-
-  // State fields
-  isNumberField,
-  isStringField,
-  isListField,
-  isBooleanField,
-  isObjectField,
-
-  // Others
-  isEventHandler,
-  isDataSource,
-  isLayoutProgram,
-} from '@constela/core';
-```
-
-## Error Handling
-
-### Error Codes
+## Error Codes
 
 | Code | Description |
 |------|-------------|
@@ -192,7 +177,6 @@ import {
 | `PARAM_UNDEFINED` | Undefined parameter |
 | `OPERATION_INVALID_FOR_TYPE` | Invalid operation for state type |
 | `OPERATION_MISSING_FIELD` | Missing required field for operation |
-| `OPERATION_UNKNOWN` | Unknown operation |
 | `ROUTE_NOT_DEFINED` | Route not defined |
 | `UNDEFINED_ROUTE_PARAM` | Undefined route parameter |
 | `LAYOUT_MISSING_SLOT` | Layout missing slot node |
@@ -201,17 +185,42 @@ import {
 | `DUPLICATE_SLOT_NAME` | Duplicate slot name |
 | `DUPLICATE_DEFAULT_SLOT` | Multiple default slots |
 | `SLOT_IN_LOOP` | Slot inside loop |
-| `INVALID_DATA_SOURCE` | Invalid data source |
 | `UNDEFINED_DATA_SOURCE` | Undefined data source |
-| `DATA_NOT_DEFINED` | Data field not defined |
-| `UNDEFINED_DATA` | Undefined data reference |
+| `UNDEFINED_IMPORT` | Undefined import reference |
 | `UNDEFINED_REF` | Undefined element ref |
 | `INVALID_STORAGE_OPERATION` | Invalid storage operation |
-| `INVALID_STORAGE_TYPE` | Invalid storage type |
-| `STORAGE_SET_MISSING_VALUE` | Storage set missing value |
 | `INVALID_CLIPBOARD_OPERATION` | Invalid clipboard operation |
-| `CLIPBOARD_WRITE_MISSING_VALUE` | Clipboard write missing value |
 | `INVALID_NAVIGATE_TARGET` | Invalid navigate target |
+
+## Internal API
+
+> For framework developers only.
+
+### validateAst
+
+```typescript
+import { validateAst } from '@constela/core';
+
+const result = validateAst(input);
+if (result.ok) {
+  console.log('Valid program:', result.program);
+} else {
+  console.error('Validation failed:', result.error);
+}
+```
+
+### Type Guards
+
+47 type guard functions for runtime type checking:
+
+```typescript
+import {
+  isLitExpr, isStateExpr, isVarExpr, isBinExpr,
+  isElementNode, isTextNode, isIfNode, isEachNode,
+  isSetStep, isUpdateStep, isFetchStep,
+  isNumberField, isStringField, isListField,
+} from '@constela/core';
+```
 
 ### ConstelaError
 
@@ -223,27 +232,6 @@ const error = new ConstelaError(
   'State "count" is not defined',
   '/view/children/0/props/onClick'
 );
-
-console.log(error.code);    // 'UNDEFINED_STATE'
-console.log(error.message); // 'State "count" is not defined'
-console.log(error.path);    // '/view/children/0/props/onClick'
-console.log(error.toJSON()); // { code, message, path }
-```
-
-## Program Structure
-
-```typescript
-interface Program {
-  version: '1.0';
-  route?: RouteDefinition;
-  imports?: Record<string, string>;
-  data?: Record<string, DataSource>;
-  lifecycle?: LifecycleHooks;
-  state: Record<string, StateField>;
-  actions: Action[];
-  view: ViewNode;
-  components?: Record<string, ComponentDefinition>;
-}
 ```
 
 ## License
