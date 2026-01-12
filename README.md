@@ -13,12 +13,33 @@ Constela is optimized for:
 
 ### Mental Model
 
-| | React / Next.js | Constela |
+| | Constela | React / Next.js |
 |---|---|---|
-| UI authoring | JavaScript / JSX | JSON DSL |
-| Execution | runtime-driven | compiler-driven |
-| State updates | arbitrary JS | declarative actions |
-| Errors | runtime exceptions | structured errors |
+| UI authoring | JSON DSL | JavaScript / JSX |
+| Execution | compiler-driven | runtime-driven |
+| State updates | declarative actions | arbitrary JS |
+| Errors | structured errors | runtime exceptions |
+
+### Measured Differences
+
+We rebuilt Constela's official website using both Constela and Next.js and compared the results.
+The measurements were repeated multiple times and showed consistent trends.
+
+| Metric           | Constela | Next.js | Difference |
+|------------------|----------|---------|------------|
+| Build time       | 2.2s     | 12.3s   | 5.6× faster |
+| node_modules size| 297MB    | 794MB   | 2.7× smaller |
+| Output size      | 14MB     | 72MB    | 5.1× smaller |
+| Deploy time      | 10s      | 50s     | 5.0× faster |
+
+This is not an accidental optimization, but a structural difference:
+
+- **Next.js** is a full application framework with routing analysis, bundling, optimization, and runtime setup.
+- **Constela** is a compiler-first UI language. JSON is validated and compiled directly into minimal output.
+
+> Note: Performance is not Constela's primary goal.
+> The core value lies in compile-time validation and safe UI generation.
+> These characteristics are a direct consequence of its design.
 
 ## Quick Start
 
