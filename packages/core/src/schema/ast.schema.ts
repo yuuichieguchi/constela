@@ -33,6 +33,10 @@ export const astSchema = {
     view: {
       $ref: '#/$defs/ViewNode',
     },
+    styles: {
+      type: 'object',
+      additionalProperties: { $ref: '#/$defs/StylePreset' },
+    },
     components: {
       type: 'object',
       additionalProperties: { $ref: '#/$defs/ComponentDef' },
@@ -51,6 +55,7 @@ export const astSchema = {
         { $ref: '#/$defs/CondExpr' },
         { $ref: '#/$defs/GetExpr' },
         { $ref: '#/$defs/IndexExpr' },
+        { $ref: '#/$defs/StyleExpr' },
       ],
     },
     LitExpr: {
@@ -152,6 +157,52 @@ export const astSchema = {
         expr: { type: 'string', const: 'index' },
         base: { $ref: '#/$defs/Expression' },
         key: { $ref: '#/$defs/Expression' },
+      },
+    },
+    StyleExpr: {
+      type: 'object',
+      required: ['expr', 'name'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'style' },
+        name: { type: 'string' },
+        variants: {
+          type: 'object',
+          additionalProperties: { $ref: '#/$defs/Expression' },
+        },
+      },
+    },
+
+    // ==================== Style Presets ====================
+    StylePreset: {
+      type: 'object',
+      required: ['base'],
+      additionalProperties: false,
+      properties: {
+        base: { type: 'string' },
+        variants: {
+          type: 'object',
+          additionalProperties: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+          },
+        },
+        defaultVariants: {
+          type: 'object',
+          additionalProperties: { type: 'string' },
+        },
+        compoundVariants: {
+          type: 'array',
+          items: { $ref: '#/$defs/CompoundVariant' },
+        },
+      },
+    },
+    CompoundVariant: {
+      type: 'object',
+      required: ['class'],
+      additionalProperties: { type: 'string' },
+      properties: {
+        class: { type: 'string' },
       },
     },
 

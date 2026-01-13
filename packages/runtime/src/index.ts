@@ -15,8 +15,8 @@ export { createStateStore } from './state/store.js';
 export type { StateStore } from './state/store.js';
 
 // Expression evaluation
-export { evaluate } from './expression/evaluator.js';
-export type { EvaluationContext } from './expression/evaluator.js';
+export { evaluate, evaluateStyle } from './expression/evaluator.js';
+export type { EvaluationContext, StylePreset } from './expression/evaluator.js';
 
 // Action execution
 export { executeAction } from './action/executor.js';

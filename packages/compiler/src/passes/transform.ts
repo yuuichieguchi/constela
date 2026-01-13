@@ -264,7 +264,8 @@ export type CompiledExpression =
   | CompiledDataExpr
   | CompiledRefExpr
   | CompiledIndexExpr
-  | CompiledParamExpr;
+  | CompiledParamExpr
+  | CompiledStyleExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -336,6 +337,12 @@ export interface CompiledParamExpr {
   expr: 'param';
   name: string;
   path?: string;
+}
+
+export interface CompiledStyleExpr {
+  expr: 'style';
+  name: string;
+  variants?: Record<string, CompiledExpression>;
 }
 
 // ==================== Compiled Event Handler ====================
@@ -493,6 +500,20 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         base: transformExpression(expr.base, ctx),
         key: transformExpression(expr.key, ctx),
       };
+
+    case 'style': {
+      const styleExpr: CompiledStyleExpr = {
+        expr: 'style',
+        name: expr.name,
+      };
+      if (expr.variants) {
+        styleExpr.variants = {};
+        for (const [key, value] of Object.entries(expr.variants)) {
+          styleExpr.variants[key] = transformExpression(value, ctx);
+        }
+      }
+      return styleExpr;
+    }
   }
 }
 

@@ -197,6 +197,13 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return undefined;
     }
 
+    case 'style': {
+      // Style expressions should be evaluated at runtime.
+      // For SSR, return empty string as styles are client-side concerns.
+      // TODO: Implement SSR style evaluation when StylePreset is available in SSRContext
+      return '';
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

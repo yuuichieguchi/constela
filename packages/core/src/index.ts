@@ -31,6 +31,7 @@ export type {
   ImportExpr,
   DataExpr,
   RefExpr,
+  StyleExpr,
   // State Fields
   StateField,
   NumberField,
@@ -68,6 +69,9 @@ export type {
   // Component Definition
   ParamDef,
   ComponentDef,
+  // Style Preset Types
+  StylePreset,
+  CompoundVariant,
   // Data Source Types
   DataSource,
   ComponentsRef,
@@ -112,6 +116,7 @@ export {
   isImportExpr,
   isDataExpr,
   isRefExpr,
+  isStyleExpr,
   isExpression,
   // Route Definition type guard
   isRouteDefinition,
@@ -157,11 +162,12 @@ export {
 } from './types/guards.js';
 
 // ==================== Error Types ====================
-export type { ErrorCode } from './types/error.js';
+export type { ErrorCode, ErrorOptions } from './types/error.js';
 
 export {
   ConstelaError,
   isConstelaError,
+  findSimilarNames,
   createSchemaError,
   createUndefinedStateError,
   createUndefinedActionError,
@@ -202,6 +208,9 @@ export {
   createInvalidClipboardOperationError,
   createClipboardWriteMissingValueError,
   createInvalidNavigateTargetError,
+  // Style error factories
+  createUndefinedStyleError,
+  createUndefinedVariantError,
 } from './types/error.js';
 
 // ==================== Validator ====================

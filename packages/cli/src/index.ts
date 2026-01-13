@@ -13,6 +13,8 @@
 
 import { Command } from 'commander';
 import { compileCommand } from './commands/compile.js';
+import { validateCommand } from './commands/validate.js';
+import { inspectCommand } from './commands/inspect.js';
 import { devCommand } from './commands/dev.js';
 import { buildCommand } from './commands/build.js';
 import { startCommand } from './commands/start.js';
@@ -29,7 +31,28 @@ program
   .description('Compile a Constela DSL file')
   .option('-o, --out <path>', 'Output file path')
   .option('--pretty', 'Pretty-print JSON output')
+  .option('--json', 'Output results as JSON')
+  .option('-w, --watch', 'Watch input file for changes and recompile')
+  .option('-v, --verbose', 'Show detailed progress during compilation')
+  .option('--debug', 'Show internal debug information')
   .action(compileCommand);
+
+program
+  .command('validate [input]')
+  .description('Validate Constela JSON files without compilation')
+  .option('-a, --all', 'Validate all JSON files in directory recursively')
+  .option('--json', 'Output results as JSON')
+  .action(validateCommand);
+
+program
+  .command('inspect <input>')
+  .description('Inspect Constela program structure')
+  .option('--state', 'Show only state')
+  .option('--actions', 'Show only actions')
+  .option('--components', 'Show only components')
+  .option('--view', 'Show only view tree')
+  .option('--json', 'Output as JSON')
+  .action(inspectCommand);
 
 program
   .command('dev')

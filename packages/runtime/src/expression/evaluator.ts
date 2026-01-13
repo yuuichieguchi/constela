@@ -14,6 +14,16 @@
 import type { StateStore } from '../state/store.js';
 import type { CompiledExpression } from '@constela/compiler';
 
+/**
+ * Style preset definition - matches @constela/core StylePreset
+ */
+export interface StylePreset {
+  base: string;
+  variants?: Record<string, Record<string, string>>;
+  defaultVariants?: Record<string, string>;
+  compoundVariants?: Array<Record<string, string> & { class: string }>;
+}
+
 export interface EvaluationContext {
   state: StateStore;
   locals: Record<string, unknown>;
@@ -24,6 +34,7 @@ export interface EvaluationContext {
   };
   imports?: Record<string, unknown>;
   refs?: Record<string, Element>;  // DOM element refs
+  styles?: Record<string, StylePreset>;  // Style presets for style expressions
 }
 
 export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unknown {
@@ -182,6 +193,9 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       return undefined;
     }
 
+    case 'style':
+      return evaluateStyle(expr, ctx);
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
@@ -312,4 +326,65 @@ function evaluateBinary(
     default:
       throw new Error('Unknown binary operator: ' + op);
   }
+}
+
+/**
+ * Style expression type for evaluateStyle
+ */
+interface StyleExprInput {
+  expr: 'style';
+  name: string;
+  variants?: Record<string, CompiledExpression>;
+}
+
+/**
+ * Evaluates a style expression to produce CSS class names
+ *
+ * @param expr - The style expression to evaluate
+ * @param ctx - The evaluation context containing styles presets
+ * @returns The computed CSS class string, or undefined if preset not found
+ */
+export function evaluateStyle(
+  expr: StyleExprInput,
+  ctx: EvaluationContext
+): string | undefined {
+  const preset = ctx.styles?.[expr.name];
+  if (!preset) return undefined;
+
+  let classes = preset.base;
+
+  // Apply variants in preset.variants key order for consistency
+  // For each variant key, use the expression value if specified, otherwise use default
+  if (preset.variants) {
+    for (const variantKey of Object.keys(preset.variants)) {
+      let variantValueStr: string | null = null;
+
+      // Check if variant is specified in expression
+      if (expr.variants?.[variantKey]) {
+        let variantValue: unknown;
+        try {
+          variantValue = evaluate(expr.variants[variantKey]!, ctx);
+        } catch {
+          // If evaluation fails (e.g., state doesn't exist), skip this variant
+          continue;
+        }
+        if (variantValue != null) {
+          variantValueStr = String(variantValue);
+        }
+      } else if (preset.defaultVariants?.[variantKey] !== undefined) {
+        // Use default variant if not specified in expression
+        variantValueStr = preset.defaultVariants[variantKey]!;
+      }
+
+      // Apply variant classes if we have a value
+      if (variantValueStr !== null) {
+        const variantClasses = preset.variants[variantKey]?.[variantValueStr];
+        if (variantClasses) {
+          classes += ' ' + variantClasses;
+        }
+      }
+    }
+  }
+
+  return classes.trim();
 }

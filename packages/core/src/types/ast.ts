@@ -195,7 +195,16 @@ export interface IndexExpr {
   key: Expression;
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr;
+/**
+ * Style expression - references a style preset with optional variant values
+ */
+export interface StyleExpr {
+  expr: 'style';
+  name: string;
+  variants?: Record<string, Expression>;
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr;
 
 // ==================== State Fields ====================
 
@@ -495,6 +504,26 @@ export interface ComponentDef {
   view: ViewNode;
 }
 
+// ==================== Style Preset ====================
+
+/**
+ * Compound variant - applies additional classes when multiple variants match
+ */
+export interface CompoundVariant {
+  [key: string]: string;
+  class: string;
+}
+
+/**
+ * Style preset - defines a reusable style with variants (CVA-like pattern)
+ */
+export interface StylePreset {
+  base: string;
+  variants?: Record<string, Record<string, string>>;
+  defaultVariants?: Record<string, string>;
+  compoundVariants?: CompoundVariant[];
+}
+
 // ==================== Data Source Types ====================
 
 /**
@@ -573,6 +602,7 @@ export interface Program {
   route?: RouteDefinition;
   imports?: Record<string, string>;  // External data references (e.g., { "navigation": "./data/nav.json" })
   data?: Record<string, DataSource>; // Build-time data sources
+  styles?: Record<string, StylePreset>;  // Style presets (CVA-like pattern)
   lifecycle?: LifecycleHooks;        // Lifecycle hooks for component/page events
   state: Record<string, StateField>;
   actions: ActionDefinition[];

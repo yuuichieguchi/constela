@@ -48,8 +48,12 @@ import {
   createClipboardWriteMissingValueError,
   createInvalidNavigateTargetError,
   createUndefinedRefError,
+  createUndefinedStyleError,
+  createUndefinedVariantError,
+  findSimilarNames,
   isEventHandler,
   isDataSource,
+  isStyleExpr,
   DATA_SOURCE_TYPES,
   DATA_TRANSFORMS,
   STORAGE_OPERATIONS,
@@ -60,6 +64,7 @@ import {
   type CallStep,
   type SubscribeStep,
   type DisposeStep,
+  type StylePreset,
 } from '@constela/core';
 
 // ==================== Types ====================
@@ -72,6 +77,7 @@ export interface AnalysisContext {
   importNames: Set<string>;
   dataNames: Set<string>;
   refNames: Set<string>;
+  styleNames: Set<string>;
 }
 
 /**
@@ -105,6 +111,22 @@ export type { Program };
  */
 function buildPath(base: string, ...segments: (string | number)[]): string {
   return segments.reduce<string>((p, s) => `${p}/${s}`, base);
+}
+
+/**
+ * Creates error options with suggestion and available names
+ */
+function createErrorOptionsWithSuggestion(
+  name: string,
+  availableNames: Set<string>
+): { suggestion: string | undefined; context: { availableNames: string[] } } {
+  const availableNamesArray = Array.from(availableNames);
+  const similarNames = findSimilarNames(name, availableNames);
+  const suggestion = similarNames.length > 0 ? `Did you mean '${similarNames[0]}'?` : undefined;
+  return {
+    suggestion,
+    context: { availableNames: availableNamesArray },
+  };
 }
 
 /**
@@ -178,7 +200,7 @@ function collectRefs(node: ViewNode): Set<string> {
 }
 
 /**
- * Collects state, action, component names, route params, import names, data names, and ref names from the AST
+ * Collects state, action, component names, route params, import names, data names, ref names, and style names from the AST
  */
 function collectContext(programAst: Program): AnalysisContext {
   const stateNames = new Set<string>(Object.keys(programAst.state));
@@ -196,8 +218,11 @@ function collectContext(programAst: Program): AnalysisContext {
     programAst.data ? Object.keys(programAst.data) : []
   );
   const refNames = collectRefs(programAst.view);
+  const styleNames = new Set<string>(
+    programAst.styles ? Object.keys(programAst.styles) : []
+  );
 
-  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames, refNames };
+  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames, refNames, styleNames };
 }
 
 // ==================== Duplicate Action Detection ====================
@@ -238,7 +263,8 @@ function validateExpression(
   switch (expr.expr) {
     case 'state':
       if (!context.stateNames.has(expr.name)) {
-        errors.push(createUndefinedStateError(expr.name, path));
+        const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.stateNames);
+        errors.push(createUndefinedStateError(expr.name, path, errorOptions));
       }
       break;
 
@@ -321,6 +347,54 @@ function validateExpression(
       errors.push(...validateExpression(expr.base, buildPath(path, 'base'), context, scope, paramScope));
       // path is a string, no validation needed
       break;
+
+    case 'style':
+      errors.push(...validateStyleExpression(expr, path, context, scope, paramScope));
+      break;
+  }
+
+  return errors;
+}
+
+/**
+ * Validates a style expression for style name and variant key references
+ */
+function validateStyleExpression(
+  expr: { expr: 'style'; name: string; variants?: Record<string, Expression> },
+  path: string,
+  context: AnalysisContext,
+  scope: Set<string>,
+  paramScope?: ParamScope
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  // Check if style name exists
+  if (!context.styleNames.has(expr.name)) {
+    const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.styleNames);
+    errors.push(createUndefinedStyleError(expr.name, path, errorOptions));
+    // Don't validate variants if style doesn't exist
+    return errors;
+  }
+
+  // Validate variant keys if present
+  if (expr.variants) {
+    const stylePreset = ast.styles?.[expr.name] as StylePreset | undefined;
+    const availableVariants = new Set<string>(
+      stylePreset?.variants ? Object.keys(stylePreset.variants) : []
+    );
+
+    for (const [variantKey, variantValue] of Object.entries(expr.variants)) {
+      const variantPath = buildPath(path, 'variants', variantKey);
+
+      // Check if variant key exists in the style preset
+      if (!availableVariants.has(variantKey)) {
+        const errorOptions = createErrorOptionsWithSuggestion(variantKey, availableVariants);
+        errors.push(createUndefinedVariantError(variantKey, expr.name, variantPath, errorOptions));
+      }
+
+      // Validate the variant value expression
+      errors.push(...validateExpression(variantValue, variantPath, context, scope, paramScope));
+    }
   }
 
   return errors;
@@ -344,7 +418,8 @@ function validateActionStep(
   switch (step.do) {
     case 'set':
       if (!context.stateNames.has(step.target)) {
-        errors.push(createUndefinedStateError(step.target, buildPath(path, 'target')));
+        const errorOptions = createErrorOptionsWithSuggestion(step.target, context.stateNames);
+        errors.push(createUndefinedStateError(step.target, buildPath(path, 'target'), errorOptions));
       }
       // Validate state references only (skip var validation - runtime provided)
       errors.push(
@@ -354,7 +429,8 @@ function validateActionStep(
 
     case 'update': {
       if (!context.stateNames.has(step.target)) {
-        errors.push(createUndefinedStateError(step.target, buildPath(path, 'target')));
+        const errorOptions = createErrorOptionsWithSuggestion(step.target, context.stateNames);
+        errors.push(createUndefinedStateError(step.target, buildPath(path, 'target'), errorOptions));
       } else {
         // Validate operation-type compatibility
         const stateField = ast.state[step.target];
@@ -601,7 +677,8 @@ function validateActionStep(
       );
       // Validate action reference
       if (!context.actionNames.has(subscribeStep.action)) {
-        errors.push(createUndefinedActionError(subscribeStep.action, buildPath(path, 'action')));
+        const errorOptions = createErrorOptionsWithSuggestion(subscribeStep.action, context.actionNames);
+        errors.push(createUndefinedActionError(subscribeStep.action, buildPath(path, 'action'), errorOptions));
       }
       break;
     }
@@ -633,7 +710,8 @@ function validateExpressionStateOnly(
   switch (expr.expr) {
     case 'state':
       if (!context.stateNames.has(expr.name)) {
-        errors.push(createUndefinedStateError(expr.name, path));
+        const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.stateNames);
+        errors.push(createUndefinedStateError(expr.name, path, errorOptions));
       }
       break;
 
@@ -705,6 +783,53 @@ function validateExpressionStateOnly(
     case 'get':
       errors.push(...validateExpressionStateOnly(expr.base, buildPath(path, 'base'), context));
       break;
+
+    case 'style':
+      errors.push(...validateStyleExpressionStateOnly(expr, path, context));
+      break;
+  }
+
+  return errors;
+}
+
+/**
+ * Validates a style expression for state references only (ignores var references)
+ * Used in action steps where var references are runtime-provided
+ */
+function validateStyleExpressionStateOnly(
+  expr: { expr: 'style'; name: string; variants?: Record<string, Expression> },
+  path: string,
+  context: AnalysisContext
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  // Check if style name exists
+  if (!context.styleNames.has(expr.name)) {
+    const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.styleNames);
+    errors.push(createUndefinedStyleError(expr.name, path, errorOptions));
+    // Don't validate variants if style doesn't exist
+    return errors;
+  }
+
+  // Validate variant keys if present
+  if (expr.variants) {
+    const stylePreset = ast.styles?.[expr.name] as StylePreset | undefined;
+    const availableVariants = new Set<string>(
+      stylePreset?.variants ? Object.keys(stylePreset.variants) : []
+    );
+
+    for (const [variantKey, variantValue] of Object.entries(expr.variants)) {
+      const variantPath = buildPath(path, 'variants', variantKey);
+
+      // Check if variant key exists in the style preset
+      if (!availableVariants.has(variantKey)) {
+        const errorOptions = createErrorOptionsWithSuggestion(variantKey, availableVariants);
+        errors.push(createUndefinedVariantError(variantKey, expr.name, variantPath, errorOptions));
+      }
+
+      // Validate the variant value expression (state refs only)
+      errors.push(...validateExpressionStateOnly(variantValue, variantPath, context));
+    }
   }
 
   return errors;
@@ -727,7 +852,8 @@ function validateExpressionInEventPayload(
   switch (expr.expr) {
     case 'state':
       if (!context.stateNames.has(expr.name)) {
-        errors.push(createUndefinedStateError(expr.name, path));
+        const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.stateNames);
+        errors.push(createUndefinedStateError(expr.name, path, errorOptions));
       }
       break;
 
@@ -822,6 +948,53 @@ function validateExpressionInEventPayload(
         ...validateExpressionInEventPayload(expr.base, buildPath(path, 'base'), context, scope)
       );
       break;
+
+    case 'style':
+      errors.push(...validateStyleExpressionInEventPayload(expr, path, context, scope));
+      break;
+  }
+
+  return errors;
+}
+
+/**
+ * Validates a style expression in event handler payloads
+ */
+function validateStyleExpressionInEventPayload(
+  expr: { expr: 'style'; name: string; variants?: Record<string, Expression> },
+  path: string,
+  context: AnalysisContext,
+  scope: Set<string>
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  // Check if style name exists
+  if (!context.styleNames.has(expr.name)) {
+    const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.styleNames);
+    errors.push(createUndefinedStyleError(expr.name, path, errorOptions));
+    // Don't validate variants if style doesn't exist
+    return errors;
+  }
+
+  // Validate variant keys if present
+  if (expr.variants) {
+    const stylePreset = ast.styles?.[expr.name] as StylePreset | undefined;
+    const availableVariants = new Set<string>(
+      stylePreset?.variants ? Object.keys(stylePreset.variants) : []
+    );
+
+    for (const [variantKey, variantValue] of Object.entries(expr.variants)) {
+      const variantPath = buildPath(path, 'variants', variantKey);
+
+      // Check if variant key exists in the style preset
+      if (!availableVariants.has(variantKey)) {
+        const errorOptions = createErrorOptionsWithSuggestion(variantKey, availableVariants);
+        errors.push(createUndefinedVariantError(variantKey, expr.name, variantPath, errorOptions));
+      }
+
+      // Validate the variant value expression
+      errors.push(...validateExpressionInEventPayload(variantValue, variantPath, context, scope));
+    }
   }
 
   return errors;
@@ -860,7 +1033,8 @@ function validateViewNode(
           if (isEventHandler(propValue)) {
             // Check action reference
             if (!context.actionNames.has(propValue.action)) {
-              errors.push(createUndefinedActionError(propValue.action, propPath));
+              const errorOptions = createErrorOptionsWithSuggestion(propValue.action, context.actionNames);
+              errors.push(createUndefinedActionError(propValue.action, propPath, errorOptions));
             }
             // Check payload expression if present
             // Note: Event handler payloads can reference DOM event properties (e.g., event.target.value)
@@ -931,7 +1105,8 @@ function validateViewNode(
     case 'component': {
       // Check if component exists
       if (!context.componentNames.has(node.name)) {
-        errors.push(createComponentNotFoundError(node.name, path));
+        const errorOptions = createErrorOptionsWithSuggestion(node.name, context.componentNames);
+        errors.push(createComponentNotFoundError(node.name, path, errorOptions));
       } else {
         // Component exists, validate props
         const componentDef = ast.components?.[node.name];
@@ -1212,7 +1387,8 @@ function validateLifecycleHooks(
   for (const hook of hooks) {
     const actionName = lifecycle[hook];
     if (actionName && !context.actionNames.has(actionName)) {
-      errors.push(createUndefinedActionError(actionName, `/lifecycle/${hook}`));
+      const errorOptions = createErrorOptionsWithSuggestion(actionName, context.actionNames);
+      errors.push(createUndefinedActionError(actionName, `/lifecycle/${hook}`, errorOptions));
     }
   }
 

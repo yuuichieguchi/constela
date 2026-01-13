@@ -12,6 +12,7 @@ import {
   createUndefinedActionError,
   createDuplicateActionError,
   createUnsupportedVersionError,
+  findSimilarNames,
 } from '../types/error.js';
 import type { Program } from '../types/ast.js';
 import { BINARY_OPERATORS, UPDATE_OPERATIONS, HTTP_METHODS } from '../types/ast.js';
@@ -39,7 +40,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -201,7 +202,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get' };
+    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style' };
   }
 
   switch (exprType) {
@@ -283,6 +284,22 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         return { path: path + '/path', message: 'path is required' };
       }
       return validateExpression(expr['base'], path + '/base');
+
+    case 'style':
+      if (typeof expr['name'] !== 'string') {
+        return { path: path + '/name', message: 'name is required' };
+      }
+      // Validate variants if present - each variant value must be an Expression
+      if ('variants' in expr && expr['variants'] !== undefined) {
+        if (!isObject(expr['variants'])) {
+          return { path: path + '/variants', message: 'variants must be an object' };
+        }
+        for (const [variantKey, variantValue] of Object.entries(expr['variants'])) {
+          const error = validateExpression(variantValue, path + '/variants/' + variantKey);
+          if (error) return error;
+        }
+      }
+      break;
   }
 
   return null;
@@ -460,6 +477,76 @@ function validateComponentDef(def: unknown, path: string): ValidationError | nul
 }
 
 /**
+ * Validates a StylePreset and returns the first error found
+ */
+function validateStylePreset(preset: unknown, path: string): ValidationError | null {
+  if (!isObject(preset)) {
+    return { path, message: 'must be an object' };
+  }
+
+  // base is required and must be a string
+  if (!('base' in preset)) {
+    return { path: path + '/base', message: 'base is required' };
+  }
+  if (typeof preset['base'] !== 'string') {
+    return { path: path + '/base', message: 'base must be a string' };
+  }
+
+  // Validate variants if present
+  if ('variants' in preset && preset['variants'] !== undefined) {
+    if (!isObject(preset['variants'])) {
+      return { path: path + '/variants', message: 'variants must be an object' };
+    }
+    for (const [variantKey, variantOptions] of Object.entries(preset['variants'])) {
+      if (!isObject(variantOptions)) {
+        return { path: path + '/variants/' + variantKey, message: 'variant options must be an object' };
+      }
+      for (const [optionKey, optionValue] of Object.entries(variantOptions)) {
+        if (typeof optionValue !== 'string') {
+          return { path: path + '/variants/' + variantKey + '/' + optionKey, message: 'variant value must be a string' };
+        }
+      }
+    }
+  }
+
+  // Validate defaultVariants if present
+  if ('defaultVariants' in preset && preset['defaultVariants'] !== undefined) {
+    if (!isObject(preset['defaultVariants'])) {
+      return { path: path + '/defaultVariants', message: 'defaultVariants must be an object' };
+    }
+    // Get variant keys for validation
+    const variantKeys = isObject(preset['variants']) ? Object.keys(preset['variants']) : [];
+    for (const [key, value] of Object.entries(preset['defaultVariants'])) {
+      if (typeof value !== 'string') {
+        return { path: path + '/defaultVariants/' + key, message: 'default variant value must be a string' };
+      }
+      // Check if the key exists in variants
+      if (!variantKeys.includes(key)) {
+        return { path: path + '/defaultVariants/' + key, message: `'${key}' is not a defined variant` };
+      }
+    }
+  }
+
+  // Validate compoundVariants if present
+  if ('compoundVariants' in preset && preset['compoundVariants'] !== undefined) {
+    if (!Array.isArray(preset['compoundVariants'])) {
+      return { path: path + '/compoundVariants', message: 'compoundVariants must be an array' };
+    }
+    for (let i = 0; i < preset['compoundVariants'].length; i++) {
+      const compound = preset['compoundVariants'][i];
+      if (!isObject(compound)) {
+        return { path: path + '/compoundVariants/' + i, message: 'compound variant must be an object' };
+      }
+      if (typeof compound['class'] !== 'string') {
+        return { path: path + '/compoundVariants/' + i + '/class', message: 'class is required' };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Custom validation for the entire AST
  */
 function customValidateAst(input: Record<string, unknown>): ValidationError | null {
@@ -467,6 +554,14 @@ function customValidateAst(input: Record<string, unknown>): ValidationError | nu
   if (isObject(input['state'])) {
     for (const [name, field] of Object.entries(input['state'])) {
       const error = validateStateField(field, '/state/' + name);
+      if (error) return error;
+    }
+  }
+
+  // Validate styles
+  if ('styles' in input && isObject(input['styles'])) {
+    for (const [name, preset] of Object.entries(input['styles'])) {
+      const error = validateStylePreset(preset, '/styles/' + name);
       if (error) return error;
     }
   }
@@ -508,6 +603,22 @@ interface SemanticContext {
   actionNames: Set<string>;
 }
 
+/**
+ * Creates error options with suggestion and available names
+ */
+function createErrorOptionsWithSuggestion(
+  name: string,
+  availableNames: Set<string>
+): { suggestion: string | undefined; context: { availableNames: string[] } } {
+  const availableNamesArray = Array.from(availableNames);
+  const similarNames = findSimilarNames(name, availableNames);
+  const suggestion = similarNames.length > 0 ? `Did you mean '${similarNames[0]}'?` : undefined;
+  return {
+    suggestion,
+    context: { availableNames: availableNamesArray },
+  };
+}
+
 function collectSemanticContext(ast: Record<string, unknown>): SemanticContext {
   const stateNames = new Set<string>();
   const actionNames = new Set<string>();
@@ -541,7 +652,8 @@ function validateStateReferences(
   // Check state expressions
   if (node['expr'] === 'state' && typeof node['name'] === 'string') {
     if (!stateNames.has(node['name'])) {
-      return createUndefinedStateError(node['name'], path + '/' + node['name']);
+      const errorOptions = createErrorOptionsWithSuggestion(node['name'], stateNames);
+      return createUndefinedStateError(node['name'], path + '/' + node['name'], errorOptions);
     }
   }
 
@@ -578,7 +690,8 @@ function validateActionTargets(
       // Check set and update targets
       if ((step['do'] === 'set' || step['do'] === 'update') && typeof step['target'] === 'string') {
         if (!stateNames.has(step['target'])) {
-          return createUndefinedStateError(step['target'], '/actions/' + i + '/steps/' + j + '/target');
+          const errorOptions = createErrorOptionsWithSuggestion(step['target'], stateNames);
+          return createUndefinedStateError(step['target'], '/actions/' + i + '/steps/' + j + '/target', errorOptions);
         }
       }
     }
@@ -600,7 +713,8 @@ function validateActionReferences(
       if (isObject(propValue) && 'event' in propValue && 'action' in propValue) {
         const actionName = propValue['action'];
         if (typeof actionName === 'string' && !actionNames.has(actionName)) {
-          return createUndefinedActionError(actionName, path + '/props/' + propName);
+          const errorOptions = createErrorOptionsWithSuggestion(actionName, actionNames);
+          return createUndefinedActionError(actionName, path + '/props/' + propName, errorOptions);
         }
       }
     }

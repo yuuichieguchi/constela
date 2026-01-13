@@ -52,6 +52,7 @@ import {
   type DisposeStep,
   type RefExpr,
   type IndexExpr,
+  type StyleExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
@@ -253,6 +254,20 @@ export function isIndexExpr(value: unknown): value is IndexExpr {
 }
 
 /**
+ * Checks if value is a style expression
+ */
+export function isStyleExpr(value: unknown): value is StyleExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'style') return false;
+  if (typeof value['name'] !== 'string') return false;
+  // Validate variants if present
+  if ('variants' in value && value['variants'] !== undefined) {
+    if (!isObject(value['variants'])) return false;
+  }
+  return true;
+}
+
+/**
  * Checks if value is a data source
  */
 export function isDataSource(value: unknown): value is DataSource {
@@ -327,7 +342,8 @@ export function isExpression(value: unknown): value is Expression {
     isImportExpr(value) ||
     isDataExpr(value) ||
     isRefExpr(value) ||
-    isIndexExpr(value)
+    isIndexExpr(value) ||
+    isStyleExpr(value)
   );
 }
 

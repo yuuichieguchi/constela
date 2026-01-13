@@ -49,7 +49,25 @@ export type ErrorCode =
   | 'STORAGE_SET_MISSING_VALUE'
   | 'INVALID_CLIPBOARD_OPERATION'
   | 'CLIPBOARD_WRITE_MISSING_VALUE'
-  | 'INVALID_NAVIGATE_TARGET';
+  | 'INVALID_NAVIGATE_TARGET'
+  // Style-related error codes
+  | 'UNDEFINED_STYLE'
+  | 'UNDEFINED_VARIANT';
+
+// ==================== Error Options Interface ====================
+
+/**
+ * Options for creating enhanced ConstelaError instances
+ */
+export interface ErrorOptions {
+  severity?: 'error' | 'warning' | 'info' | undefined;
+  suggestion?: string | undefined;
+  expected?: string | undefined;
+  actual?: string | undefined;
+  context?: {
+    availableNames?: string[] | undefined;
+  } | undefined;
+}
 
 // ==================== ConstelaError Class ====================
 
@@ -59,12 +77,22 @@ export type ErrorCode =
 export class ConstelaError extends Error {
   public readonly code: ErrorCode;
   public readonly path: string | undefined;
+  public readonly severity: 'error' | 'warning' | 'info';
+  public readonly suggestion: string | undefined;
+  public readonly expected: string | undefined;
+  public readonly actual: string | undefined;
+  public readonly context: { availableNames?: string[] | undefined } | undefined;
 
-  constructor(code: ErrorCode, message: string, path?: string | undefined) {
+  constructor(code: ErrorCode, message: string, path?: string | undefined, options?: ErrorOptions) {
     super(message);
     this.name = 'ConstelaError';
     this.code = code;
     this.path = path;
+    this.severity = options?.severity ?? 'error';
+    this.suggestion = options?.suggestion;
+    this.expected = options?.expected;
+    this.actual = options?.actual;
+    this.context = options?.context;
 
     // Maintain proper prototype chain
     Object.setPrototypeOf(this, ConstelaError.prototype);
@@ -73,11 +101,25 @@ export class ConstelaError extends Error {
   /**
    * Converts the error to a JSON-serializable object
    */
-  toJSON(): { code: ErrorCode; message: string; path: string | undefined } {
+  toJSON(): {
+    code: ErrorCode;
+    message: string;
+    path: string | undefined;
+    severity: 'error' | 'warning' | 'info';
+    suggestion: string | undefined;
+    expected: string | undefined;
+    actual: string | undefined;
+    context: { availableNames?: string[] | undefined } | undefined;
+  } {
     return {
       code: this.code,
       message: this.message,
       path: this.path,
+      severity: this.severity,
+      suggestion: this.suggestion,
+      expected: this.expected,
+      actual: this.actual,
+      context: this.context,
     };
   }
 }
@@ -103,22 +145,24 @@ export function createSchemaError(message: string, path?: string): ConstelaError
 /**
  * Creates an undefined state reference error
  */
-export function createUndefinedStateError(stateName: string, path?: string): ConstelaError {
+export function createUndefinedStateError(stateName: string, path?: string, options?: ErrorOptions): ConstelaError {
   return new ConstelaError(
     'UNDEFINED_STATE',
     `Undefined state reference: '${stateName}' is not defined in state`,
-    path
+    path,
+    options
   );
 }
 
 /**
  * Creates an undefined action reference error
  */
-export function createUndefinedActionError(actionName: string, path?: string): ConstelaError {
+export function createUndefinedActionError(actionName: string, path?: string, options?: ErrorOptions): ConstelaError {
   return new ConstelaError(
     'UNDEFINED_ACTION',
     `Undefined action reference: '${actionName}' is not defined in actions`,
-    path
+    path,
+    options
   );
 }
 
@@ -158,11 +202,12 @@ export function createUnsupportedVersionError(version: string): ConstelaError {
 /**
  * Creates a component not found error
  */
-export function createComponentNotFoundError(name: string, path?: string): ConstelaError {
+export function createComponentNotFoundError(name: string, path?: string, options?: ErrorOptions): ConstelaError {
   return new ConstelaError(
     'COMPONENT_NOT_FOUND',
     `Component '${name}' is not defined in components`,
-    path
+    path,
+    options
   );
 }
 
@@ -512,4 +557,118 @@ export function createInvalidNavigateTargetError(target: string, path?: string):
     `Invalid navigate target: '${target}'. Valid targets are: _self, _blank`,
     path
   );
+}
+
+// ==================== Style Error Factory Functions ====================
+
+/**
+ * Creates an undefined style reference error
+ */
+export function createUndefinedStyleError(styleName: string, path?: string, options?: ErrorOptions): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_STYLE',
+    `Undefined style reference: '${styleName}' is not defined in styles`,
+    path,
+    options
+  );
+}
+
+/**
+ * Creates an undefined variant key error
+ */
+export function createUndefinedVariantError(
+  variantKey: string,
+  styleName: string,
+  path?: string,
+  options?: ErrorOptions
+): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_VARIANT',
+    `Undefined variant key: '${variantKey}' is not defined in style '${styleName}'`,
+    path,
+    options
+  );
+}
+
+// ==================== Utility Functions ====================
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ * The Levenshtein distance is the minimum number of single-character edits
+ * (insertions, deletions, or substitutions) required to change one string into the other.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const aLen = a.length;
+  const bLen = b.length;
+
+  // Use a 1D array for space optimization (only need current and previous row)
+  let prev: number[] = Array.from({ length: bLen + 1 }, (_, j) => j);
+  let curr: number[] = new Array<number>(bLen + 1).fill(0);
+
+  for (let i = 1; i <= aLen; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= bLen; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      // TypeScript strict mode: array access values are guaranteed to exist
+      // because we only access indices within the initialized array bounds
+      const deletion = (prev[j] ?? 0) + 1;
+      const insertion = (curr[j - 1] ?? 0) + 1;
+      const substitution = (prev[j - 1] ?? 0) + cost;
+      curr[j] = Math.min(deletion, insertion, substitution);
+    }
+    // Swap prev and curr
+    [prev, curr] = [curr, prev];
+  }
+
+  return prev[bLen] ?? 0;
+}
+
+/**
+ * Finds similar names from a set of candidates using Levenshtein distance
+ * and prefix matching.
+ *
+ * Matching strategies:
+ * 1. Levenshtein distance <= maxDistance (default: 2)
+ * 2. Target is a prefix of candidate with minimum 3 characters
+ *
+ * @param target - The target string to find similar names for
+ * @param candidates - A set of candidate names to search through
+ * @param maxDistance - Maximum Levenshtein distance to consider (default: 2)
+ * @returns Array of similar names sorted by distance (closest first)
+ */
+export function findSimilarNames(
+  target: string,
+  candidates: Set<string>,
+  maxDistance: number = 2
+): string[] {
+  const results: Array<{ name: string; distance: number }> = [];
+
+  for (const candidate of candidates) {
+    const distance = levenshteinDistance(target, candidate);
+
+    // Strategy 1: Levenshtein distance within threshold
+    if (distance <= maxDistance) {
+      results.push({ name: candidate, distance });
+      continue;
+    }
+
+    // Strategy 2: Prefix matching - target is a prefix of candidate
+    // Requires minimum 3 characters to avoid too many false positives
+    if (target.length >= 3 && candidate.toLowerCase().startsWith(target.toLowerCase())) {
+      // Use a pseudo-distance based on how much more characters the candidate has
+      // This ensures prefix matches are considered but ranked appropriately
+      const prefixDistance = candidate.length - target.length;
+      results.push({ name: candidate, distance: prefixDistance });
+    }
+  }
+
+  // Sort by distance (closest first), then alphabetically for same distance
+  results.sort((a, b) => {
+    if (a.distance !== b.distance) {
+      return a.distance - b.distance;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return results.map((r) => r.name);
 }
