@@ -30,6 +30,10 @@ constela compile <input> [options]
 **Options:**
 - `-o, --out <path>` - Output file path
 - `--pretty` - Pretty-print JSON output
+- `--json` - Output results as JSON (for tooling/AI integration)
+- `-w, --watch` - Watch input file and recompile on changes
+- `-v, --verbose` - Show detailed compilation progress
+- `--debug` - Show internal debug information
 
 **Examples:**
 
@@ -42,6 +46,114 @@ constela compile app.json --out dist/app.compiled.json
 
 # Pretty-print output
 constela compile app.json --pretty
+
+# JSON output for AI tools
+constela compile app.json --json
+
+# Watch mode for development
+constela compile app.json --watch
+
+# Verbose output with timing
+constela compile app.json --verbose
+# Output:
+# [1/3] Validating schema... OK (2ms)
+# [2/3] Analyzing semantics... OK (1ms)
+# [3/3] Transforming AST... OK (0ms)
+# Compilation successful (5ms total)
+
+# Debug information
+constela compile app.json --debug
+# Output:
+# [DEBUG] Input file: app.json (1234 bytes)
+# [DEBUG] Parse time: 1ms
+# [DEBUG] Validate pass: 15 nodes validated (2ms)
+# ...
+```
+
+### constela validate
+
+Validates Constela JSON files without full compilation (faster feedback).
+
+```bash
+constela validate [input] [options]
+```
+
+**Arguments:**
+- `[input]` - Input DSL file (JSON) or directory with `--all`
+
+**Options:**
+- `-a, --all` - Validate all JSON files in directory recursively
+- `--json` - Output results as JSON
+
+**Examples:**
+
+```bash
+# Validate single file
+constela validate app.json
+
+# Validate all JSON files in directory
+constela validate --all src/routes/
+
+# JSON output for tooling
+constela validate app.json --json
+```
+
+**Error Output with Suggestions:**
+
+```
+Error [UNDEFINED_STATE] at /view/children/0/value/name
+
+  Undefined state reference: 'count'
+
+  Did you mean 'counter'?
+```
+
+### constela inspect
+
+Inspects Constela program structure without compilation.
+
+```bash
+constela inspect <input> [options]
+```
+
+**Arguments:**
+- `<input>` - Input DSL file (JSON)
+
+**Options:**
+- `--state` - Show only state information
+- `--actions` - Show only actions information
+- `--components` - Show only components information
+- `--view` - Show only view tree
+- `--json` - Output as JSON
+
+**Examples:**
+
+```bash
+# Show all program structure
+constela inspect app.json
+
+# Show only state
+constela inspect app.json --state
+
+# JSON output
+constela inspect app.json --json
+```
+
+**Output:**
+
+```
+State (2 fields):
+  count: number = 0
+  items: list = []
+
+Actions (2):
+  increment: update count +1
+  addItem: push to items
+
+View Tree:
+  element<div>
+    text: state.count
+    element<button> onClick=increment
 ```
 
 ### constela dev

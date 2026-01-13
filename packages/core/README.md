@@ -42,7 +42,7 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 
 ## Expression Types
 
-12 expression types for constrained computation:
+13 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -58,6 +58,7 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 | `import` | `{ "expr": "import", "name": "config" }` | External data |
 | `data` | `{ "expr": "data", "name": "posts" }` | Build-time data |
 | `ref` | `{ "expr": "ref", "name": "inputEl" }` | DOM element ref |
+| `style` | `{ "expr": "style", "name": "button", "variants": {...} }` | Style reference |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
@@ -160,6 +161,54 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 }
 ```
 
+## Style System
+
+Define reusable style presets with variants (similar to CVA/Tailwind Variants):
+
+```json
+{
+  "styles": {
+    "button": {
+      "base": "px-4 py-2 rounded font-medium",
+      "variants": {
+        "variant": {
+          "primary": "bg-blue-500 text-white",
+          "secondary": "bg-gray-200 text-gray-800"
+        },
+        "size": {
+          "sm": "text-sm",
+          "md": "text-base",
+          "lg": "text-lg"
+        }
+      },
+      "defaultVariants": {
+        "variant": "primary",
+        "size": "md"
+      }
+    }
+  }
+}
+```
+
+Use styles with `StyleExpr`:
+
+```json
+{
+  "kind": "element",
+  "tag": "button",
+  "props": {
+    "className": {
+      "expr": "style",
+      "name": "button",
+      "variants": {
+        "variant": { "expr": "lit", "value": "primary" },
+        "size": { "expr": "state", "name": "buttonSize" }
+      }
+    }
+  }
+}
+```
+
 ## Error Codes
 
 | Code | Description |
@@ -191,6 +240,20 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 | `INVALID_STORAGE_OPERATION` | Invalid storage operation |
 | `INVALID_CLIPBOARD_OPERATION` | Invalid clipboard operation |
 | `INVALID_NAVIGATE_TARGET` | Invalid navigate target |
+| `UNDEFINED_STYLE` | Reference to undefined style preset |
+| `UNDEFINED_VARIANT` | Reference to undefined style variant |
+
+### Error Suggestions
+
+Errors for undefined references include "Did you mean?" suggestions using Levenshtein distance:
+
+```typescript
+import { findSimilarNames } from '@constela/core';
+
+const candidates = new Set(['counter', 'items', 'query']);
+const similar = findSimilarNames('count', candidates);
+// Returns: ['counter'] - similar names within distance 2
+```
 
 ## Internal API
 

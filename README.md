@@ -800,13 +800,14 @@ export default { fetch: adapter.fetch };
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `@constela/core` | 0.7.0 | AST types, JSON Schema, validator, 47 type guards, error codes |
-| `@constela/compiler` | 0.7.1 | 3-pass compiler: validate → analyze → transform |
-| `@constela/runtime` | 0.10.3 | DOM renderer, hydration, reactive signals, Markdown/Code support |
-| `@constela/router` | 8.0.0 | History API routing, dynamic params, catch-all routes |
-| `@constela/server` | 3.0.1 | SSR with Shiki dual-theme syntax highlighting |
-| `@constela/start` | 1.2.22 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
-| `@constela/cli` | 0.3.29 | CLI: compile, dev, build, start commands |
+| `@constela/core` | 0.8.0 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
+| `@constela/compiler` | 0.8.0 | 3-pass compiler: validate → analyze → transform, Style analysis |
+| `@constela/runtime` | 0.11.0 | DOM renderer, hydration, reactive signals, Style evaluation |
+| `@constela/router` | 8.0.1 | History API routing, dynamic params, catch-all routes |
+| `@constela/server` | 3.0.2 | SSR with Shiki dual-theme syntax highlighting |
+| `@constela/start` | 1.2.24 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/cli` | 0.4.0 | CLI: compile, dev, build, start, validate, inspect commands |
+| `@constela/builder` | 0.1.0 | Type-safe builders for programmatic AST construction |
 
 See each package's README for detailed API documentation.
 
@@ -821,6 +822,35 @@ constela compile app.json --out dist/app.compiled.json
 
 # Pretty-print output
 constela compile app.json --pretty
+
+# JSON output for AI tools
+constela compile app.json --json
+
+# Watch mode - recompile on file changes
+constela compile app.json --watch
+
+# Verbose output with timing
+constela compile app.json --verbose
+
+# Fast validation without compilation
+constela validate app.json
+constela validate --all src/routes/
+
+# Inspect program structure
+constela inspect app.json
+constela inspect app.json --state --json
+```
+
+### Error Messages with Suggestions
+
+The CLI provides helpful error messages with "Did you mean?" suggestions:
+
+```
+Error [UNDEFINED_STATE] at /view/children/0/value/name
+
+  Undefined state reference: 'count'
+
+  Did you mean 'counter'?
 ```
 
 ## API Usage
@@ -998,8 +1028,19 @@ pnpm test
 
 ## Roadmap
 
-- [ ] Style system integration
-- [ ] TypeScript builder API
+### Completed
+
+- [x] Style system integration (`styles`, `StyleExpr`)
+- [x] TypeScript builder API (`@constela/builder`)
+- [x] Enhanced error messages with "Did you mean?" suggestions
+- [x] CLI improvements (`--json`, `--watch`, `--verbose`, `--debug`)
+- [x] New CLI commands (`validate`, `inspect`)
+
+### Planned
+
+- [ ] Visual editor / playground
+- [ ] IDE extensions (VSCode, etc.)
+- [ ] More style system features (compound variants, responsive)
 
 ## License
 
