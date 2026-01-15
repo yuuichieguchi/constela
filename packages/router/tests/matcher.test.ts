@@ -355,6 +355,98 @@ describe('matchRoute', () => {
       expect(result?.params).toEqual({ slug: 'my-awesome_post' });
     });
   });
+
+  // ==================== Additional Edge Cases ====================
+
+  describe('additional edge cases', () => {
+    it('should normalize double slashes in path: /users//123 -> /users/123', () => {
+      // Arrange
+      const pattern = '/users/:id';
+      const path = '/users//123';
+
+      // Act
+      const result = matchRoute(pattern, path);
+
+      // Assert
+      // Double slashes are normalized via split('/').filter(Boolean)
+      // which removes empty segments, effectively treating //123 as /123
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({ id: '123' });
+    });
+
+    it('should handle very long paths with many segments (10+ segments)', () => {
+      // Arrange
+      const pattern = '/a/b/c/d/e/f/g/h/i/j/:id';
+      const path = '/a/b/c/d/e/f/g/h/i/j/123';
+
+      // Act
+      const result = matchRoute(pattern, path);
+
+      // Assert
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({ id: '123' });
+    });
+
+    it('should match routes with numeric-only segments like /123/456/789', () => {
+      // Arrange
+      const pattern = '/123/456/789';
+      const path = '/123/456/789';
+
+      // Act
+      const result = matchRoute(pattern, path);
+
+      // Assert
+      // Numeric segments are treated as static segments when not prefixed with :
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({});
+    });
+
+    it('should be case-sensitive: /Users should not match /users', () => {
+      // Arrange
+      const pattern = '/users/:id';
+      const pathUppercase = '/Users/123';
+      const pathLowercase = '/users/123';
+
+      // Act
+      const resultUppercase = matchRoute(pattern, pathUppercase);
+      const resultLowercase = matchRoute(pattern, pathLowercase);
+
+      // Assert
+      // Routes are case-sensitive due to strict equality comparison
+      expect(resultUppercase).toBeNull();
+      expect(resultLowercase).not.toBeNull();
+      expect(resultLowercase?.params).toEqual({ id: '123' });
+    });
+
+    it('should handle paths with empty segments like /users//posts correctly', () => {
+      // Arrange
+      const pattern = '/users/posts';
+      const pathWithEmptySegment = '/users//posts';
+
+      // Act
+      const result = matchRoute(pattern, pathWithEmptySegment);
+
+      // Assert
+      // Empty segments are filtered out via filter(Boolean), so
+      // /users//posts becomes equivalent to /users/posts
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({});
+    });
+
+    it('should handle multiple consecutive slashes in path', () => {
+      // Arrange
+      const pattern = '/api/v1/users';
+      const path = '/api///v1//users';
+
+      // Act
+      const result = matchRoute(pattern, path);
+
+      // Assert
+      // Multiple consecutive slashes are normalized to single slashes
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({});
+    });
+  });
 });
 
 // ==================== parseParams ====================

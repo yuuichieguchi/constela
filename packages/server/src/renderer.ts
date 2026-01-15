@@ -20,6 +20,18 @@ import { parseMarkdownSSRAsync } from './markdown.js';
 import { renderCodeSSR } from './code.js';
 import { escapeHtml } from './utils/escape.js';
 
+// ==================== Style Types ====================
+
+/**
+ * Style preset definition for SSR
+ */
+interface StylePreset {
+  base: string;
+  variants?: Record<string, Record<string, string>>;
+  defaultVariants?: Record<string, string>;
+  compoundVariants?: Array<Record<string, string> & { class: string }>;
+}
+
 // ==================== Constants ====================
 
 /**
@@ -53,6 +65,7 @@ interface SSRContext {
     path: string;
   } | undefined;
   imports?: Record<string, unknown> | undefined;
+  styles?: Record<string, StylePreset> | undefined;
 }
 
 // ==================== Type Guards ====================
@@ -198,10 +211,7 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
     }
 
     case 'style': {
-      // Style expressions should be evaluated at runtime.
-      // For SSR, return empty string as styles are client-side concerns.
-      // TODO: Implement SSR style evaluation when StylePreset is available in SSRContext
-      return '';
+      return evaluateStyle(expr, ctx);
     }
 
     default: {
@@ -327,6 +337,66 @@ function evaluateBinary(
     default:
       throw new Error('Unknown binary operator: ' + op);
   }
+}
+
+// ==================== Style Evaluation ====================
+
+/**
+ * Style expression type for evaluateStyle
+ */
+interface StyleExprInput {
+  expr: 'style';
+  name: string;
+  variants?: Record<string, CompiledExpression>;
+}
+
+/**
+ * Evaluates a style expression to produce CSS class names
+ *
+ * @param expr - The style expression to evaluate
+ * @param ctx - The evaluation context containing styles presets
+ * @returns The computed CSS class string, or empty string if preset not found
+ */
+function evaluateStyle(expr: StyleExprInput, ctx: SSRContext): string {
+  const preset = ctx.styles?.[expr.name];
+  if (!preset) return '';
+
+  let classes = preset.base;
+
+  // Apply variants in preset.variants key order for consistency
+  // For each variant key, use the expression value if specified, otherwise use default
+  if (preset.variants) {
+    for (const variantKey of Object.keys(preset.variants)) {
+      let variantValueStr: string | null = null;
+
+      // Check if variant is specified in expression
+      if (expr.variants?.[variantKey]) {
+        let variantValue: unknown;
+        try {
+          variantValue = evaluate(expr.variants[variantKey]!, ctx);
+        } catch {
+          // If evaluation fails (e.g., state doesn't exist), skip this variant
+          continue;
+        }
+        if (variantValue != null) {
+          variantValueStr = String(variantValue);
+        }
+      } else if (preset.defaultVariants?.[variantKey] !== undefined) {
+        // Use default variant if not specified in expression
+        variantValueStr = preset.defaultVariants[variantKey]!;
+      }
+
+      // Apply variant classes if we have a value
+      if (variantValueStr !== null) {
+        const variantClasses = preset.variants[variantKey]?.[variantValueStr];
+        if (variantClasses) {
+          classes += ' ' + variantClasses;
+        }
+      }
+    }
+  }
+
+  return classes.trim();
 }
 
 // ==================== Value Formatting ====================
@@ -528,6 +598,7 @@ export interface RenderOptions {
     path?: string;
   };
   imports?: Record<string, unknown>;
+  styles?: Record<string, StylePreset>;
 }
 
 /**
@@ -558,6 +629,7 @@ export async function renderToString(
         }
       : undefined,
     imports: options?.imports ?? program.importData,
+    styles: options?.styles,
   };
 
   return await renderNode(program.view, ctx);

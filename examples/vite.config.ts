@@ -12,6 +12,7 @@ export default defineConfig({
         'fetch-list': resolve(__dirname, 'fetch-list/index.html'),
         components: resolve(__dirname, 'components/index.html'),
         router: resolve(__dirname, 'router/index.html'),
+        styles: resolve(__dirname, 'styles/index.html'),
       },
     },
   },

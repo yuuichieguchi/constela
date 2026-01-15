@@ -1003,6 +1003,7 @@ pnpm --filter @constela/examples dev
 # - http://localhost:5173/fetch-list/
 # - http://localhost:5173/components/
 # - http://localhost:5173/router/
+# - http://localhost:5173/styles/
 ```
 
 ## Design Principles
@@ -1025,6 +1026,85 @@ pnpm build
 # Run tests
 pnpm test
 ```
+
+### Testing Guide
+
+#### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests for specific package
+pnpm --filter @constela/core test
+pnpm --filter @constela/compiler test
+pnpm --filter @constela/runtime test
+pnpm --filter @constela/server test
+pnpm --filter @constela/router test
+pnpm --filter @constela/start test
+pnpm --filter @constela/cli test
+
+# Watch mode
+pnpm --filter @constela/core test -- --watch
+
+# Run specific test file
+pnpm --filter @constela/core test -- validator.test.ts
+```
+
+#### Test Structure
+
+Each package has tests in `tests/` or `src/__tests__/`:
+
+| Package | Test Location | Coverage |
+|---------|--------------|----------|
+| @constela/core | `tests/` | Type guards, validators, error codes |
+| @constela/compiler | `tests/passes/` | Validate, analyze, transform passes |
+| @constela/runtime | `src/__tests__/` | Expression eval, action execution, hydration |
+| @constela/server | `src/__tests__/` | SSR rendering, markdown, code blocks |
+| @constela/router | `tests/` | Route matching, helpers, navigation |
+| @constela/start | `tests/` | Build, dev server, data loading, layouts |
+| @constela/cli | `tests/` | All CLI commands |
+
+#### Writing Tests
+
+Tests use [Vitest](https://vitest.dev/). Follow the AAA pattern:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { validateAst } from '../src/validator.js';
+
+describe('validateAst', () => {
+  it('should return ok for valid AST', () => {
+    // Arrange
+    const ast = { version: '1.0', state: {}, actions: [], view: { kind: 'element', tag: 'div' } };
+
+    // Act
+    const result = validateAst(ast);
+
+    // Assert
+    expect(result.ok).toBe(true);
+  });
+});
+```
+
+#### Testing Constela Applications
+
+To test your Constela application:
+
+1. **Validate JSON files:**
+   ```bash
+   constela validate --all src/routes/
+   ```
+
+2. **Inspect program structure:**
+   ```bash
+   constela inspect src/routes/index.json --state
+   ```
+
+3. **Build and check output:**
+   ```bash
+   constela build && ls -la dist/
+   ```
 
 ## Roadmap
 

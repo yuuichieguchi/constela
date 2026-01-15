@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constela Style System Example</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div id="app"></div>
+  <script type="module">
+    import { compile } from '@constela/compiler';
+    import { createApp } from '@constela/runtime';
+
+    const response = await fetch('./app.json');
+    const ast = await response.json();
+    const result = compile(ast);
+
+    if (!result.ok) {
+      console.error('Compilation failed:', result.errors);
+    } else {
+      createApp(result.program, document.getElementById('app'));
+    }
+  </script>
+</body>
+</html>

@@ -1537,4 +1537,320 @@ describe('renderToString', () => {
       });
     });
   });
+
+  // ==================== Style Expression Evaluation ====================
+
+  describe('style expression evaluation', () => {
+    /**
+     * Given: A style preset with only base class
+     * When: Style expression references the preset without variants
+     * Then: Should return the base class string
+     */
+    it('should evaluate style expression with only base class', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'style', name: 'button' } as never,
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'px-4 py-2 rounded',
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe('<div>px-4 py-2 rounded</div>');
+    });
+
+    /**
+     * Given: A style preset with variants
+     * When: Style expression specifies variant values
+     * Then: Should return base class + variant classes
+     */
+    it('should evaluate style expression with variant selection', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: {
+              expr: 'style',
+              name: 'button',
+              variants: {
+                size: { expr: 'lit', value: 'lg' },
+              },
+            } as never,
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'px-4 py-2 rounded',
+          variants: {
+            size: {
+              sm: 'text-sm h-8',
+              md: 'text-base h-10',
+              lg: 'text-lg h-12',
+            },
+          },
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe('<div>px-4 py-2 rounded text-lg h-12</div>');
+    });
+
+    /**
+     * Given: A style preset with default variants
+     * When: Style expression does not specify variant value
+     * Then: Should apply default variant class
+     */
+    it('should apply default variant when not specified in expression', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: {
+              expr: 'style',
+              name: 'button',
+            } as never,
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'px-4 py-2 rounded',
+          variants: {
+            variant: {
+              primary: 'bg-blue-500 text-white',
+              secondary: 'bg-gray-200 text-gray-800',
+            },
+          },
+          defaultVariants: {
+            variant: 'primary',
+          },
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe('<div>px-4 py-2 rounded bg-blue-500 text-white</div>');
+    });
+
+    /**
+     * Given: A style expression referencing undefined preset
+     * When: Evaluating the style expression
+     * Then: Should return empty string (graceful degradation)
+     */
+    it('should return empty string for unknown style preset', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'div',
+        children: [
+          {
+            kind: 'text',
+            value: {
+              expr: 'style',
+              name: 'nonexistent',
+            } as never,
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'px-4 py-2 rounded',
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe('<div></div>');
+    });
+
+    /**
+     * Given: An element with class prop using style expression
+     * When: Rendering the element
+     * Then: Should render element with evaluated style class in class attribute
+     */
+    it('should render element with style expression in class prop', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'button',
+        props: {
+          class: {
+            expr: 'style',
+            name: 'button',
+            variants: {
+              variant: { expr: 'lit', value: 'primary' },
+              size: { expr: 'lit', value: 'lg' },
+            },
+          } as never,
+        },
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'lit', value: 'Click me' },
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'font-medium rounded',
+          variants: {
+            variant: {
+              primary: 'bg-blue-500 text-white',
+              secondary: 'bg-gray-200 text-gray-800',
+            },
+            size: {
+              sm: 'px-2 py-1 text-sm',
+              md: 'px-4 py-2 text-base',
+              lg: 'px-6 py-3 text-lg',
+            },
+          },
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe(
+        '<button class="font-medium rounded bg-blue-500 text-white px-6 py-3 text-lg">Click me</button>'
+      );
+    });
+
+    /**
+     * Given: A style expression with variant value from state
+     * When: Rendering with state containing the variant value
+     * Then: Should evaluate state and apply correct variant class
+     */
+    it('should evaluate style variant from state value', async () => {
+      // Arrange
+      const program = createProgram(
+        {
+          kind: 'element',
+          tag: 'div',
+          props: {
+            class: {
+              expr: 'style',
+              name: 'alert',
+              variants: {
+                type: { expr: 'state', name: 'alertType' },
+              },
+            } as never,
+          },
+          children: [
+            {
+              kind: 'text',
+              value: { expr: 'lit', value: 'Alert message' },
+            },
+          ],
+        },
+        {
+          alertType: { type: 'string', initial: 'error' },
+        }
+      );
+      const styles = {
+        alert: {
+          base: 'p-4 rounded border',
+          variants: {
+            type: {
+              info: 'bg-blue-100 border-blue-500',
+              warning: 'bg-yellow-100 border-yellow-500',
+              error: 'bg-red-100 border-red-500',
+            },
+          },
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe(
+        '<div class="p-4 rounded border bg-red-100 border-red-500">Alert message</div>'
+      );
+    });
+
+    /**
+     * Given: A style preset with multiple variants
+     * When: Style expression specifies all variant values
+     * Then: Should apply all variant classes in preset order
+     */
+    it('should apply multiple variants in preset order', async () => {
+      // Arrange
+      const program = createProgram({
+        kind: 'element',
+        tag: 'button',
+        props: {
+          class: {
+            expr: 'style',
+            name: 'button',
+            variants: {
+              variant: { expr: 'lit', value: 'outline' },
+              size: { expr: 'lit', value: 'sm' },
+              rounded: { expr: 'lit', value: 'full' },
+            },
+          } as never,
+        },
+        children: [
+          {
+            kind: 'text',
+            value: { expr: 'lit', value: 'Button' },
+          },
+        ],
+      });
+      const styles = {
+        button: {
+          base: 'font-medium transition-colors',
+          variants: {
+            variant: {
+              solid: 'bg-blue-500 text-white',
+              outline: 'border-2 border-blue-500 text-blue-500',
+            },
+            size: {
+              sm: 'px-2 py-1 text-sm',
+              md: 'px-4 py-2 text-base',
+            },
+            rounded: {
+              none: 'rounded-none',
+              md: 'rounded-md',
+              full: 'rounded-full',
+            },
+          },
+        },
+      };
+
+      // Act
+      const result = await renderToString(program, { styles });
+
+      // Assert
+      expect(result).toBe(
+        '<button class="font-medium transition-colors border-2 border-blue-500 text-blue-500 px-2 py-1 text-sm rounded-full">Button</button>'
+      );
+    });
+  });
 });

@@ -268,6 +268,77 @@ export default {
 } satisfies ConstelaConfig;
 ```
 
+## Debugging Guide
+
+### Using Debug Mode
+
+Add `--debug` to any compile command to see internal processing:
+
+```bash
+constela compile app.json --debug
+```
+
+**Debug output includes:**
+- File size and parse time
+- Number of nodes validated
+- Analysis pass details
+- Transform timings
+
+### Common Issues
+
+#### UNDEFINED_STATE Error
+
+```
+Error [UNDEFINED_STATE] at /view/children/0/value/name
+Undefined state reference: 'count'
+Did you mean 'counter'?
+```
+
+**Solution:** Check your state name spelling. The error shows suggested corrections.
+
+#### SCHEMA_INVALID Error
+
+```
+Error [SCHEMA_INVALID] at /view/kind
+Invalid value: 'button'. Expected one of: element, text, if, each, component, slot, markdown, code
+```
+
+**Solution:** Use correct node kind. `kind: "element"` with `tag: "button"` for buttons.
+
+#### Component Not Found
+
+```
+Error [COMPONENT_NOT_FOUND] at /view/children/0/name
+Component 'Header' is not defined
+```
+
+**Solution:** Define the component in the `components` section or check import paths.
+
+### Inspecting Program Structure
+
+Use `inspect` to understand your program without compilation:
+
+```bash
+# See state structure
+constela inspect app.json --state
+
+# See view tree
+constela inspect app.json --view
+
+# Get JSON for tooling
+constela inspect app.json --json | jq '.state'
+```
+
+### Browser DevTools
+
+For runtime debugging:
+
+1. Open DevTools → Sources tab
+2. Find `@constela/runtime` in the source tree
+3. Set breakpoints in action handlers
+
+State changes are logged to console in development mode.
+
 ## Exit Codes
 
 | Code | Description |

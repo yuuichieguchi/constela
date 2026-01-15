@@ -92,6 +92,46 @@ Pass external data at render time:
 }
 ```
 
+### Style Evaluation
+
+Style expressions are evaluated during SSR, producing CSS class strings:
+
+```json
+{
+  "styles": {
+    "button": {
+      "base": "px-4 py-2 rounded",
+      "variants": {
+        "variant": {
+          "primary": "bg-blue-500 text-white",
+          "secondary": "bg-gray-200 text-gray-800"
+        }
+      },
+      "defaultVariants": { "variant": "primary" }
+    }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "button",
+    "props": {
+      "className": {
+        "expr": "style",
+        "name": "button",
+        "variants": { "variant": { "expr": "lit", "value": "primary" } }
+      }
+    }
+  }
+}
+```
+
+↓ SSR
+
+```html
+<button class="px-4 py-2 rounded bg-blue-500 text-white">...</button>
+```
+
+Pass style presets via `RenderOptions.styles` for evaluation.
+
 ## Output Structure
 
 ### Code Block HTML
@@ -142,6 +182,18 @@ const html = await renderToString(compiledProgram, {
   imports: {
     config: { siteName: 'My Site' },
   },
+  styles: {
+    button: {
+      base: 'px-4 py-2 rounded',
+      variants: {
+        variant: {
+          primary: 'bg-blue-500 text-white',
+          secondary: 'bg-gray-200 text-gray-800',
+        },
+      },
+      defaultVariants: { variant: 'primary' },
+    },
+  },
 });
 ```
 
@@ -155,6 +207,13 @@ interface RenderOptions {
     path?: string;
   };
   imports?: Record<string, unknown>;
+  styles?: Record<string, StylePreset>;
+}
+
+interface StylePreset {
+  base: string;
+  variants?: Record<string, Record<string, string>>;
+  defaultVariants?: Record<string, string>;
 }
 ```
 

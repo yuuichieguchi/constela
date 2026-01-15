@@ -1,0 +1,209 @@
+{
+  "version": "1.0",
+  "styles": {
+    "button": {
+      "base": "px-4 py-2 font-medium rounded transition-colors",
+      "variants": {
+        "variant": {
+          "primary": "bg-blue-500 text-white hover:bg-blue-600",
+          "secondary": "bg-gray-200 text-gray-800 hover:bg-gray-300",
+          "danger": "bg-red-500 text-white hover:bg-red-600"
+        },
+        "size": {
+          "sm": "text-sm px-3 py-1",
+          "md": "text-base px-4 py-2",
+          "lg": "text-lg px-6 py-3"
+        }
+      },
+      "defaultVariants": {
+        "variant": "primary",
+        "size": "md"
+      }
+    },
+    "card": {
+      "base": "p-6 bg-white rounded-lg shadow-md",
+      "variants": {
+        "elevated": {
+          "true": "shadow-xl",
+          "false": "shadow-md"
+        }
+      },
+      "defaultVariants": {
+        "elevated": "false"
+      }
+    }
+  },
+  "state": {
+    "variant": { "type": "string", "initial": "primary" },
+    "size": { "type": "string", "initial": "md" },
+    "elevated": { "type": "boolean", "initial": false }
+  },
+  "actions": [
+    {
+      "name": "setVariant",
+      "params": { "value": { "type": "string" } },
+      "steps": [
+        { "do": "set", "target": "variant", "value": { "expr": "param", "name": "value" } }
+      ]
+    },
+    {
+      "name": "setSize",
+      "params": { "value": { "type": "string" } },
+      "steps": [
+        { "do": "set", "target": "size", "value": { "expr": "param", "name": "value" } }
+      ]
+    },
+    {
+      "name": "toggleElevated",
+      "steps": [
+        { "do": "update", "target": "elevated", "operation": "toggle" }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "p-8 space-y-8" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "props": { "className": { "expr": "lit", "value": "text-2xl font-bold mb-4" } },
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Constela Style System Demo" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "className": {
+            "expr": "style",
+            "name": "card",
+            "variants": {
+              "elevated": { "expr": "state", "name": "elevated" }
+            }
+          }
+        },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "h2",
+            "props": { "className": { "expr": "lit", "value": "text-lg font-semibold mb-4" } },
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "Button Variants" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "flex gap-4 mb-4" } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "button",
+                "props": {
+                  "className": {
+                    "expr": "style",
+                    "name": "button",
+                    "variants": {
+                      "variant": { "expr": "state", "name": "variant" },
+                      "size": { "expr": "state", "name": "size" }
+                    }
+                  }
+                },
+                "children": [
+                  { "kind": "text", "value": { "expr": "lit", "value": "Dynamic Button" } }
+                ]
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "space-y-2" } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "flex gap-2" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "primary" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setVariant", "params": { "value": { "expr": "lit", "value": "primary" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Primary" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "secondary" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setVariant", "params": { "value": { "expr": "lit", "value": "secondary" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Secondary" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "danger" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setVariant", "params": { "value": { "expr": "lit", "value": "danger" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Danger" } }]
+                  }
+                ]
+              },
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "flex gap-2" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "secondary" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setSize", "params": { "value": { "expr": "lit", "value": "sm" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Small" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "secondary" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setSize", "params": { "value": { "expr": "lit", "value": "md" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Medium" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "secondary" }, "size": { "expr": "lit", "value": "sm" } } },
+                      "onClick": { "event": "click", "action": "setSize", "params": { "value": { "expr": "lit", "value": "lg" } } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Large" } }]
+                  }
+                ]
+              },
+              {
+                "kind": "element",
+                "tag": "button",
+                "props": {
+                  "className": { "expr": "style", "name": "button", "variants": { "variant": { "expr": "lit", "value": "secondary" }, "size": { "expr": "lit", "value": "sm" } } },
+                  "onClick": { "event": "click", "action": "toggleElevated" }
+                },
+                "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Toggle Card Elevation" } }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
