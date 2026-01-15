@@ -1,5 +1,15 @@
 # @constela/server
 
+## 4.1.0
+
+### Minor Changes
+
+- Add SSR style evaluation support
+
+  - Style expressions are now evaluated during server-side rendering
+  - Added `styles` option to `RenderOptions` for passing style presets
+  - Added `StylePreset` interface for defining reusable styles with variants
+
 ## 4.0.0
 
 ### Patch Changes
