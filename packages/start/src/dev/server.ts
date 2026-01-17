@@ -411,7 +411,11 @@ export async function createDevServer(
               };
 
               const html = wrapHtml(content, hydrationScript, cssHead, {
-                ...(initialTheme ? { theme: initialTheme } : {}),
+                ...(initialTheme ? {
+                  theme: initialTheme,
+                  defaultTheme: initialTheme,
+                  themeStorageKey: 'theme'
+                } : {}),
                 importMap,
               });
 

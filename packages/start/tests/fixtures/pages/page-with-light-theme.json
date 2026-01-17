@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/page-with-light-theme"
+  },
+  "state": {
+    "theme": { "type": "string", "initial": "light" }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with light theme" } }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/page-with-theme"
+  },
+  "state": {
+    "theme": { "type": "string", "initial": "dark" }
+  },
+  "actions": [],
+  "view": {
+    "kind": "element",
+    "tag": "main",
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Page with dark theme" } }
+    ]
+  }
+}

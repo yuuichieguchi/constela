@@ -138,7 +138,16 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
         };
 
         const hydrationScript = generateHydrationScript(program, undefined, routeContext);
-        const html = wrapHtml(content, hydrationScript);
+
+        // Detect theme state from program
+        const themeState = program.state?.['theme'] as { initial?: string } | undefined;
+        const initialTheme = themeState?.initial as 'dark' | 'light' | undefined;
+
+        const html = wrapHtml(content, hydrationScript, undefined, initialTheme ? {
+          theme: initialTheme,
+          defaultTheme: initialTheme,
+          themeStorageKey: 'theme'
+        } : undefined);
 
         return new Response(html, {
           status: 200,
