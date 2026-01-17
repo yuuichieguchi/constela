@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.26
+
+### Patch Changes
+
+- Fix theme persistence bug by parsing JSON-serialized localStorage values in anti-flash script
+
 ## 1.2.25
 
 ### Patch Changes
