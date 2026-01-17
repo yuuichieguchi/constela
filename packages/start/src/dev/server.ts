@@ -7,7 +7,7 @@ import type { ViewNode } from '@constela/core';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
-import { renderPage, wrapHtml, generateHydrationScript, type WidgetConfig } from '../runtime/entry-server.js';
+import { renderPage, wrapHtml, generateHydrationScript, generateMetaTags, type WidgetConfig } from '../runtime/entry-server.js';
 import { scanRoutes } from '../router/file-router.js';
 import { LayoutResolver } from '../layout/resolver.js';
 import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
@@ -390,12 +390,22 @@ export async function createDevServer(
               };
               const hydrationScript = generateHydrationScript(composedProgram, widgets, routeContext);
 
+              // Generate meta tags from route definition
+              const metaTags = generateMetaTags(composedProgram.route, {
+                params: match.params,
+                query: Object.fromEntries(url.searchParams.entries()),
+                path: pathname,
+              });
+
               // Generate CSS link tags if css option is provided
               const cssHead = css
                 ? (Array.isArray(css) ? css : [css])
                     .map((p) => `<link rel="stylesheet" href="/${p}">`)
                     .join('\n')
                 : '';
+
+              // Combine meta tags with CSS head
+              const head = [metaTags, cssHead].filter(Boolean).join('\n');
 
               // Get initial theme from composed program state
               const themeState = composedProgram.state?.['theme'];
@@ -410,7 +420,7 @@ export async function createDevServer(
                 'monaco-editor': '/node_modules/monaco-editor/esm/vs/editor/editor.api.js',
               };
 
-              const html = wrapHtml(content, hydrationScript, cssHead, {
+              const html = wrapHtml(content, hydrationScript, head || undefined, {
                 ...(initialTheme ? {
                   theme: initialTheme,
                   defaultTheme: initialTheme,

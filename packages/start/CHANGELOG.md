@@ -1,5 +1,19 @@
 # @constela/start
 
+## 1.4.0
+
+### Minor Changes
+
+- feat: add OGP meta tag generation from route.meta and route.title
+
+  - Add `evaluateMetaExpression()` function to evaluate compiled expressions for meta tag values
+  - Add `generateMetaTags()` function to generate HTML meta tags from route definition
+  - Support `<title>` tag generation from `route.title`
+  - Support `<meta name="...">` for standard meta tags (description, author, etc.)
+  - Support `<meta property="...">` for OGP/Twitter meta tags (og:_, twitter:_)
+  - Integrate meta tag generation in dev server and SSG build
+  - Include HTML escaping for XSS prevention
+
 ## 1.3.5
 
 ### Patch Changes

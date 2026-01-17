@@ -3,7 +3,7 @@
  * Handles SSR rendering
  */
 
-import type { CompiledProgram } from '@constela/compiler';
+import type { CompiledProgram, CompiledExpression, CompiledRouteDefinition } from '@constela/compiler';
 import { renderToString, type RenderOptions } from '@constela/server';
 
 // ==================== Types ====================
@@ -319,4 +319,100 @@ ${processedScript}
 </script>
 </body>
 </html>`;
+}
+
+// ==================== Meta Tag Generation ====================
+
+/**
+ * Context for evaluating meta tag expressions
+ */
+export interface MetaContext {
+  params: Record<string, string>;
+  query: Record<string, string>;
+  path: string;
+}
+
+/**
+ * Escapes HTML special characters for safe embedding in meta tags.
+ */
+function escapeHtmlForMeta(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Evaluates a compiled expression for meta tag values.
+ */
+export function evaluateMetaExpression(
+  expr: CompiledExpression,
+  ctx: MetaContext
+): string {
+  switch (expr.expr) {
+    case 'lit':
+      return String(expr.value);
+    case 'route':
+      if (expr.source === 'param') {
+        return ctx.params[expr.name] || '';
+      } else if (expr.source === 'query') {
+        return ctx.query[expr.name] || '';
+      } else if (expr.source === 'path') {
+        return ctx.path;
+      }
+      return '';
+    case 'bin':
+      if (expr.op === '+') {
+        return evaluateMetaExpression(expr.left, ctx) + evaluateMetaExpression(expr.right, ctx);
+      }
+      return '';
+    case 'concat':
+      return expr.items.map(item => evaluateMetaExpression(item, ctx)).join('');
+    default:
+      return '';
+  }
+}
+
+/**
+ * Generates HTML meta tags from route definition.
+ */
+export function generateMetaTags(
+  route: CompiledRouteDefinition | undefined,
+  ctx: MetaContext
+): string {
+  if (!route) {
+    return '';
+  }
+
+  const tags: string[] = [];
+
+  // Generate title tag
+  if (route.title) {
+    const titleValue = evaluateMetaExpression(route.title, ctx);
+    if (titleValue) {
+      tags.push(`<title>${escapeHtmlForMeta(titleValue)}</title>`);
+    }
+  }
+
+  // Generate meta tags
+  if (route.meta) {
+    for (const [key, expr] of Object.entries(route.meta)) {
+      const value = evaluateMetaExpression(expr, ctx);
+      if (!value) {
+        continue; // Skip empty values
+      }
+      const escapedValue = escapeHtmlForMeta(value);
+
+      // Use property attribute for og: and twitter: prefixes
+      if (key.startsWith('og:') || key.startsWith('twitter:')) {
+        tags.push(`<meta property="${key}" content="${escapedValue}">`);
+      } else {
+        tags.push(`<meta name="${key}" content="${escapedValue}">`);
+      }
+    }
+  }
+
+  return tags.join('\n');
 }

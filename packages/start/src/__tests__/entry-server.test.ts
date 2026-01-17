@@ -10,7 +10,7 @@
  * The runtimePath option allows using a bundled runtime instead of bare module specifiers.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { wrapHtml, generateHydrationScript } from '../runtime/entry-server.js';
 import type { CompiledProgram } from '@constela/compiler';
 
@@ -281,6 +281,518 @@ describe('wrapHtml', () => {
           wrapHtml(content, hydrationScript, undefined, { runtimePath })
         ).not.toThrow();
       }
+    });
+  });
+});
+
+// ==================== Meta Tag Generation Tests ====================
+
+describe('evaluateMetaExpression', () => {
+  // Import will fail until implementation exists - this is expected (TDD Red phase)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let evaluateMetaExpression: any;
+
+  beforeAll(async () => {
+    try {
+      const module = await import('../runtime/entry-server.js');
+      evaluateMetaExpression = module.evaluateMetaExpression;
+    } catch {
+      // Function doesn't exist yet - expected in TDD Red phase
+    }
+  });
+
+  // ==================== Literal Expressions ====================
+
+  describe('literal expressions', () => {
+    it('should evaluate literal string expression', () => {
+      // Arrange
+      const expr = { expr: 'lit' as const, value: 'Hello World' };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('Hello World');
+    });
+
+    it('should evaluate literal number and convert to string', () => {
+      // Arrange
+      const expr = { expr: 'lit' as const, value: 42 };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('42');
+    });
+  });
+
+  // ==================== Route Expressions ====================
+
+  describe('route expressions', () => {
+    it('should evaluate route param expression', () => {
+      // Arrange
+      const expr = { expr: 'route' as const, name: 'slug', source: 'param' as const };
+      const ctx = { params: { slug: 'my-article' }, query: {}, path: '/posts/my-article' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('my-article');
+    });
+
+    it('should evaluate route query expression', () => {
+      // Arrange
+      const expr = { expr: 'route' as const, name: 'q', source: 'query' as const };
+      const ctx = { params: {}, query: { q: 'search term' }, path: '/search' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('search term');
+    });
+
+    it('should evaluate route path expression', () => {
+      // Arrange
+      const expr = { expr: 'route' as const, name: '', source: 'path' as const };
+      const ctx = { params: {}, query: {}, path: '/about/team' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('/about/team');
+    });
+
+    it('should return empty string for missing param', () => {
+      // Arrange
+      const expr = { expr: 'route' as const, name: 'nonexistent', source: 'param' as const };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('');
+    });
+
+    it('should return empty string for missing query', () => {
+      // Arrange
+      const expr = { expr: 'route' as const, name: 'missing', source: 'query' as const };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('');
+    });
+  });
+
+  // ==================== Binary Expressions ====================
+
+  describe('binary expressions', () => {
+    it('should evaluate binary + for string concatenation', () => {
+      // Arrange
+      const expr = {
+        expr: 'bin' as const,
+        op: '+',
+        left: { expr: 'lit' as const, value: 'Hello ' },
+        right: { expr: 'lit' as const, value: 'World' },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('Hello World');
+    });
+  });
+
+  // ==================== Concat Expressions ====================
+
+  describe('concat expressions', () => {
+    it('should evaluate concat expression (template string)', () => {
+      // Arrange
+      const expr = {
+        expr: 'concat' as const,
+        items: [
+          { expr: 'lit' as const, value: 'Welcome to ' },
+          { expr: 'lit' as const, value: 'Constela' },
+          { expr: 'lit' as const, value: '!' },
+        ],
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('Welcome to Constela!');
+    });
+
+    it('should handle nested concat with route expressions', () => {
+      // Arrange
+      const expr = {
+        expr: 'concat' as const,
+        items: [
+          { expr: 'route' as const, name: 'title', source: 'param' as const },
+          { expr: 'lit' as const, value: ' | ' },
+          { expr: 'lit' as const, value: 'My Site' },
+        ],
+      };
+      const ctx = { params: { title: 'Blog Post' }, query: {}, path: '/posts/blog-post' };
+
+      // Act & Assert
+      if (!evaluateMetaExpression) {
+        expect.fail('evaluateMetaExpression is not exported - TDD Red phase');
+      }
+      const result = evaluateMetaExpression(expr, ctx);
+      expect(result).toBe('Blog Post | My Site');
+    });
+  });
+});
+
+// ==================== generateMetaTags Tests ====================
+
+describe('generateMetaTags', () => {
+  // Import will fail until implementation exists - this is expected (TDD Red phase)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let generateMetaTags: any;
+
+  beforeAll(async () => {
+    try {
+      const module = await import('../runtime/entry-server.js');
+      generateMetaTags = module.generateMetaTags;
+    } catch {
+      // Function doesn't exist yet - expected in TDD Red phase
+    }
+  });
+
+  // ==================== Empty/Undefined Cases ====================
+
+  describe('empty and undefined cases', () => {
+    it('should return empty string when route is undefined', () => {
+      // Arrange
+      const route = undefined;
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when route has no title or meta', () => {
+      // Arrange
+      const route = { path: '/', params: [] };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toBe('');
+    });
+  });
+
+  // ==================== Title Tag Generation ====================
+
+  describe('title tag generation', () => {
+    it('should generate title tag from literal', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        title: { expr: 'lit' as const, value: 'Welcome Page' },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<title>Welcome Page</title>');
+    });
+
+    it('should generate title tag from route param expression', () => {
+      // Arrange
+      const route = {
+        path: '/posts/:slug',
+        params: ['slug'],
+        title: {
+          expr: 'concat' as const,
+          items: [
+            { expr: 'route' as const, name: 'slug', source: 'param' as const },
+            { expr: 'lit' as const, value: ' | Blog' },
+          ],
+        },
+      };
+      const ctx = { params: { slug: 'my-article' }, query: {}, path: '/posts/my-article' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<title>my-article | Blog</title>');
+    });
+  });
+
+  // ==================== Meta Tag Generation (name attribute) ====================
+
+  describe('meta tags with name attribute', () => {
+    it('should generate description meta tag with name attribute', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          description: { expr: 'lit' as const, value: 'This is a great page' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta name="description" content="This is a great page">');
+    });
+
+    it('should generate generic meta tag with name attribute', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          author: { expr: 'lit' as const, value: 'John Doe' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta name="author" content="John Doe">');
+    });
+  });
+
+  // ==================== Meta Tag Generation (property attribute) ====================
+
+  describe('meta tags with property attribute (OGP/Twitter)', () => {
+    it('should generate og:title meta tag with property attribute', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          'og:title': { expr: 'lit' as const, value: 'My OG Title' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta property="og:title" content="My OG Title">');
+    });
+
+    it('should generate og:type meta tag with property attribute', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          'og:type': { expr: 'lit' as const, value: 'website' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta property="og:type" content="website">');
+    });
+
+    it('should generate twitter:card meta tag with property attribute', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          'twitter:card': { expr: 'lit' as const, value: 'summary_large_image' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta property="twitter:card" content="summary_large_image">');
+    });
+  });
+
+  // ==================== HTML Escaping ====================
+
+  describe('HTML escaping', () => {
+    it('should HTML-escape content with special characters', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        title: { expr: 'lit' as const, value: 'Title with <script> & "quotes"' },
+        meta: {
+          description: { expr: 'lit' as const, value: "Description with <b>tags</b> & 'quotes'" },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      // Title should be escaped
+      expect(result).toContain('<title>Title with &lt;script&gt; &amp; &quot;quotes&quot;</title>');
+      // Meta content should be escaped
+      expect(result).toContain('content="Description with &lt;b&gt;tags&lt;/b&gt; &amp; &#39;quotes&#39;"');
+    });
+  });
+
+  // ==================== Empty Value Handling ====================
+
+  describe('empty value handling', () => {
+    it('should skip meta tags with empty values', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          description: { expr: 'lit' as const, value: 'Valid description' },
+          keywords: { expr: 'lit' as const, value: '' },
+          'og:title': { expr: 'route' as const, name: 'missing', source: 'param' as const },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta name="description" content="Valid description">');
+      expect(result).not.toContain('keywords');
+      expect(result).not.toContain('og:title');
+    });
+  });
+
+  // ==================== Multiple Meta Tags ====================
+
+  describe('multiple meta tags', () => {
+    it('should generate multiple meta tags in correct order', () => {
+      // Arrange
+      const route = {
+        path: '/',
+        params: [],
+        meta: {
+          description: { expr: 'lit' as const, value: 'Page description' },
+          'og:title': { expr: 'lit' as const, value: 'OG Title' },
+          'og:description': { expr: 'lit' as const, value: 'OG Description' },
+        },
+      };
+      const ctx = { params: {}, query: {}, path: '/' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+      expect(result).toContain('<meta name="description" content="Page description">');
+      expect(result).toContain('<meta property="og:title" content="OG Title">');
+      expect(result).toContain('<meta property="og:description" content="OG Description">');
+    });
+  });
+
+  // ==================== Full Integration Test ====================
+
+  describe('full integration', () => {
+    it('should generate title + multiple meta tags from complex route', () => {
+      // Arrange
+      const route = {
+        path: '/posts/:slug',
+        params: ['slug'],
+        title: {
+          expr: 'concat' as const,
+          items: [
+            { expr: 'route' as const, name: 'slug', source: 'param' as const },
+            { expr: 'lit' as const, value: ' | My Blog' },
+          ],
+        },
+        meta: {
+          description: { expr: 'lit' as const, value: 'Read our latest blog posts' },
+          'og:title': {
+            expr: 'concat' as const,
+            items: [
+              { expr: 'route' as const, name: 'slug', source: 'param' as const },
+              { expr: 'lit' as const, value: ' - My Blog' },
+            ],
+          },
+          'og:type': { expr: 'lit' as const, value: 'article' },
+          'og:url': {
+            expr: 'concat' as const,
+            items: [
+              { expr: 'lit' as const, value: 'https://example.com' },
+              { expr: 'route' as const, name: '', source: 'path' as const },
+            ],
+          },
+          'twitter:card': { expr: 'lit' as const, value: 'summary_large_image' },
+        },
+      };
+      const ctx = { params: { slug: 'hello-world' }, query: {}, path: '/posts/hello-world' };
+
+      // Act & Assert
+      if (!generateMetaTags) {
+        expect.fail('generateMetaTags is not exported - TDD Red phase');
+      }
+      const result = generateMetaTags(route, ctx);
+
+      // Verify title
+      expect(result).toContain('<title>hello-world | My Blog</title>');
+
+      // Verify meta tags
+      expect(result).toContain('<meta name="description" content="Read our latest blog posts">');
+      expect(result).toContain('<meta property="og:title" content="hello-world - My Blog">');
+      expect(result).toContain('<meta property="og:type" content="article">');
+      expect(result).toContain('<meta property="og:url" content="https://example.com/posts/hello-world">');
+      expect(result).toContain('<meta property="twitter:card" content="summary_large_image">');
     });
   });
 });

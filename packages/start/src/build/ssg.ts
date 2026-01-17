@@ -6,6 +6,7 @@ import {
   renderPage,
   generateHydrationScript,
   wrapHtml,
+  generateMetaTags,
   type SSRContext,
   type WrapHtmlOptions,
 } from '../runtime/entry-server.js';
@@ -163,6 +164,13 @@ async function generateSinglePage(
   // Generate hydration script
   const hydrationScript = generateHydrationScript(program, undefined, routeContext);
 
+  // Generate meta tags from route definition
+  const metaTags = generateMetaTags(program.route, {
+    params,
+    query: {},
+    path: pattern,
+  });
+
   // Build wrapHtml options with theme support
   const wrapOptions: WrapHtmlOptions = {};
 
@@ -177,7 +185,7 @@ async function generateSinglePage(
   const html = wrapHtml(
     content,
     hydrationScript,
-    undefined,
+    metaTags || undefined,
     Object.keys(wrapOptions).length > 0 ? wrapOptions : undefined
   );
 
