@@ -52,7 +52,10 @@ export type ErrorCode =
   | 'INVALID_NAVIGATE_TARGET'
   // Style-related error codes
   | 'UNDEFINED_STYLE'
-  | 'UNDEFINED_VARIANT';
+  | 'UNDEFINED_VARIANT'
+  // Local state error codes
+  | 'UNDEFINED_LOCAL_STATE'
+  | 'LOCAL_ACTION_INVALID_STEP';
 
 // ==================== Error Options Interface ====================
 
@@ -587,6 +590,31 @@ export function createUndefinedVariantError(
     `Undefined variant key: '${variantKey}' is not defined in style '${styleName}'`,
     path,
     options
+  );
+}
+
+// ==================== Local State Error Factory Functions ====================
+
+/**
+ * Creates an undefined local state reference error
+ */
+export function createUndefinedLocalStateError(stateName: string, path?: string, options?: ErrorOptions): ConstelaError {
+  return new ConstelaError(
+    'UNDEFINED_LOCAL_STATE',
+    `Undefined local state reference: '${stateName}' is not defined in localState`,
+    path,
+    options
+  );
+}
+
+/**
+ * Creates a local action invalid step error
+ */
+export function createLocalActionInvalidStepError(stepType: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'LOCAL_ACTION_INVALID_STEP',
+    `Invalid step type '${stepType}' in local action. Only 'set', 'update', and 'setPath' are allowed`,
+    path
   );
 }
 

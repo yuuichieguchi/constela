@@ -42,6 +42,7 @@ import {
   type ActionStep,
   type SetStep,
   type UpdateStep,
+  type SetPathStep,
   type FetchStep,
   type StorageStep,
   type ClipboardStep,
@@ -66,6 +67,8 @@ import {
   type ObjectField,
   type EventHandler,
   type LayoutProgram,
+  type LocalActionStep,
+  type LocalActionDefinition,
 } from './ast.js';
 
 // ==================== Helper Functions ====================
@@ -493,6 +496,18 @@ export function isUpdateStep(value: unknown): value is UpdateStep {
 }
 
 /**
+ * Checks if value is a setPath step
+ */
+export function isSetPathStep(value: unknown): value is SetPathStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'setPath') return false;
+  if (typeof value['target'] !== 'string') return false;
+  if (!isObject(value['path'])) return false;
+  if (!isObject(value['value'])) return false;
+  return true;
+}
+
+/**
  * Checks if value is a fetch step
  */
 export function isFetchStep(value: unknown): value is FetchStep {
@@ -602,6 +617,7 @@ export function isActionStep(value: unknown): value is ActionStep {
   return (
     isSetStep(value) ||
     isUpdateStep(value) ||
+    isSetPathStep(value) ||
     isFetchStep(value) ||
     isStorageStep(value) ||
     isClipboardStep(value) ||
@@ -611,6 +627,28 @@ export function isActionStep(value: unknown): value is ActionStep {
     isSubscribeStep(value) ||
     isDisposeStep(value)
   );
+}
+
+/**
+ * Checks if value is a valid local action step
+ * Local actions only allow set, update, and setPath steps
+ */
+export function isLocalActionStep(value: unknown): value is LocalActionStep {
+  return isSetStep(value) || isUpdateStep(value) || isSetPathStep(value);
+}
+
+/**
+ * Checks if value is a local action definition
+ */
+export function isLocalActionDefinition(value: unknown): value is LocalActionDefinition {
+  if (!isObject(value)) return false;
+  if (typeof value['name'] !== 'string') return false;
+  if (!Array.isArray(value['steps'])) return false;
+  // Validate each step is a valid local action step
+  for (const step of value['steps']) {
+    if (!isLocalActionStep(step)) return false;
+  }
+  return true;
 }
 
 // ==================== StateField Type Guards ====================

@@ -13,6 +13,7 @@ import type {
   CompiledEachNode,
   CompiledMarkdownNode,
   CompiledCodeNode,
+  CompiledLocalStateNode,
   CompiledExpression,
   CompiledEventHandler,
 } from '@constela/compiler';
@@ -446,6 +447,8 @@ async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> 
       // Slots should be replaced during layout composition
       // If we reach here, render empty (slot content not provided)
       return '';
+    case 'localState':
+      return await renderLocalState(node as CompiledLocalStateNode, ctx);
     default: {
       const _exhaustiveCheck: never = node;
       throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);
@@ -593,6 +596,33 @@ async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<stri
   const copyButton = `<button class="constela-copy-btn absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/80 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100" data-copy-target="code" aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
 
   return `<div class="constela-code" data-code-content="${escapeHtml(content)}"><div class="group relative">${languageBadge}${copyButton}${highlightedCode}</div></div>`;
+}
+
+/**
+ * Renders a local state node to HTML string
+ *
+ * In SSR context, local state is rendered with initial values.
+ * The local state is made available to the child node via the context.
+ */
+async function renderLocalState(node: CompiledLocalStateNode, ctx: SSRContext): Promise<string> {
+  // Create a map of local state with initial values
+  const localStateValues: Record<string, unknown> = {};
+  for (const [name, field] of Object.entries(node.state)) {
+    localStateValues[name] = field.initial;
+  }
+
+  // Create a new context with local state merged into locals
+  // Local state takes precedence over parent locals for same-named keys
+  const childCtx: SSRContext = {
+    ...ctx,
+    locals: {
+      ...ctx.locals,
+      ...localStateValues,
+    },
+  };
+
+  // Render the child node with the new context
+  return await renderNode(node.child, childCtx);
 }
 
 // ==================== Main Export ====================

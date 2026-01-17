@@ -31,6 +31,22 @@ import type {
 import type { ConnectionManager } from '../connection/websocket.js';
 import { evaluate } from '../expression/evaluator.js';
 
+/**
+ * Local state store interface for component-level state
+ */
+interface LocalStateStore {
+  get(name: string): unknown;
+  set(name: string, value: unknown): void;
+}
+
+/**
+ * Extended action type with local action metadata
+ */
+interface ExtendedAction extends CompiledAction {
+  _isLocalAction?: boolean;
+  _localStore?: LocalStateStore;
+}
+
 export interface ActionContext {
   state: StateStore;
   actions: Record<string, CompiledAction>;
@@ -62,17 +78,22 @@ function createEvalContext(ctx: ActionContext) {
 }
 
 export async function executeAction(
-  action: CompiledAction,
+  action: CompiledAction | ExtendedAction,
   ctx: ActionContext
 ): Promise<void> {
+  // Check if this is a local action
+  const extAction = action as ExtendedAction;
+  const isLocal = extAction._isLocalAction && extAction._localStore;
+  const localStore = extAction._localStore;
+
   for (const step of action.steps) {
     // Use synchronous execution for set/update/setPath steps to ensure
     // all state changes complete before returning
     if (step.do === 'set' || step.do === 'update' || step.do === 'setPath') {
-      executeStepSync(step, ctx);
+      executeStepSync(step, ctx, isLocal ? localStore : undefined);
     } else if (step.do === 'if') {
       // If steps need special handling to support both sync and async nested steps
-      await executeIfStep(step, ctx);
+      await executeIfStep(step, ctx, isLocal ? localStore : undefined);
     } else {
       await executeStep(step, ctx);
     }
@@ -84,14 +105,23 @@ export async function executeAction(
  */
 function executeStepSync(
   step: CompiledActionStep,
-  ctx: ActionContext
+  ctx: ActionContext,
+  localStore?: LocalStateStore
 ): void {
   switch (step.do) {
     case 'set':
-      executeSetStepSync(step.target, step.value, ctx);
+      if (localStore) {
+        executeLocalSetStepSync(step.target, step.value, ctx, localStore);
+      } else {
+        executeSetStepSync(step.target, step.value, ctx);
+      }
       break;
     case 'update':
-      executeUpdateStepSync(step, ctx);
+      if (localStore) {
+        executeLocalUpdateStepSync(step, ctx, localStore);
+      } else {
+        executeUpdateStepSync(step, ctx);
+      }
       break;
     case 'setPath':
       executeSetPathStepSync(step, ctx);
@@ -107,7 +137,8 @@ function executeStepSync(
  */
 async function executeIfStep(
   step: { do: 'if'; condition: CompiledExpression; then: CompiledActionStep[]; else?: CompiledActionStep[] },
-  ctx: ActionContext
+  ctx: ActionContext,
+  localStore?: LocalStateStore
 ): Promise<void> {
   const evalCtx = createEvalContext(ctx);
   const condition = evaluate(step.condition, evalCtx);
@@ -116,9 +147,9 @@ async function executeIfStep(
 
   for (const nestedStep of stepsToExecute) {
     if (nestedStep.do === 'set' || nestedStep.do === 'update' || nestedStep.do === 'setPath') {
-      executeStepSync(nestedStep, ctx);
+      executeStepSync(nestedStep, ctx, localStore);
     } else if (nestedStep.do === 'if') {
-      await executeIfStep(nestedStep as typeof step, ctx);
+      await executeIfStep(nestedStep as typeof step, ctx, localStore);
     } else {
       await executeStep(nestedStep, ctx);
     }
@@ -234,6 +265,130 @@ function executeUpdateStepSync(
         arr.splice(idx, delCount, ...insertItems);
       }
       ctx.state.set(target, arr);
+      break;
+    }
+  }
+}
+
+// ==================== Local State Step Execution ====================
+
+/**
+ * Executes a set step for local state
+ */
+function executeLocalSetStepSync(
+  target: string,
+  value: CompiledExpression,
+  ctx: ActionContext,
+  localStore: LocalStateStore
+): void {
+  const evalCtx = createEvalContext(ctx);
+  const newValue = evaluate(value, evalCtx);
+  localStore.set(target, newValue);
+}
+
+/**
+ * Executes an update step for local state
+ */
+function executeLocalUpdateStepSync(
+  step: CompiledUpdateStep,
+  ctx: ActionContext,
+  localStore: LocalStateStore
+): void {
+  const { target, operation, value } = step;
+  const evalCtx = createEvalContext(ctx);
+  const currentValue = localStore.get(target);
+
+  switch (operation) {
+    case 'toggle': {
+      const current = typeof currentValue === 'boolean' ? currentValue : false;
+      localStore.set(target, !current);
+      break;
+    }
+
+    case 'increment': {
+      const evalResult = value ? evaluate(value, evalCtx) : 1;
+      const amount = typeof evalResult === 'number' ? evalResult : 1;
+      const current = typeof currentValue === 'number' ? currentValue : 0;
+      localStore.set(target, current + amount);
+      break;
+    }
+
+    case 'decrement': {
+      const evalResult = value ? evaluate(value, evalCtx) : 1;
+      const amount = typeof evalResult === 'number' ? evalResult : 1;
+      const current = typeof currentValue === 'number' ? currentValue : 0;
+      localStore.set(target, current - amount);
+      break;
+    }
+
+    case 'push': {
+      const item = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? currentValue : [];
+      localStore.set(target, [...arr, item]);
+      break;
+    }
+
+    case 'pop': {
+      const arr = Array.isArray(currentValue) ? currentValue : [];
+      localStore.set(target, arr.slice(0, -1));
+      break;
+    }
+
+    case 'remove': {
+      const removeValue = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? currentValue : [];
+      if (typeof removeValue === 'number') {
+        localStore.set(target, arr.filter((_, i) => i !== removeValue));
+      } else {
+        localStore.set(target, arr.filter((x) => x !== removeValue));
+      }
+      break;
+    }
+
+    case 'merge': {
+      const evalResult = value ? evaluate(value, evalCtx) : {};
+      const mergeValue = typeof evalResult === 'object' && evalResult !== null
+        ? evalResult as Record<string, unknown>
+        : {};
+      const current = typeof currentValue === 'object' && currentValue !== null
+        ? currentValue as Record<string, unknown>
+        : {};
+      localStore.set(target, { ...current, ...mergeValue });
+      break;
+    }
+
+    case 'replaceAt': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const newValue = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && idx >= 0 && idx < arr.length) {
+        arr[idx] = newValue;
+      }
+      localStore.set(target, arr);
+      break;
+    }
+
+    case 'insertAt': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const newValue = value ? evaluate(value, evalCtx) : undefined;
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && idx >= 0) {
+        arr.splice(idx, 0, newValue);
+      }
+      localStore.set(target, arr);
+      break;
+    }
+
+    case 'splice': {
+      const idx = step.index ? evaluate(step.index, evalCtx) : 0;
+      const delCount = step.deleteCount ? evaluate(step.deleteCount, evalCtx) : 0;
+      const items = value ? evaluate(value, evalCtx) : [];
+      const arr = Array.isArray(currentValue) ? [...currentValue] : [];
+      if (typeof idx === 'number' && typeof delCount === 'number') {
+        const insertItems = Array.isArray(items) ? items : [];
+        arr.splice(idx, delCount, ...insertItems);
+      }
+      localStore.set(target, arr);
       break;
     }
   }

@@ -20,6 +20,7 @@ import type {
   DataSource,
   StaticPathsDefinition,
   LifecycleHooks,
+  LocalActionDefinition,
 } from '@constela/core';
 import {
   createUndefinedStateError,
@@ -50,6 +51,8 @@ import {
   createUndefinedRefError,
   createUndefinedStyleError,
   createUndefinedVariantError,
+  createUndefinedLocalStateError,
+  createLocalActionInvalidStepError,
   findSimilarNames,
   isEventHandler,
   isDataSource,
@@ -81,11 +84,13 @@ export interface AnalysisContext {
 }
 
 /**
- * Param scope for tracking available params in component definitions
+ * Param scope for tracking available params, local state, and local actions in component definitions
  */
 interface ParamScope {
   params: Set<string>;
   componentName: string;
+  localStateNames?: Set<string>;
+  localActionNames?: Set<string>;
 }
 
 export interface AnalyzePassSuccess {
@@ -261,12 +266,21 @@ function validateExpression(
   const errors: ConstelaError[] = [];
 
   switch (expr.expr) {
-    case 'state':
-      if (!context.stateNames.has(expr.name)) {
-        const errorOptions = createErrorOptionsWithSuggestion(expr.name, context.stateNames);
+    case 'state': {
+      // Check both global state and local state
+      const isGlobalState = context.stateNames.has(expr.name);
+      const isLocalState = paramScope?.localStateNames?.has(expr.name) ?? false;
+      if (!isGlobalState && !isLocalState) {
+        // Combine available names for suggestion
+        const availableNames = new Set([
+          ...context.stateNames,
+          ...(paramScope?.localStateNames ?? []),
+        ]);
+        const errorOptions = createErrorOptionsWithSuggestion(expr.name, availableNames);
         errors.push(createUndefinedStateError(expr.name, path, errorOptions));
       }
       break;
+    }
 
     case 'var':
       if (!scope.has(expr.name)) {
@@ -1031,9 +1045,16 @@ function validateViewNode(
         for (const [propName, propValue] of Object.entries(node.props)) {
           const propPath = buildPath(path, 'props', propName);
           if (isEventHandler(propValue)) {
-            // Check action reference
-            if (!context.actionNames.has(propValue.action)) {
-              const errorOptions = createErrorOptionsWithSuggestion(propValue.action, context.actionNames);
+            // Check action reference - check both global and local actions
+            const isGlobalAction = context.actionNames.has(propValue.action);
+            const isLocalAction = paramScope?.localActionNames?.has(propValue.action) ?? false;
+            if (!isGlobalAction && !isLocalAction) {
+              // Combine available names for suggestion
+              const availableNames = new Set([
+                ...context.actionNames,
+                ...(paramScope?.localActionNames ?? []),
+              ]);
+              const errorOptions = createErrorOptionsWithSuggestion(propValue.action, availableNames);
               errors.push(createUndefinedActionError(propValue.action, propPath, errorOptions));
             }
             // Check payload expression if present
@@ -1332,6 +1353,48 @@ function detectComponentCycles(
   return errors;
 }
 
+// ==================== Local Action Validation ====================
+
+/**
+ * Validates local actions in a component definition
+ */
+function validateLocalActions(
+  localActions: LocalActionDefinition[],
+  localStateNames: Set<string>,
+  componentPath: string
+): ConstelaError[] {
+  const errors: ConstelaError[] = [];
+
+  for (let i = 0; i < localActions.length; i++) {
+    const action = localActions[i];
+    if (!action) continue;
+    const actionPath = buildPath(componentPath, 'localActions', i);
+
+    for (let j = 0; j < action.steps.length; j++) {
+      const step = action.steps[j];
+      if (!step) continue;
+      const stepPath = buildPath(actionPath, 'steps', j);
+
+      // Cast to unknown to check step type at runtime (schema might allow invalid types)
+      const stepDo = (step as { do: string }).do;
+
+      // Check step type is valid for local actions (set, update, setPath only)
+      if (stepDo !== 'set' && stepDo !== 'update' && stepDo !== 'setPath') {
+        errors.push(createLocalActionInvalidStepError(stepDo, stepPath));
+        continue;
+      }
+
+      // Check target references localState
+      if (!localStateNames.has(step.target)) {
+        const errorOptions = createErrorOptionsWithSuggestion(step.target, localStateNames);
+        errors.push(createUndefinedLocalStateError(step.target, buildPath(stepPath, 'target'), errorOptions));
+      }
+    }
+  }
+
+  return errors;
+}
+
 // ==================== Component Definition Validation ====================
 
 /**
@@ -1346,20 +1409,39 @@ function validateComponents(
   if (!programAst.components) return errors;
 
   for (const [name, def] of Object.entries(programAst.components)) {
-    // Create param scope for this component
+    const componentPath = buildPath('', 'components', name);
+
+    // Collect local state and action names
+    const localStateNames = new Set<string>(
+      def.localState ? Object.keys(def.localState) : []
+    );
+    const localActionNames = new Set<string>(
+      def.localActions ? def.localActions.map(a => a.name) : []
+    );
+
+    // Create param scope for this component (includes local state and action names)
     const paramNames = new Set<string>(
       def.params ? Object.keys(def.params) : []
     );
     const paramScope: ParamScope = {
       params: paramNames,
       componentName: name,
+      localStateNames,
+      localActionNames,
     };
+
+    // Validate localActions if present
+    if (def.localActions && def.localActions.length > 0) {
+      errors.push(
+        ...validateLocalActions(def.localActions, localStateNames, componentPath)
+      );
+    }
 
     // Validate component view with insideComponent = true
     errors.push(
       ...validateViewNode(
         def.view,
-        buildPath('', 'components', name, 'view'),
+        buildPath(componentPath, 'view'),
         context,
         new Set<string>(),
         { insideComponent: true, paramScope }

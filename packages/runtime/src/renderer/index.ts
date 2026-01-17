@@ -17,6 +17,8 @@ import type {
   CompiledEachNode,
   CompiledMarkdownNode,
   CompiledCodeNode,
+  CompiledLocalStateNode,
+  CompiledLocalAction,
   CompiledAction,
   CompiledExpression,
   CompiledEventHandler,
@@ -37,6 +39,15 @@ const SVG_TAGS = new Set([
 ]);
 function isSvgTag(tag: string): boolean { return SVG_TAGS.has(tag); }
 
+/**
+ * Local state store interface for component-level state
+ */
+interface LocalStateStore {
+  get(name: string): unknown;
+  set(name: string, value: unknown): void;
+  signals: Record<string, Signal<unknown>>;
+}
+
 export interface RenderContext {
   state: StateStore;
   actions: Record<string, CompiledAction>;
@@ -45,6 +56,11 @@ export interface RenderContext {
   cleanups?: (() => void)[];
   refs?: Record<string, Element>;
   inSvg?: boolean;
+  // Local state support
+  localState?: {
+    store: LocalStateStore;
+    actions: Record<string, CompiledLocalAction>;
+  };
 }
 
 // Type guard for event handlers
@@ -71,6 +87,8 @@ export function render(node: CompiledNode, ctx: RenderContext): Node {
       return renderMarkdown(node, ctx);
     case 'code':
       return renderCode(node, ctx);
+    case 'localState':
+      return renderLocalState(node as CompiledLocalStateNode, ctx);
     default:
       throw new Error('Unknown node kind');
   }
@@ -592,4 +610,157 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
   ctx.cleanups?.push(cleanup);
 
   return container;
+}
+
+// ==================== Local State Support ====================
+
+/**
+ * Creates a local state store with reactive signals for each state property
+ */
+function createLocalStateStore(
+  stateDefs: Record<string, { type: string; initial: unknown }>
+): LocalStateStore {
+  const signals: Record<string, Signal<unknown>> = {};
+
+  for (const [name, def] of Object.entries(stateDefs)) {
+    signals[name] = createSignal<unknown>(def.initial);
+  }
+
+  return {
+    get(name: string): unknown {
+      return signals[name]?.get();
+    },
+    set(name: string, value: unknown): void {
+      signals[name]?.set(value);
+    },
+    signals,
+  };
+}
+
+/**
+ * Creates a proxy for locals that resolves local state signals on property access.
+ * This allows reactive updates when local state signals are updated.
+ */
+function createLocalsWithLocalState(
+  baseLocals: Record<string, unknown>,
+  localStore: LocalStateStore
+): Record<string, unknown> {
+  return new Proxy(baseLocals, {
+    get(target, prop: string) {
+      // Check local state first
+      if (prop in localStore.signals) {
+        return localStore.get(prop);
+      }
+      return target[prop];
+    },
+    has(target, prop: string) {
+      if (prop in localStore.signals) return true;
+      return prop in target;
+    },
+    ownKeys(target) {
+      const keys = Reflect.ownKeys(target);
+      for (const key of Object.keys(localStore.signals)) {
+        if (!keys.includes(key)) keys.push(key);
+      }
+      return keys;
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      if (prop in localStore.signals) {
+        return { enumerable: true, configurable: true };
+      }
+      return Reflect.getOwnPropertyDescriptor(target, prop);
+    },
+  });
+}
+
+/**
+ * Creates a proxy for state that first checks local state before delegating to global state.
+ * This allows local state names to shadow global state names within a component.
+ */
+function createStateWithLocalState(
+  globalState: StateStore,
+  localStore: LocalStateStore
+): StateStore {
+  return {
+    get(name: string): unknown {
+      // Check local state first
+      if (name in localStore.signals) {
+        return localStore.get(name);
+      }
+      return globalState.get(name);
+    },
+    set(name: string, value: unknown): void {
+      // Only set in global state - local state is handled separately via local actions
+      globalState.set(name, value);
+    },
+    setPath(name: string, path: (string | number)[], value: unknown): void {
+      globalState.setPath(name, path, value);
+    },
+    subscribe(name: string, fn: (value: unknown) => void): () => void {
+      // Check local state first
+      if (name in localStore.signals) {
+        return localStore.signals[name]!.subscribe!(fn);
+      }
+      return globalState.subscribe(name, fn);
+    },
+    getPath(name: string, path: string | (string | number)[]): unknown {
+      return globalState.getPath(name, path);
+    },
+    subscribeToPath(
+      name: string,
+      path: string | (string | number)[],
+      fn: (value: unknown) => void
+    ): () => void {
+      return globalState.subscribeToPath(name, path, fn);
+    },
+  };
+}
+
+/**
+ * Extended action type with local action metadata
+ */
+interface ExtendedAction extends CompiledAction {
+  _isLocalAction?: boolean;
+  _localStore?: LocalStateStore;
+}
+
+/**
+ * Renders a local state node by creating a local state store and merging it
+ * with the render context for child rendering.
+ */
+function renderLocalState(node: CompiledLocalStateNode, ctx: RenderContext): Node {
+  // Create local state store with signals
+  const localStore = createLocalStateStore(node.state);
+
+  // Create merged locals with local state
+  const mergedLocals = createLocalsWithLocalState(ctx.locals, localStore);
+
+  // Create proxied state that checks local state first
+  const mergedState = createStateWithLocalState(ctx.state, localStore);
+
+  // Create merged actions with local actions marked
+  const mergedActions: Record<string, ExtendedAction> = { ...ctx.actions };
+  for (const [name, action] of Object.entries(node.actions)) {
+    // Mark as local action and attach the store
+    mergedActions[name] = {
+      ...action,
+      _isLocalAction: true,
+      _localStore: localStore,
+    };
+  }
+
+  // Create child context
+  const childCtx: RenderContext = {
+    ...ctx,
+    state: mergedState,
+    locals: mergedLocals,
+    actions: mergedActions,
+    localState: {
+      store: localStore,
+      actions: node.actions,
+    },
+  };
+
+  // Render child
+  return render(node.child, childCtx);
 }

@@ -1,5 +1,26 @@
 # @constela/compiler
 
+## 0.10.0
+
+### Minor Changes
+
+- feat: add component local state support
+
+  - Add `localState` and `localActions` fields to ComponentDef
+  - Add `LocalActionStep` and `LocalActionDefinition` types
+  - Add `UNDEFINED_LOCAL_STATE` and `LOCAL_ACTION_INVALID_STEP` error codes
+  - Add `CompiledLocalStateNode` and `CompiledLocalAction` types
+  - Add validation for localState and localActions in analyze pass
+  - Add transformation for localState wrapping in transform pass
+  - Add `renderLocalState` function in runtime renderer
+  - Add local action execution support in action executor
+  - Add SSR support for localState nodes in server renderer
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.10.0
+
 ## 0.9.1
 
 ### Patch Changes

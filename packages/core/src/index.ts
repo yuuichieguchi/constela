@@ -60,6 +60,9 @@ export type {
   EventHandler,
   // Action Definition
   ActionDefinition,
+  // Local Action Types
+  LocalActionStep,
+  LocalActionDefinition,
   // View Nodes
   ViewNode,
   ElementNode,
@@ -141,6 +144,7 @@ export {
   // ActionStep type guards
   isSetStep,
   isUpdateStep,
+  isSetPathStep,
   isFetchStep,
   isStorageStep,
   isClipboardStep,
@@ -150,6 +154,9 @@ export {
   isSubscribeStep,
   isDisposeStep,
   isActionStep,
+  // LocalAction type guards
+  isLocalActionStep,
+  isLocalActionDefinition,
   // StateField type guards
   isNumberField,
   isStringField,
@@ -216,6 +223,9 @@ export {
   // Style error factories
   createUndefinedStyleError,
   createUndefinedVariantError,
+  // Local state error factories
+  createUndefinedLocalStateError,
+  createLocalActionInvalidStepError,
 } from './types/error.js';
 
 // ==================== Validator ====================

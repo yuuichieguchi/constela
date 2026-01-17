@@ -15,6 +15,7 @@ import type {
   EventHandler,
   ComponentDef,
   LifecycleHooks,
+  LocalActionDefinition,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -220,6 +221,26 @@ export interface CompiledCloseStep {
   connection: string;
 }
 
+// ==================== Compiled Local State Types ====================
+
+/**
+ * Compiled local action
+ */
+export interface CompiledLocalAction {
+  name: string;
+  steps: CompiledActionStep[];
+}
+
+/**
+ * Compiled local state node - wraps component with local state
+ */
+export interface CompiledLocalStateNode {
+  kind: 'localState';
+  state: Record<string, { type: string; initial: unknown }>;
+  actions: Record<string, CompiledLocalAction>;
+  child: CompiledNode;
+}
+
 // ==================== Compiled View Node Types ====================
 
 export type CompiledNode =
@@ -229,7 +250,8 @@ export type CompiledNode =
   | CompiledEachNode
   | CompiledMarkdownNode
   | CompiledCodeNode
-  | CompiledSlotNode;
+  | CompiledSlotNode
+  | CompiledLocalStateNode;
 
 export interface CompiledElementNode {
   kind: 'element';
@@ -916,7 +938,19 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       };
 
       // Expand component view with the new context
-      return transformViewNode(def.view, newCtx);
+      const expandedView = transformViewNode(def.view, newCtx);
+
+      // Wrap with localState if present
+      if (def.localState && Object.keys(def.localState).length > 0) {
+        return {
+          kind: 'localState',
+          state: transformLocalState(def.localState),
+          actions: transformLocalActions(def.localActions ?? []),
+          child: expandedView,
+        };
+      }
+
+      return expandedView;
     }
 
     case 'markdown':
@@ -971,6 +1005,37 @@ function transformState(
   }
 
   return compiledState;
+}
+
+// ==================== Local State Transformation ====================
+
+/**
+ * Transforms local state definitions
+ */
+function transformLocalState(
+  localState: Record<string, StateField>
+): Record<string, { type: string; initial: unknown }> {
+  const result: Record<string, { type: string; initial: unknown }> = {};
+  for (const [name, field] of Object.entries(localState)) {
+    result[name] = { type: field.type, initial: field.initial };
+  }
+  return result;
+}
+
+/**
+ * Transforms local actions
+ */
+function transformLocalActions(
+  localActions: LocalActionDefinition[]
+): Record<string, CompiledLocalAction> {
+  const result: Record<string, CompiledLocalAction> = {};
+  for (const action of localActions) {
+    result[action.name] = {
+      name: action.name,
+      steps: action.steps.map(transformActionStep),
+    };
+  }
+  return result;
 }
 
 // ==================== Actions Transformation ====================

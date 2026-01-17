@@ -437,6 +437,9 @@ export interface CloseStep {
 
 export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep;
 
+// LocalActionStep - only set, update, setPath allowed for local actions
+export type LocalActionStep = SetStep | UpdateStep | SetPathStep;
+
 // ==================== Event Handler ====================
 
 /**
@@ -456,6 +459,15 @@ export interface EventHandler {
 export interface ActionDefinition {
   name: string;
   steps: ActionStep[];
+}
+
+/**
+ * Local action definition - a named sequence of local steps
+ * Only set, update, and setPath steps are allowed
+ */
+export interface LocalActionDefinition {
+  name: string;
+  steps: LocalActionStep[];
 }
 
 // ==================== View Nodes ====================
@@ -543,6 +555,8 @@ export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNod
 
 export interface ComponentDef {
   params?: Record<string, ParamDef>;
+  localState?: Record<string, StateField>;
+  localActions?: LocalActionDefinition[];
   view: ViewNode;
 }
 

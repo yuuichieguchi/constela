@@ -32,6 +32,8 @@ export type {
   CompiledMarkdownNode,
   CompiledCodeNode,
   CompiledSlotNode,
+  CompiledLocalStateNode,
+  CompiledLocalAction,
   CompiledExpression,
   CompiledLitExpr,
   CompiledStateExpr,
