@@ -1,5 +1,14 @@
 # @constela/start
 
+## 1.2.29
+
+### Patch Changes
+
+- c4301c2: Fix theme state initialization to read from localStorage in runtime instead of post-hydration sync in start
+- Updated dependencies [c4301c2]
+  - @constela/runtime@0.11.1
+  - @constela/router@9.0.0
+
 ## 1.2.28
 
 ### Patch Changes
