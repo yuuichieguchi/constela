@@ -515,6 +515,68 @@ Define page routes with path, layout, and metadata:
 
 Access route params in expressions with `{ "expr": "route", "name": "id" }`.
 
+### Meta Tag Generation
+
+`route.title` and `route.meta` automatically generate HTML meta tags at build time.
+
+**Example route definition:**
+
+```json
+{
+  "route": {
+    "path": "/posts/:slug",
+    "title": {
+      "expr": "concat",
+      "items": [
+        { "expr": "route", "name": "slug", "source": "param" },
+        { "expr": "lit", "value": " | My Blog" }
+      ]
+    },
+    "meta": {
+      "description": { "expr": "lit", "value": "Read our latest blog posts" },
+      "og:title": { "expr": "route", "name": "slug", "source": "param" },
+      "og:type": { "expr": "lit", "value": "article" },
+      "og:url": {
+        "expr": "concat",
+        "items": [
+          { "expr": "lit", "value": "https://example.com" },
+          { "expr": "route", "name": "", "source": "path" }
+        ]
+      },
+      "twitter:card": { "expr": "lit", "value": "summary_large_image" }
+    }
+  }
+}
+```
+
+**Generated HTML (for `/posts/hello-world`):**
+
+```html
+<title>hello-world | My Blog</title>
+<meta name="description" content="Read our latest blog posts">
+<meta property="og:title" content="hello-world">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://example.com/posts/hello-world">
+<meta property="twitter:card" content="summary_large_image">
+```
+
+**Tag generation rules:**
+
+| Key | Generated Tag |
+|-----|---------------|
+| `title` | `<title>...</title>` |
+| `og:*` | `<meta property="og:*" content="...">` |
+| `twitter:*` | `<meta property="twitter:*" content="...">` |
+| Other | `<meta name="*" content="...">` |
+
+**Supported expressions for dynamic values:**
+
+- `{ "expr": "lit", "value": "static text" }` - Literal value
+- `{ "expr": "route", "name": "slug", "source": "param" }` - Route parameter
+- `{ "expr": "route", "name": "q", "source": "query" }` - Query parameter
+- `{ "expr": "route", "name": "", "source": "path" }` - Current path
+- `{ "expr": "concat", "items": [...] }` - Concatenate multiple expressions
+
 ### Imports
 
 Import external JSON data files:
