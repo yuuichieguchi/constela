@@ -1,5 +1,13 @@
 # @constela/runtime
 
+## 0.12.2
+
+### Patch Changes
+
+- Fix Proxy spread bug in createReactiveLocals by adding ownKeys and getOwnPropertyDescriptor traps
+
+  Loop variables (itemName/indexName) were lost when spreading ctx.locals in event handlers inside each loops. This caused payload expressions referencing loop variables to receive undefined.
+
 ## 0.12.1
 
 ### Patch Changes
