@@ -25,7 +25,25 @@ export function createStateStore(
 
   // Create a signal for each state field
   for (const [name, def] of Object.entries(definitions)) {
-    signals.set(name, createSignal(def.initial));
+    let initialValue = def.initial;
+
+    // Read localStorage for 'theme' state to sync with anti-flash script
+    if (name === 'theme' && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('theme');
+        if (stored !== null) {
+          try {
+            initialValue = JSON.parse(stored);
+          } catch {
+            initialValue = stored;
+          }
+        }
+      } catch {
+        // Ignore localStorage errors (SSR, private browsing, etc.)
+      }
+    }
+
+    signals.set(name, createSignal(initialValue));
   }
 
   return {
