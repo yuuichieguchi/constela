@@ -45,6 +45,12 @@ The compiler transforms JSON programs through three passes:
 2. **Analyze** - Semantic analysis (state, actions, components, routes)
 3. **Transform** - AST to optimized runtime program
 
+## Supported Features
+
+- **setPath** - Compiles to efficient path-based state updates
+- **Key-based each** - Compiles key expressions for list diffing
+- **WebSocket connections** - Compiles connection definitions and send/close actions
+
 ## CompiledProgram Structure
 
 ```json
@@ -62,6 +68,13 @@ The compiler transforms JSON programs through three passes:
   },
   "state": {
     "count": { "type": "number", "initial": 0 }
+  },
+  "connections": {
+    "chat": {
+      "type": "websocket",
+      "url": { ... },
+      "onMessage": { "action": "handleMessage" }
+    }
   },
   "actions": {
     "increment": {

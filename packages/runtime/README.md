@@ -40,6 +40,81 @@ Becomes an interactive app with:
 
 ## Features
 
+### Fine-grained State Updates (setPath)
+
+Update nested values without replacing entire arrays:
+
+```json
+{
+  "do": "setPath",
+  "target": "posts",
+  "path": [5, "liked"],
+  "value": { "expr": "lit", "value": true }
+}
+```
+
+Dynamic path with variables:
+
+```json
+{
+  "do": "setPath",
+  "target": "posts",
+  "path": { "expr": "var", "name": "payload", "path": "index" },
+  "field": "liked",
+  "value": { "expr": "lit", "value": true }
+}
+```
+
+### Key-based List Diffing
+
+Efficient list updates - only changed items re-render:
+
+```json
+{
+  "kind": "each",
+  "items": { "expr": "state", "name": "posts" },
+  "as": "post",
+  "key": { "expr": "var", "name": "post", "path": "id" },
+  "body": { ... }
+}
+```
+
+Benefits:
+- Add/remove items: Only affected DOM nodes change
+- Reorder: DOM nodes move without recreation
+- Update item: Only that item re-renders
+- Input state preserved during updates
+
+### WebSocket Connections
+
+Real-time data with declarative WebSocket:
+
+```json
+{
+  "connections": {
+    "chat": {
+      "type": "websocket",
+      "url": "wss://api.example.com/ws",
+      "onMessage": { "action": "handleMessage" },
+      "onOpen": { "action": "connectionOpened" },
+      "onClose": { "action": "connectionClosed" }
+    }
+  }
+}
+```
+
+Send messages:
+
+```json
+{ "do": "send", "connection": "chat", "data": { "expr": "state", "name": "inputText" } }
+```
+
+Close connection:
+
+```json
+{ "do": "close", "connection": "chat" }
+```
+
 ### Markdown Rendering
 
 ```json
@@ -148,15 +223,41 @@ interface AppInstance {
 ### Reactive Primitives
 
 ```typescript
-import { createSignal, createEffect } from '@constela/runtime';
+import { createSignal, createEffect, createComputed } from '@constela/runtime';
 
 const count = createSignal(0);
 count.get();  // Read
 count.set(1); // Write
 
+// Computed values with automatic dependency tracking
+const doubled = createComputed(() => count.get() * 2);
+doubled.get(); // Returns memoized value
+
 const cleanup = createEffect(() => {
   console.log(`Count: ${count.get()}`);
 });
+```
+
+### TypedStateStore (TypeScript)
+
+Type-safe state access for TypeScript developers:
+
+```typescript
+import { createTypedStateStore } from '@constela/runtime';
+
+interface AppState {
+  posts: { id: number; liked: boolean }[];
+  filter: string;
+}
+
+const state = createTypedStateStore<AppState>({
+  posts: { type: 'list', initial: [] },
+  filter: { type: 'string', initial: '' },
+});
+
+state.get('posts');  // Type: { id: number; liked: boolean }[]
+state.set('filter', 'recent'); // OK
+state.set('filter', 123);      // TypeScript error
 ```
 
 ## License

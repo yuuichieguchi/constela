@@ -79,6 +79,9 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 // Loop node
 { "kind": "each", "items": { "expr": "state", "name": "todos" }, "as": "item", "body": { ... } }
 
+// Loop node with key (efficient diffing)
+{ "kind": "each", "items": { ... }, "as": "item", "key": { "expr": "var", "name": "item", "path": "id" }, "body": { ... } }
+
 // Component node
 { "kind": "component", "name": "Button", "props": { "label": { ... } } }
 
@@ -95,7 +98,7 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 
 ## Action Step Types
 
-11 step types for declarative actions:
+14 step types for declarative actions:
 
 ```json
 // Set state value
@@ -104,6 +107,10 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 // Update with operation
 { "do": "update", "target": "count", "operation": "increment" }
 { "do": "update", "target": "todos", "operation": "push", "value": { ... } }
+
+// Set nested path (fine-grained update)
+{ "do": "setPath", "target": "posts", "path": [5, "liked"], "value": { "expr": "lit", "value": true } }
+{ "do": "setPath", "target": "posts", "path": { "expr": "var", "name": "payload", "path": "index" }, "field": "liked", "value": { ... } }
 
 // HTTP request
 { "do": "fetch", "url": { ... }, "method": "GET", "onSuccess": [ ... ], "onError": [ ... ] }
@@ -131,6 +138,30 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 
 // DOM manipulation
 { "do": "dom", "operation": "addClass", "ref": "myElement", "value": { ... } }
+
+// WebSocket send
+{ "do": "send", "connection": "chat", "data": { "expr": "state", "name": "inputText" } }
+
+// WebSocket close
+{ "do": "close", "connection": "chat" }
+```
+
+## Connections
+
+WebSocket connections for real-time data:
+
+```json
+{
+  "connections": {
+    "chat": {
+      "type": "websocket",
+      "url": "wss://api.example.com/ws",
+      "onMessage": { "action": "handleMessage" },
+      "onOpen": { "action": "connectionOpened" },
+      "onClose": { "action": "connectionClosed" }
+    }
+  }
+}
 ```
 
 **Update Operations:**
