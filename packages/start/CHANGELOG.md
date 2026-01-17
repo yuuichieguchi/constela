@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.28
+
+### Patch Changes
+
+- Sync theme state from localStorage on client initialization to fix state/DOM mismatch after page reload
+
 ## 1.2.27
 
 ### Patch Changes
