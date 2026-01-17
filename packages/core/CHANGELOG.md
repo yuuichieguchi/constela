@@ -1,5 +1,17 @@
 # @constela/core
 
+## 0.9.0
+
+### Minor Changes
+
+- feat: add fine-grained state updates, key-based list diffing, computed state, and WebSocket support
+
+  - Add setPath/getPath/subscribeToPath for partial state updates
+  - Add key-based diffing for efficient list rendering
+  - Add createComputed for memoized derived state
+  - Add WebSocket connection support with send/close actions
+  - Add TypedStateStore for type-safe state access
+
 ## 0.8.0
 
 ### Minor Changes
