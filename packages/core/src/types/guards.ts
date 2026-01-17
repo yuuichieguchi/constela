@@ -53,6 +53,7 @@ import {
   type RefExpr,
   type IndexExpr,
   type StyleExpr,
+  type ConcatExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
@@ -268,6 +269,18 @@ export function isStyleExpr(value: unknown): value is StyleExpr {
 }
 
 /**
+ * Checks if value is a concat expression
+ */
+export function isConcatExpr(value: unknown): value is ConcatExpr {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as ConcatExpr).expr === 'concat' &&
+    Array.isArray((value as ConcatExpr).items)
+  );
+}
+
+/**
  * Checks if value is a data source
  */
 export function isDataSource(value: unknown): value is DataSource {
@@ -343,7 +356,8 @@ export function isExpression(value: unknown): value is Expression {
     isDataExpr(value) ||
     isRefExpr(value) ||
     isIndexExpr(value) ||
-    isStyleExpr(value)
+    isStyleExpr(value) ||
+    isConcatExpr(value)
   );
 }
 

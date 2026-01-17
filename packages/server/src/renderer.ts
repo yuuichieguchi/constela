@@ -214,6 +214,15 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return evaluateStyle(expr, ctx);
     }
 
+    case 'concat': {
+      return expr.items
+        .map(item => {
+          const val = evaluate(item, ctx);
+          return val == null ? '' : String(val);
+        })
+        .join('');
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

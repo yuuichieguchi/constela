@@ -196,11 +196,65 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
     case 'style':
       return evaluateStyle(expr, ctx);
 
+    case 'concat': {
+      return expr.items
+        .map(item => {
+          const val = evaluate(item, ctx);
+          return val == null ? '' : String(val);
+        })
+        .join('');
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
     }
   }
+}
+
+/**
+ * Type guard to check if a value is a CompiledExpression
+ * Uses hasOwnProperty to avoid prototype chain issues
+ */
+function isExpression(value: unknown): value is CompiledExpression {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, 'expr') &&
+    typeof (value as { expr: unknown }).expr === 'string'
+  );
+}
+
+/**
+ * Evaluates a payload that can be either a single expression or an object with expression fields
+ */
+export function evaluatePayload(
+  payload: CompiledExpression | Record<string, CompiledExpression>,
+  ctx: EvaluationContext
+): unknown {
+  // Single expression case
+  if (isExpression(payload)) {
+    return evaluate(payload, ctx);
+  }
+
+  // Object payload case - evaluate each field recursively
+  if (typeof payload === 'object' && payload !== null) {
+    const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(payload)) {
+      if (forbiddenKeys.has(key)) continue;
+
+      if (isExpression(value)) {
+        result[key] = evaluate(value, ctx);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  return payload;
 }
 
 /**

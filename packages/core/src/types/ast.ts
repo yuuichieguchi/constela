@@ -204,7 +204,15 @@ export interface StyleExpr {
   variants?: Record<string, Expression>;
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr;
+/**
+ * Concat expression - concatenates multiple expressions into a string
+ */
+export interface ConcatExpr {
+  expr: 'concat';
+  items: Expression[];
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr;
 
 // ==================== State Fields ====================
 

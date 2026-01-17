@@ -292,7 +292,8 @@ export type CompiledExpression =
   | CompiledRefExpr
   | CompiledIndexExpr
   | CompiledParamExpr
-  | CompiledStyleExpr;
+  | CompiledStyleExpr
+  | CompiledConcatExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -372,12 +373,17 @@ export interface CompiledStyleExpr {
   variants?: Record<string, CompiledExpression>;
 }
 
+export interface CompiledConcatExpr {
+  expr: 'concat';
+  items: CompiledExpression[];
+}
+
 // ==================== Compiled Event Handler ====================
 
 export interface CompiledEventHandler {
   event: string;
   action: string;
-  payload?: CompiledExpression;
+  payload?: CompiledExpression | Record<string, CompiledExpression>;
 }
 
 // ==================== Transform Pass Result ====================
@@ -541,6 +547,12 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
       }
       return styleExpr;
     }
+
+    case 'concat':
+      return {
+        expr: 'concat',
+        items: expr.items.map(item => transformExpression(item, ctx)),
+      };
   }
 }
 

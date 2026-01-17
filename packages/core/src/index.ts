@@ -32,6 +32,7 @@ export type {
   DataExpr,
   RefExpr,
   StyleExpr,
+  ConcatExpr,
   // State Fields
   StateField,
   NumberField,
@@ -120,6 +121,7 @@ export {
   isDataExpr,
   isRefExpr,
   isStyleExpr,
+  isConcatExpr,
   isExpression,
   // Route Definition type guard
   isRouteDefinition,

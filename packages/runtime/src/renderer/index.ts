@@ -25,7 +25,7 @@ import { parseMarkdown } from './markdown.js';
 import { highlightCode } from './code.js';
 import { createEffect } from '../reactive/effect.js';
 import { createSignal, type Signal } from '../reactive/signal.js';
-import { evaluate } from '../expression/evaluator.js';
+import { evaluate, evaluatePayload } from '../expression/evaluator.js';
 import { executeAction } from '../action/executor.js';
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
@@ -122,7 +122,7 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): Element {
             // Evaluate payload with event locals merged into context locals
             let payload: unknown = undefined;
             if (handler.payload) {
-              payload = evaluate(handler.payload, {
+              payload = evaluatePayload(handler.payload, {
                 state: ctx.state,
                 locals: { ...ctx.locals, ...eventLocals },
                 ...(ctx.imports && { imports: ctx.imports })
