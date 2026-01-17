@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { createDevServer } from '../dev/server.js';
 import { build } from '../build/index.js';
 import { loadConfig, resolveConfig } from '../config/config-loader.js';
+import { hyperlink } from '../utils/terminal.js';
 
 // ==================== Handler Type Definitions ====================
 
@@ -22,6 +23,7 @@ type StartHandler = (options: {
 // ==================== Handler Storage ====================
 
 let devHandler: DevHandler = async (options) => {
+  const startTime = performance.now();
   const port = parseInt(options.port, 10);
   const host = options.host ?? 'localhost';
   const server = await createDevServer({
@@ -31,7 +33,9 @@ let devHandler: DevHandler = async (options) => {
     ...(options.layoutsDir ? { layoutsDir: options.layoutsDir } : {}),
   });
   await server.listen();
-  console.log(`Development server running at http://${host}:${server.port}`);
+  const elapsed = Math.round(performance.now() - startTime);
+  const url = `http://${host}:${server.port}`;
+  console.log(`\nConstela Dev Server\n- Local: ${hyperlink(url)}\n\nReady in ${elapsed}ms (Ctrl+Click to open)`);
 
   process.on('SIGINT', async () => {
     console.log('\nShutting down server...');
@@ -54,6 +58,7 @@ let buildHandler: BuildHandler = async (options) => {
 };
 
 let startHandler: StartHandler = async (options) => {
+  const startTime = performance.now();
   const port = parseInt(options.port, 10);
   const host = options.host ?? '0.0.0.0';
 
@@ -64,7 +69,9 @@ let startHandler: StartHandler = async (options) => {
     ...(options.layoutsDir ? { layoutsDir: options.layoutsDir } : {}),
   });
   await server.listen();
-  console.log(`Production server running at http://${host}:${server.port}`);
+  const elapsed = Math.round(performance.now() - startTime);
+  const url = `http://${host}:${server.port}`;
+  console.log(`\nConstela Production Server\n- Local: ${hyperlink(url)}\n\nReady in ${elapsed}ms (Ctrl+Click to open)`);
 
   process.on('SIGINT', async () => {
     console.log('\nShutting down server...');

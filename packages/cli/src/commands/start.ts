@@ -10,7 +10,7 @@
  *   -p, --port <number>  Port number (default: 3000)
  */
 
-import { createDevServer } from '@constela/start';
+import { createDevServer, hyperlink } from '@constela/start';
 
 export interface StartOptions {
   port?: string;
@@ -29,12 +29,16 @@ export async function startCommand(options: StartOptions): Promise<void> {
   }
 
   try {
+    const startTime = performance.now();
+
     // For now, use the same server as dev mode
     // In production, this would use a different, optimized server
     const server = await createDevServer({ port, host: '0.0.0.0' });
     await server.listen();
 
-    console.log(`Production server running at http://0.0.0.0:${server.port}`);
+    const elapsed = Math.round(performance.now() - startTime);
+    const url = `http://0.0.0.0:${server.port}`;
+    console.log(`\nConstela Production Server\n- Local: ${hyperlink(url)}\n\nReady in ${elapsed}ms (Ctrl+Click to open)`);
 
     // Keep the process running
     process.on('SIGINT', async () => {

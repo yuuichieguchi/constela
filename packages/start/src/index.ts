@@ -80,3 +80,6 @@ export type { ComponentDef, MDXToConstelaOptions } from './build/mdx.js';
 // Config loader
 export { loadConfig, resolveConfig } from './config/config-loader.js';
 export type { ConstelaConfigFile, CLIOptions } from './config/config-loader.js';
+
+// Terminal utilities
+export { hyperlink } from './utils/terminal.js';

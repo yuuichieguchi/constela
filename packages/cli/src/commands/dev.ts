@@ -14,7 +14,7 @@
  *   --layoutsDir <path>       Layouts directory
  */
 
-import { createDevServer, loadConfig, resolveConfig } from '@constela/start';
+import { createDevServer, loadConfig, resolveConfig, hyperlink } from '@constela/start';
 
 export interface DevOptions {
   port?: string;
@@ -37,6 +37,8 @@ export async function devCommand(options: DevOptions): Promise<void> {
   }
 
   try {
+    const startTime = performance.now();
+
     // Load config from file and merge with CLI options
     const fileConfig = await loadConfig(process.cwd());
     const resolvedConfig = await resolveConfig(fileConfig, {
@@ -60,7 +62,9 @@ export async function devCommand(options: DevOptions): Promise<void> {
     });
     await server.listen();
 
-    console.log(`Development server running at http://${serverHost}:${server.port}`);
+    const elapsed = Math.round(performance.now() - startTime);
+    const url = `http://${serverHost}:${server.port}`;
+    console.log(`\nConstela Dev Server\n- Local: ${hyperlink(url)}\n\nReady in ${elapsed}ms (Ctrl+Click to open)`);
 
     // Keep the process running
     process.on('SIGINT', async () => {

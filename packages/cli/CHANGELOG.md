@@ -1,5 +1,20 @@
 # @constela/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- feat(cli): add terminal URL hyperlink support with OSC 8 escape sequences
+
+  - Add `hyperlink` function to generate clickable URLs in supported terminals
+  - Update dev/start server output format with startup time display
+  - Respect `NO_COLOR` environment variable for CI/CD compatibility
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/start@1.3.0
+
 ## 0.4.5
 
 ### Patch Changes
