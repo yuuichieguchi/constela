@@ -100,6 +100,19 @@ export function initClient(options: InitClientOptions): AppInstance {
 
   // Step 5: Theme synchronization effect
   if (program.state?.['theme']) {
+    // Sync state from localStorage (to match anti-flash script)
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored) {
+        let storedTheme: unknown = stored;
+        try { storedTheme = JSON.parse(stored); } catch {}
+        const currentTheme = appInstance.getState?.('theme');
+        if (storedTheme && storedTheme !== currentTheme) {
+          appInstance.setState?.('theme', storedTheme);
+        }
+      }
+    } catch {}
+
     const updateThemeClass = (value: unknown) => {
       if (value === 'dark') {
         document.documentElement.classList.add('dark');
@@ -108,7 +121,7 @@ export function initClient(options: InitClientOptions): AppInstance {
       }
     };
 
-    // Initial sync from current state
+    // Initial sync from current state (now reflects localStorage if different)
     const currentTheme = appInstance.getState?.('theme');
     if (currentTheme) {
       updateThemeClass(currentTheme);
