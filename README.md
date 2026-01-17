@@ -803,13 +803,19 @@ export default { fetch: adapter.fetch };
 | `@constela/core` | 0.8.0 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
 | `@constela/compiler` | 0.8.0 | 3-pass compiler: validate → analyze → transform, Style analysis |
 | `@constela/runtime` | 0.11.0 | DOM renderer, hydration, reactive signals, Style evaluation |
-| `@constela/router` | 8.0.1 | History API routing, dynamic params, catch-all routes |
-| `@constela/server` | 3.0.2 | SSR with Shiki dual-theme syntax highlighting |
-| `@constela/start` | 1.2.24 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
-| `@constela/cli` | 0.4.0 | CLI: compile, dev, build, start, validate, inspect commands |
-| `@constela/builder` | 0.1.0 | Type-safe builders for programmatic AST construction |
+| `@constela/router` | 9.0.0 | History API routing, dynamic params, catch-all routes |
+| `@constela/server` | 4.1.0 | SSR with Shiki dual-theme syntax highlighting |
+| `@constela/start` | 1.2.25 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/cli` | 0.4.1 | CLI: compile, dev, build, start, validate, inspect commands |
+| `@constela/builder` | 0.2.0 | Type-safe builders for programmatic AST construction |
 
 See each package's README for detailed API documentation.
+
+## Documentation
+
+- [Widget Integration Guide](docs/widgets.md) - Embedding independent Constela programs in pages
+- [Architecture](docs/architecture.md) - Package structure, compilation pipeline, and runtime
+- [Troubleshooting](docs/troubleshooting.md) - Common errors, debugging, and solutions
 
 ## CLI Usage
 
