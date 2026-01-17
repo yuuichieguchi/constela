@@ -415,6 +415,63 @@ Reusable view definitions with props and slots:
 { "expr": "param", "name": "user", "path": "name" }
 ```
 
+### Component Local State
+
+Components can have their own independent local state that is not shared with other instances:
+
+```json
+{
+  "components": {
+    "Accordion": {
+      "params": { "title": { "type": "string" } },
+      "localState": {
+        "isExpanded": { "type": "boolean", "initial": false }
+      },
+      "localActions": [
+        {
+          "name": "toggle",
+          "steps": [{ "do": "update", "target": "isExpanded", "operation": "toggle" }]
+        }
+      ],
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "onClick": { "event": "click", "action": "toggle" }
+            },
+            "children": [
+              { "kind": "text", "value": { "expr": "param", "name": "title" } }
+            ]
+          },
+          {
+            "kind": "if",
+            "condition": { "expr": "state", "name": "isExpanded" },
+            "then": { "kind": "slot" }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+**Key features:**
+- Each component instance maintains its own state
+- `localState` uses the same syntax as global `state`
+- `localActions` can only use `set`, `update`, and `setPath` steps (no `fetch`, `navigate`, etc.)
+- Access local state with `{ "expr": "state", "name": "isExpanded" }` within the component
+
+**Use cases:**
+- Accordion / Collapsible sections
+- Dropdowns and tooltips
+- Form field validation state
+- Toggle switches
+- Any component that needs internal state without polluting global state
+
 ### Event Handling
 
 Bind events to actions via props:
