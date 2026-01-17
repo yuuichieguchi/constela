@@ -42,7 +42,7 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 
 ## Expression Types
 
-13 expression types for constrained computation:
+14 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -59,8 +59,28 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 | `data` | `{ "expr": "data", "name": "posts" }` | Build-time data |
 | `ref` | `{ "expr": "ref", "name": "inputEl" }` | DOM element ref |
 | `style` | `{ "expr": "style", "name": "button", "variants": {...} }` | Style reference |
+| `concat` | `{ "expr": "concat", "items": [...] }` | String concatenation |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
+
+**Concat Expression:**
+
+Concatenate multiple expressions into a single string:
+
+```json
+{
+  "expr": "concat",
+  "items": [
+    { "expr": "lit", "value": "Hello, " },
+    { "expr": "var", "name": "username" },
+    { "expr": "lit", "value": "!" }
+  ]
+}
+```
+
+- Evaluates each item and joins them as strings
+- `null`/`undefined` values become empty strings
+- Numbers and booleans are converted to strings
 
 ## View Node Types
 
@@ -305,11 +325,11 @@ if (result.ok) {
 
 ### Type Guards
 
-47 type guard functions for runtime type checking:
+48 type guard functions for runtime type checking:
 
 ```typescript
 import {
-  isLitExpr, isStateExpr, isVarExpr, isBinExpr,
+  isLitExpr, isStateExpr, isVarExpr, isBinExpr, isConcatExpr,
   isElementNode, isTextNode, isIfNode, isEachNode,
   isSetStep, isUpdateStep, isFetchStep,
   isNumberField, isStringField, isListField,

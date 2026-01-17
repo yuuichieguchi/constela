@@ -65,6 +65,54 @@ Dynamic path with variables:
 }
 ```
 
+### String Concatenation (concat)
+
+Build dynamic strings from multiple expressions:
+
+```json
+{
+  "expr": "concat",
+  "items": [
+    { "expr": "lit", "value": "/users/" },
+    { "expr": "var", "name": "userId" },
+    { "expr": "lit", "value": "/profile" }
+  ]
+}
+```
+
+Useful for:
+- Dynamic URLs: `/api/posts/{id}`
+- CSS class names: `btn btn-{variant}`
+- Formatted messages: `Hello, {name}!`
+
+### Object Payloads for Event Handlers
+
+Pass multiple values to actions with object-shaped payloads:
+
+```json
+{
+  "kind": "element",
+  "tag": "button",
+  "props": {
+    "onClick": {
+      "event": "click",
+      "action": "toggleLike",
+      "payload": {
+        "index": { "expr": "var", "name": "index" },
+        "postId": { "expr": "var", "name": "post", "path": "id" },
+        "currentLiked": { "expr": "var", "name": "post", "path": "liked" }
+      }
+    }
+  }
+}
+```
+
+Each expression field in the payload is evaluated when the event fires. The action receives the evaluated object:
+
+```json
+{ "index": 5, "postId": "abc123", "currentLiked": true }
+```
+
 ### Key-based List Diffing
 
 Efficient list updates - only changed items re-render:

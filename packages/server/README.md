@@ -38,6 +38,32 @@ JSON program → HTML string
 
 ## Features
 
+### String Concatenation (concat)
+
+Build dynamic strings during SSR:
+
+```json
+{
+  "kind": "element",
+  "tag": "a",
+  "props": {
+    "href": {
+      "expr": "concat",
+      "items": [
+        { "expr": "lit", "value": "/posts/" },
+        { "expr": "data", "name": "post", "path": "slug" }
+      ]
+    }
+  }
+}
+```
+
+↓ SSR
+
+```html
+<a href="/posts/hello-world">...</a>
+```
+
 ### Markdown Rendering
 
 ```json

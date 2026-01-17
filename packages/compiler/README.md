@@ -50,6 +50,8 @@ The compiler transforms JSON programs through three passes:
 - **setPath** - Compiles to efficient path-based state updates
 - **Key-based each** - Compiles key expressions for list diffing
 - **WebSocket connections** - Compiles connection definitions and send/close actions
+- **concat expression** - Compiles string concatenation expressions
+- **Object payloads** - Supports object-shaped event handler payloads with expression fields
 
 ## CompiledProgram Structure
 
