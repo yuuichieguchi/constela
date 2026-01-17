@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.2.27
+
+### Patch Changes
+
+- Fix theme persistence in dev server and edge adapter by passing themeStorageKey option to wrapHtml
+
 ## 1.2.26
 
 ### Patch Changes
