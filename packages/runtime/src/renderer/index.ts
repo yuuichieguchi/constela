@@ -324,6 +324,18 @@ function createReactiveLocals(
       if (indexKey && prop === indexKey) return true;
       return prop in target;
     },
+    ownKeys(target) {
+      const keys = Reflect.ownKeys(target);
+      if (!keys.includes(itemKey)) keys.push(itemKey);
+      if (indexKey && !keys.includes(indexKey)) keys.push(indexKey);
+      return keys;
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      if (prop === itemKey || (indexKey && prop === indexKey)) {
+        return { enumerable: true, configurable: true };
+      }
+      return Reflect.getOwnPropertyDescriptor(target, prop);
+    },
   });
 }
 

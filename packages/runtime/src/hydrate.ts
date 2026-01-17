@@ -90,6 +90,18 @@ function createReactiveLocals(
       if (indexName && prop === indexName) return true;
       return prop in target;
     },
+    ownKeys(target) {
+      const keys = Reflect.ownKeys(target);
+      if (!keys.includes(itemName)) keys.push(itemName);
+      if (indexName && !keys.includes(indexName)) keys.push(indexName);
+      return keys;
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      if (prop === itemName || (indexName && prop === indexName)) {
+        return { enumerable: true, configurable: true };
+      }
+      return Reflect.getOwnPropertyDescriptor(target, prop);
+    },
   });
 }
 

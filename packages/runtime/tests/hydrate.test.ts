@@ -590,6 +590,249 @@ describe('hydrateApp', () => {
       expect(items[1].textContent).toBe('1: Second');
       expect(items[2].textContent).toBe('2: Third');
     });
+
+    it('should pass loop variables to event handler payload when using keyed each', async () => {
+      /**
+       * BUG: Proxy spread loses loop variables
+       *
+       * When ctx.locals is a Proxy returned by createReactiveLocals,
+       * spreading it with { ...ctx.locals, ...eventLocals } loses the
+       * itemName and indexName variables because the Proxy lacks
+       * ownKeys and getOwnPropertyDescriptor traps.
+       *
+       * This test verifies that event handlers inside each loops can
+       * access the loop variables (item, index) through the payload.
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          items: { type: 'list', initial: ['Apple', 'Banana', 'Cherry'] },
+          selectedItem: { type: 'string', initial: '' },
+          selectedIndex: { type: 'number', initial: -1 },
+        },
+        actions: {
+          selectItem: {
+            name: 'selectItem',
+            steps: [
+              // Use eventPayload directly to access the payload object
+              {
+                do: 'set',
+                target: 'selectedItem',
+                value: { expr: 'var', name: 'payload' },
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'ul',
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'state', name: 'items' },
+              as: 'item',
+              index: 'i',
+              key: { expr: 'var', name: 'item' },
+              body: {
+                kind: 'element',
+                tag: 'li',
+                props: {
+                  className: { expr: 'lit', value: 'keyed-item' },
+                  onClick: {
+                    event: 'click',
+                    action: 'selectItem',
+                    // Use the loop item variable directly as the payload
+                    payload: { expr: 'var', name: 'item' },
+                  },
+                },
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'item' } },
+                ],
+              },
+            },
+          ],
+        },
+      });
+
+      const ssrHtml = await renderToString(program);
+      container.innerHTML = ssrHtml;
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Click on the second item (Banana, index 1)
+      const items = container.querySelectorAll('li');
+      expect(items.length).toBe(3);
+      (items[1] as HTMLElement).click();
+
+      // Wait for action to complete
+      await Promise.resolve();
+
+      // Assert - event handler should receive correct payload with loop variables
+      // When the bug is fixed, selectedItem should be 'Banana' (the clicked item)
+      // With the bug, selectedItem is undefined because 'item' var is lost during Proxy spread
+      expect(app.getState('selectedItem')).toBe('Banana');
+    });
+
+    it('should pass loop variables to event handler payload when using non-keyed each', async () => {
+      /**
+       * This test verifies non-keyed each loops work correctly.
+       * The non-keyed path uses plain object locals on initial hydration,
+       * which works because plain objects can be spread correctly.
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          items: { type: 'list', initial: ['Apple', 'Banana', 'Cherry'] },
+          selectedItem: { type: 'string', initial: '' },
+        },
+        actions: {
+          selectItem: {
+            name: 'selectItem',
+            steps: [
+              {
+                do: 'set',
+                target: 'selectedItem',
+                value: { expr: 'var', name: 'payload' },
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'ul',
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'state', name: 'items' },
+              as: 'item',
+              index: 'i',
+              // No key - uses non-keyed rendering path
+              body: {
+                kind: 'element',
+                tag: 'li',
+                props: {
+                  className: { expr: 'lit', value: 'list-item' },
+                  onClick: {
+                    event: 'click',
+                    action: 'selectItem',
+                    payload: { expr: 'var', name: 'item' },
+                  },
+                },
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'item' } },
+                ],
+              },
+            },
+          ],
+        },
+      });
+
+      const ssrHtml = await renderToString(program);
+      container.innerHTML = ssrHtml;
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Click on the third item (Cherry, index 2)
+      const items = container.querySelectorAll('li');
+      expect(items.length).toBe(3);
+      (items[2] as HTMLElement).click();
+
+      // Wait for action to complete
+      await Promise.resolve();
+
+      // Assert - non-keyed path uses plain object locals, so this works
+      expect(app.getState('selectedItem')).toBe('Cherry');
+    });
+
+    it('should pass loop variables to event handler payload after reactive update (keyed)', async () => {
+      /**
+       * BUG: Proxy spread loses loop variables after reactive update
+       *
+       * When new items are added to a keyed each loop, the new items
+       * get Proxy locals from createReactiveLocals. When spreading
+       * these Proxy locals in the event handler, the loop variables
+       * (item, index) are lost because Proxy lacks ownKeys trap.
+       *
+       * This test adds a new item and then clicks on it to verify
+       * the payload correctly includes the loop variable.
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          items: { type: 'list', initial: ['Apple', 'Banana'] },
+          selectedItem: { type: 'string', initial: '' },
+        },
+        actions: {
+          selectItem: {
+            name: 'selectItem',
+            steps: [
+              {
+                do: 'set',
+                target: 'selectedItem',
+                value: { expr: 'var', name: 'payload' },
+              },
+            ],
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'ul',
+          children: [
+            {
+              kind: 'each',
+              items: { expr: 'state', name: 'items' },
+              as: 'item',
+              index: 'i',
+              key: { expr: 'var', name: 'item' },
+              body: {
+                kind: 'element',
+                tag: 'li',
+                props: {
+                  className: { expr: 'lit', value: 'keyed-item' },
+                  onClick: {
+                    event: 'click',
+                    action: 'selectItem',
+                    payload: { expr: 'var', name: 'item' },
+                  },
+                },
+                children: [
+                  { kind: 'text', value: { expr: 'var', name: 'item' } },
+                ],
+              },
+            },
+          ],
+        },
+      });
+
+      const ssrHtml = await renderToString(program);
+      container.innerHTML = ssrHtml;
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Add a new item
+      app.setState('items', ['Apple', 'Banana', 'Cherry']);
+      await Promise.resolve();
+
+      // Click on the newly added third item (Cherry)
+      const items = container.querySelectorAll('li');
+      expect(items.length).toBe(3);
+      expect(items[2].textContent).toBe('Cherry');
+      (items[2] as HTMLElement).click();
+
+      // Wait for action to complete
+      await Promise.resolve();
+
+      // Assert - event handler should receive correct payload with loop variables
+      // When the bug is fixed, selectedItem should be 'Cherry'
+      // With the bug, selectedItem is undefined because 'item' var is lost during Proxy spread
+      expect(app.getState('selectedItem')).toBe('Cherry');
+    });
   });
 
   // ==================== AppInstance Interface ====================
