@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.3.4
+
+### Patch Changes
+
+- fix(mdx): throw error instead of returning null for disallowed patterns in safeEvalLiteral
+
+  - Add extractCodeOutsideStrings to check only actual code (not string literals)
+  - Allow "dangerous" words inside string literals (e.g., "operations that require one")
+  - Throw informative error for actual dangerous code patterns
+
 ## 1.3.3
 
 ### Patch Changes

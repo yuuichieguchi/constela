@@ -172,10 +172,58 @@ const DISALLOWED_PATTERNS = [
 ];
 
 /**
- * Check if a string contains only safe literal syntax (no code execution)
+ * Extract code outside of string literals for security checking.
+ * Returns the code with string literal contents replaced by empty strings.
  */
-function isSafeLiteral(value: string): boolean {
-  return !DISALLOWED_PATTERNS.some((pattern) => pattern.test(value));
+function extractCodeOutsideStrings(value: string): string {
+  // Replace all string literals (single, double, template) with empty strings
+  // This leaves only the actual code for pattern matching
+  let result = '';
+  let i = 0;
+  while (i < value.length) {
+    const char = value[i];
+
+    // Handle string literals
+    if (char === '"' || char === "'" || char === '`') {
+      const quote = char;
+      i++; // skip opening quote
+      // Skip until closing quote, handling escapes
+      while (i < value.length) {
+        if (value[i] === '\\' && i + 1 < value.length) {
+          i += 2; // skip escape sequence
+        } else if (value[i] === quote) {
+          i++; // skip closing quote
+          break;
+        } else {
+          i++;
+        }
+      }
+    } else {
+      result += char;
+      i++;
+    }
+  }
+  return result;
+}
+
+/**
+ * Check if a string contains only safe literal syntax (no code execution)
+ * @returns Object with safe boolean and optional matched pattern name
+ */
+function isSafeLiteral(value: string): { safe: boolean; matchedPattern?: string } {
+  // Extract only the code outside string literals
+  const codeOnly = extractCodeOutsideStrings(value);
+
+  for (const pattern of DISALLOWED_PATTERNS) {
+    if (pattern.test(codeOnly)) {
+      // Extract pattern name from regex for error message
+      const patternStr = pattern.source;
+      const match = patternStr.match(/\\b\(?([\w|]+)\)?\\b/);
+      const matchedName = match?.[1] ?? patternStr;
+      return { safe: false, matchedPattern: matchedName };
+    }
+  }
+  return { safe: true };
 }
 
 /**
@@ -183,9 +231,11 @@ function isSafeLiteral(value: string): boolean {
  * Only allows simple literal values, no function calls or side effects
  *
  * @param value - The string to evaluate as a JavaScript literal
- * @returns The parsed value, or null if parsing fails or value is unsafe
+ * @param attributeName - Optional attribute name for error context
+ * @returns The parsed value
+ * @throws Error if parsing fails or value contains dangerous patterns
  */
-function safeEvalLiteral(value: string): unknown {
+function safeEvalLiteral(value: string, attributeName?: string): unknown {
   // First try JSON parsing (fastest and safest)
   try {
     return JSON.parse(value);
@@ -194,8 +244,14 @@ function safeEvalLiteral(value: string): unknown {
   }
 
   // Security check: reject potentially dangerous patterns
-  if (!isSafeLiteral(value)) {
-    return null;
+  const safetyCheck = isSafeLiteral(value);
+  if (!safetyCheck.safe) {
+    const truncatedValue = value.length > 100 ? value.slice(0, 100) + '...' : value;
+    throw new Error(
+      `MDX attribute contains disallowed pattern: ${safetyCheck.matchedPattern}\n` +
+      `Attribute: ${attributeName ?? 'unknown'}\n` +
+      `Value: "${truncatedValue}"`
+    );
   }
 
   // For JavaScript object literal syntax (unquoted keys), use Function constructor
@@ -205,7 +261,24 @@ function safeEvalLiteral(value: string): unknown {
     const fn = new Function(`return (${value});`);
     return fn();
   } catch {
+    // If parsing fails, return null (will be treated as string)
     return null;
+  }
+}
+
+/**
+ * Check if expression value contains dangerous patterns
+ * Throws error if dangerous pattern is found
+ */
+function checkExpressionSecurity(exprValue: string, attributeName: string): void {
+  const safetyCheck = isSafeLiteral(exprValue);
+  if (!safetyCheck.safe) {
+    const truncatedValue = exprValue.length > 100 ? exprValue.slice(0, 100) + '...' : exprValue;
+    throw new Error(
+      `MDX attribute contains disallowed pattern: ${safetyCheck.matchedPattern}\n` +
+      `Attribute: ${attributeName}\n` +
+      `Value: "${truncatedValue}"`
+    );
   }
 }
 
@@ -231,9 +304,13 @@ function parseAttributeValue(
     if (exprValue === 'null') return lit(null);
     const num = Number(exprValue);
     if (!Number.isNaN(num)) return lit(num);
+
+    // Security check for all expression values
+    checkExpressionSecurity(exprValue, attr.name);
+
     // Try to parse as JavaScript literal (arrays/objects)
     if (exprValue.startsWith('[') || exprValue.startsWith('{')) {
-      const parsed = safeEvalLiteral(exprValue);
+      const parsed = safeEvalLiteral(exprValue, attr.name);
       if (parsed !== null && parsed !== undefined) {
         return lit(parsed as string | number | boolean | null | unknown[]);
       }

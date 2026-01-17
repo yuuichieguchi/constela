@@ -1342,3 +1342,439 @@ describe('mdxToConstela - GFM Tables', () => {
     });
   });
 });
+
+// ==================== safeEvalLiteral Security and Error Handling ====================
+
+describe('safeEvalLiteral - Security and Error Handling', () => {
+  /**
+   * Context: safeEvalLiteral is used to parse JSX attribute values in MDX.
+   * It should:
+   * 1. THROW errors for actual dangerous code patterns (not return null silently)
+   * 2. ALLOW string literals that happen to contain "dangerous" words
+   * 3. Provide informative error messages for debugging
+   */
+
+  // ==================== Error Throwing for Dangerous Code ====================
+
+  describe('should throw error for actual dangerous code patterns', () => {
+    it('should throw error for require() function call', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Button data={require("module")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Button: {
+            params: { data: { type: 'any' } },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+      };
+
+      // Act & Assert
+      // Should throw with information about the matched pattern
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/require/i);
+    });
+
+    it('should throw error for eval() function call', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Button onClick={eval("1+1")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Button: {
+            params: { onClick: { type: 'any' } },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+      };
+
+      // Act & Assert
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/eval/i);
+    });
+
+    it('should throw error for window object access', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Link href={window.location} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Link: {
+            params: { href: { type: 'any' } },
+            view: { kind: 'element', tag: 'a' },
+          },
+        },
+      };
+
+      // Act & Assert
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/window/i);
+    });
+
+    it('should throw error for global object access', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Component config={global.process} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Component: {
+            params: { config: { type: 'any' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act & Assert
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/global/i);
+    });
+
+    it('should throw error for import() dynamic import', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Loader module={import("./module")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Loader: {
+            params: { module: { type: 'any' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act & Assert
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/import/i);
+    });
+
+    it('should throw error for Function constructor', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Button handler={new Function("return 1")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Button: {
+            params: { handler: { type: 'any' } },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+      };
+
+      // Act & Assert
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/Function/i);
+    });
+  });
+
+  // ==================== String Literals Should Be Allowed ====================
+
+  describe('should allow "dangerous" words inside string literals', () => {
+    it('should parse object with "require" in string value', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      // This is the exact case that caused the bug:
+      // { description: "operations that require one" } was being rejected
+      const source = `<PropsTable items={[{ description: "operations that require one" }]} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          PropsTable: {
+            params: { items: { type: 'array' } },
+            view: { kind: 'element', tag: 'table' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      // Should successfully parse and not return empty/null
+      expect(result).toBeDefined();
+      expect(result.view).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should parse object with "function" in string value', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<DocBlock note={{ text: "This is a function description" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          DocBlock: {
+            params: { note: { type: 'object' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should parse simple string containing "window"', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Text content={"Look out the window"} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Text: {
+            params: { content: { type: 'string' } },
+            view: { kind: 'element', tag: 'span' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should parse array of objects with "constructor" in string value', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<List items={[{ text: "Use the constructor pattern" }]} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          List: {
+            params: { items: { type: 'array' } },
+            view: { kind: 'element', tag: 'ul' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should parse object with "eval" in string value', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Warning message={{ text: "Never use eval in production" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Warning: {
+            params: { message: { type: 'object' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should parse object with "import" in string value', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Tip content={{ text: "You can import modules at the top" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Tip: {
+            params: { content: { type: 'object' } },
+            view: { kind: 'element', tag: 'aside' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+  });
+
+  // ==================== Error Message Quality ====================
+
+  describe('error messages should be informative', () => {
+    it('should include the matched pattern name in error message', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Button action={eval("x")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Button: {
+            params: { action: { type: 'any' } },
+            view: { kind: 'element', tag: 'button' },
+          },
+        },
+      };
+
+      // Act & Assert
+      try {
+        await mdxToConstela(source, options);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        const message = (error as Error).message;
+        // Error should mention the dangerous pattern
+        expect(message).toMatch(/eval/i);
+      }
+    });
+
+    it('should include the attribute name in error message', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Config data={require("config")} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Config: {
+            params: { data: { type: 'any' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act & Assert
+      try {
+        await mdxToConstela(source, options);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        const message = (error as Error).message;
+        // Error should mention the attribute name for easier debugging
+        expect(message).toMatch(/data|attribute/i);
+      }
+    });
+  });
+
+  // ==================== Edge Cases ====================
+
+  describe('edge cases', () => {
+    it('should handle nested quotes in string literals', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Quote text={{ outer: "text with 'inner' quotes" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Quote: {
+            params: { text: { type: 'object' } },
+            view: { kind: 'element', tag: 'blockquote' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should handle escaped quotes in string literals', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      // Escaped quotes: { text: "He said \"hello\"" }
+      const source = `<Dialog message={{ text: "He said \\"hello\\"" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Dialog: {
+            params: { message: { type: 'object' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should throw error for mixed safe string and dangerous code', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      // Array with safe object first, then dangerous code
+      const source = `<Component items={[{ name: "test" }, require("x")]} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Component: {
+            params: { items: { type: 'array' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act & Assert
+      // Should still throw because require() is dangerous
+      await expect(mdxToConstela(source, options)).rejects.toThrow(/require/i);
+    });
+
+    it('should handle multiple "dangerous" words in same string literal', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Doc content={{ text: "The require function and eval should not be used with window or global scope" }} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Doc: {
+            params: { content: { type: 'object' } },
+            view: { kind: 'element', tag: 'article' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      // Should succeed because all "dangerous" words are inside string literals
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should handle empty object', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<Empty config={{}} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          Empty: {
+            params: { config: { type: 'object' } },
+            view: { kind: 'element', tag: 'div' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+
+    it('should handle empty array', async () => {
+      // Arrange
+      const { mdxToConstela } = await import('../../src/build/mdx.js');
+      const source = `<List items={[]} />`;
+      const options: MDXToConstelaOptions = {
+        components: {
+          List: {
+            params: { items: { type: 'array' } },
+            view: { kind: 'element', tag: 'ul' },
+          },
+        },
+      };
+
+      // Act
+      const result = await mdxToConstela(source, options);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.view.kind).toBe('element');
+    });
+  });
+});
