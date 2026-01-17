@@ -276,6 +276,20 @@ describe('wrapHtml', () => {
       // Should use the custom key in localStorage.getItem call
       expect(result).toContain(customKey);
     });
+
+    it('should include JSON.parse for localStorage value to handle JSON-serialized themes', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme' };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // localStorage の値は JSON.stringify されているため、JSON.parse が必要
+      expect(result).toContain('JSON.parse');
+    });
   });
 
   // ==================== Integration ====================

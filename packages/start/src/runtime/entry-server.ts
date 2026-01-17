@@ -291,7 +291,9 @@ export function wrapHtml(
     themeScript = `<script>
 (function() {
   try {
-    var theme = localStorage.getItem('${options.themeStorageKey}');
+    var raw = localStorage.getItem('${options.themeStorageKey}');
+    var theme = raw;
+    try { theme = JSON.parse(raw); } catch (e) {}
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else if (theme === 'light') {
