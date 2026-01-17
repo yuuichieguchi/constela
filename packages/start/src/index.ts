@@ -83,3 +83,7 @@ export type { ConstelaConfigFile, CLIOptions } from './config/config-loader.js';
 
 // Terminal utilities
 export { hyperlink } from './utils/terminal.js';
+
+// Meta tag generation
+export { generateMetaTags, evaluateMetaExpression } from './runtime/entry-server.js';
+export type { MetaContext } from './runtime/entry-server.js';
