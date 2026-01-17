@@ -16,6 +16,7 @@ import type {
   CompiledActionStep,
   CompiledExpression,
   CompiledUpdateStep,
+  CompiledSetPathStep,
   CompiledStorageStep,
   CompiledClipboardStep,
   CompiledNavigateStep,
@@ -24,7 +25,10 @@ import type {
   CompiledSubscribeStep,
   CompiledDisposeStep,
   CompiledDomStep,
+  CompiledSendStep,
+  CompiledCloseStep,
 } from '@constela/compiler';
+import type { ConnectionManager } from '../connection/websocket.js';
 import { evaluate } from '../expression/evaluator.js';
 
 export interface ActionContext {
@@ -40,6 +44,7 @@ export interface ActionContext {
     path: string;
   };
   imports?: Record<string, unknown>;
+  connections?: ConnectionManager;          // WebSocket connection manager
 }
 
 /**
@@ -61,9 +66,9 @@ export async function executeAction(
   ctx: ActionContext
 ): Promise<void> {
   for (const step of action.steps) {
-    // Use synchronous execution for set/update steps to ensure
+    // Use synchronous execution for set/update/setPath steps to ensure
     // all state changes complete before returning
-    if (step.do === 'set' || step.do === 'update') {
+    if (step.do === 'set' || step.do === 'update' || step.do === 'setPath') {
       executeStepSync(step, ctx);
     } else if (step.do === 'if') {
       // If steps need special handling to support both sync and async nested steps
@@ -88,6 +93,9 @@ function executeStepSync(
     case 'update':
       executeUpdateStepSync(step, ctx);
       break;
+    case 'setPath':
+      executeSetPathStepSync(step, ctx);
+      break;
   }
 }
 
@@ -107,7 +115,7 @@ async function executeIfStep(
   const stepsToExecute = condition ? step.then : (step.else || []);
 
   for (const nestedStep of stepsToExecute) {
-    if (nestedStep.do === 'set' || nestedStep.do === 'update') {
+    if (nestedStep.do === 'set' || nestedStep.do === 'update' || nestedStep.do === 'setPath') {
       executeStepSync(nestedStep, ctx);
     } else if (nestedStep.do === 'if') {
       await executeIfStep(nestedStep as typeof step, ctx);
@@ -231,6 +239,49 @@ function executeUpdateStepSync(
   }
 }
 
+function executeSetPathStepSync(
+  step: CompiledSetPathStep,
+  ctx: ActionContext
+): void {
+  const evalCtx = createEvalContext(ctx);
+
+  // Evaluate the path expression - can be string or array
+  const pathValue = evaluate(step.path, evalCtx);
+
+  // Normalize path to array format
+  let path: (string | number)[];
+  if (typeof pathValue === 'string') {
+    path = pathValue.split('.').map(segment => {
+      const num = parseInt(segment, 10);
+      return isNaN(num) ? segment : num;
+    });
+  } else if (Array.isArray(pathValue)) {
+    // Evaluate any expressions within the path array
+    path = pathValue.map(item => {
+      if (typeof item === 'object' && item !== null && 'expr' in item) {
+        return evaluate(item as CompiledExpression, evalCtx) as string | number;
+      }
+      return item as string | number;
+    });
+  } else {
+    // Single value path
+    path = [pathValue as string | number];
+  }
+
+  // Evaluate the value to set
+  const newValue = evaluate(step.value, evalCtx);
+
+  // Use the StateStore's setPath method
+  ctx.state.setPath(step.target, path, newValue);
+}
+
+async function executeSetPathStep(
+  step: CompiledSetPathStep,
+  ctx: ActionContext
+): Promise<void> {
+  executeSetPathStepSync(step, ctx);
+}
+
 async function executeStep(
   step: CompiledActionStep,
   ctx: ActionContext
@@ -242,6 +293,10 @@ async function executeStep(
 
     case 'update':
       await executeUpdateStep(step, ctx);
+      break;
+
+    case 'setPath':
+      await executeSetPathStep(step, ctx);
       break;
 
     case 'fetch':
@@ -282,6 +337,14 @@ async function executeStep(
 
     case 'if':
       await executeIfStep(step, ctx);
+      break;
+
+    case 'send':
+      await executeSendStep(step, ctx);
+      break;
+
+    case 'close':
+      await executeCloseStep(step, ctx);
       break;
   }
 }
@@ -781,4 +844,31 @@ async function executeDomStep(
       if (step.attribute) element.removeAttribute(step.attribute);
       break;
   }
+}
+
+/**
+ * Executes a send step (WebSocket message send)
+ */
+async function executeSendStep(
+  step: CompiledSendStep,
+  ctx: ActionContext
+): Promise<void> {
+  if (!ctx.connections) {
+    throw new Error(`Connection "${step.connection}" not found`);
+  }
+
+  const evalCtx = createEvalContext(ctx);
+  const data = evaluate(step.data, evalCtx);
+  ctx.connections.send(step.connection, data);
+}
+
+/**
+ * Executes a close step (WebSocket connection close)
+ */
+async function executeCloseStep(
+  step: CompiledCloseStep,
+  ctx: ActionContext
+): Promise<void> {
+  if (!ctx.connections) return;
+  ctx.connections.close(step.connection);
 }

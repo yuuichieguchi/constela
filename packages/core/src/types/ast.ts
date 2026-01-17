@@ -291,6 +291,23 @@ export interface UpdateStep {
 }
 
 /**
+ * SetPath step - sets a value at a specific path within a state field
+ *
+ * This enables fine-grained state updates like `posts[5].liked = true`
+ * without re-creating the entire state.
+ *
+ * @property target - The state field name (e.g., "posts")
+ * @property path - The path within the state field (Expression that evaluates to string or array)
+ * @property value - The value to set at the path
+ */
+export interface SetPathStep {
+  do: 'setPath';
+  target: string;
+  path: Expression;
+  value: Expression;
+}
+
+/**
  * Fetch step - makes an HTTP request
  */
 export interface FetchStep {
@@ -393,7 +410,24 @@ export interface DomStep {
   attribute?: string;    // for setAttribute/removeAttribute
 }
 
-export type ActionStep = SetStep | UpdateStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep;
+/**
+ * Send step - sends data through a named WebSocket connection
+ */
+export interface SendStep {
+  do: 'send';
+  connection: string;
+  data: Expression;
+}
+
+/**
+ * Close step - closes a named WebSocket connection
+ */
+export interface CloseStep {
+  do: 'close';
+  connection: string;
+}
+
+export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep;
 
 // ==================== Event Handler ====================
 

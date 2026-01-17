@@ -48,6 +48,7 @@ export type {
   CompiledActionStep,
   CompiledSetStep,
   CompiledUpdateStep,
+  CompiledSetPathStep,
   CompiledFetchStep,
   CompiledStorageStep,
   CompiledClipboardStep,
@@ -60,6 +61,8 @@ export type {
   CompiledIfStep,
   CompiledRefExpr,
   CompiledEventHandler,
+  CompiledSendStep,
+  CompiledCloseStep,
 } from './passes/transform.js';
 
 // Layout passes

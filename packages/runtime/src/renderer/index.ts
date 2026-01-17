@@ -24,6 +24,7 @@ import type {
 import { parseMarkdown } from './markdown.js';
 import { highlightCode } from './code.js';
 import { createEffect } from '../reactive/effect.js';
+import { createSignal, type Signal } from '../reactive/signal.js';
 import { evaluate } from '../expression/evaluator.js';
 import { executeAction } from '../action/executor.js';
 
@@ -289,65 +290,228 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
   return fragment;
 }
 
+interface ItemState {
+  key: unknown;
+  node: Node;
+  cleanups: (() => void)[];
+  itemSignal: Signal<unknown>;
+  indexSignal: Signal<number>;
+}
+
+/**
+ * Creates a proxy for locals that resolves signals on property access.
+ * This allows reactive updates when signals are updated.
+ */
+function createReactiveLocals(
+  baseLocals: Record<string, unknown>,
+  itemKey: string,
+  itemSignal: Signal<unknown>,
+  indexKey: string | undefined,
+  indexSignal: Signal<number>
+): Record<string, unknown> {
+  return new Proxy(baseLocals, {
+    get(target, prop: string) {
+      if (prop === itemKey) {
+        return itemSignal.get();
+      }
+      if (indexKey && prop === indexKey) {
+        return indexSignal.get();
+      }
+      return target[prop];
+    },
+    has(target, prop: string) {
+      if (prop === itemKey) return true;
+      if (indexKey && prop === indexKey) return true;
+      return prop in target;
+    },
+  });
+}
+
 function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
   const anchor = document.createComment('each');
+  const hasKey = !!node.key;
+
+  // For keyed rendering
+  let itemStateMap = new Map<unknown, ItemState>();
+
+  // For non-keyed rendering
   let currentNodes: Node[] = [];
   let itemCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
     const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) as unknown[];
 
-    // Cleanup previous item effects
-    for (const cleanup of itemCleanups) {
-      cleanup();
-    }
-    itemCleanups = [];
-
-    // Remove old nodes
-    for (const oldNode of currentNodes) {
-      if (oldNode.parentNode) {
-        oldNode.parentNode.removeChild(oldNode);
+    if (!hasKey || !node.key) {
+      // No key: use current behavior (re-render all)
+      // Cleanup previous item effects
+      for (const cleanup of itemCleanups) {
+        cleanup();
       }
-    }
-    currentNodes = [];
+      itemCleanups = [];
 
-    // Render new items
+      // Remove old nodes
+      for (const oldNode of currentNodes) {
+        if (oldNode.parentNode) {
+          oldNode.parentNode.removeChild(oldNode);
+        }
+      }
+      currentNodes = [];
+
+      // Render new items
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          const itemLocals: Record<string, unknown> = {
+            ...ctx.locals,
+            [node.as]: item,
+          };
+          if (node.index) {
+            itemLocals[node.index] = index;
+          }
+
+          // Create a local cleanups array for this item
+          const localCleanups: (() => void)[] = [];
+          const itemCtx: RenderContext = {
+            ...ctx,
+            locals: itemLocals,
+            cleanups: localCleanups,
+          };
+
+          const itemNode = render(node.body, itemCtx);
+          currentNodes.push(itemNode);
+          // Collect all cleanups for this item into itemCleanups
+          itemCleanups.push(...localCleanups);
+
+          // Insert after anchor or last item
+          if (anchor.parentNode) {
+            let refNode: Node | null = anchor.nextSibling;
+            // Find the correct position after existing items
+            if (currentNodes.length > 1) {
+              const lastExisting = currentNodes[currentNodes.length - 2];
+              if (lastExisting) {
+                refNode = lastExisting.nextSibling;
+              }
+            }
+            anchor.parentNode.insertBefore(itemNode, refNode);
+          }
+        });
+      }
+      return;
+    }
+
+    // Key-based diffing
+    const newItemStateMap = new Map<unknown, ItemState>();
+    const newNodes: Node[] = [];
+    const seenKeys = new Set<unknown>();
+
     if (Array.isArray(items)) {
       items.forEach((item, index) => {
-        const itemLocals: Record<string, unknown> = {
+        // Evaluate key for this item (using temporary locals for key evaluation)
+        const tempLocals: Record<string, unknown> = {
           ...ctx.locals,
           [node.as]: item,
+          ...(node.index ? { [node.index]: index } : {}),
         };
-        if (node.index) {
-          itemLocals[node.index] = index;
-        }
+        const keyValue = evaluate(node.key!, {
+          state: ctx.state,
+          locals: tempLocals,
+          ...(ctx.imports && { imports: ctx.imports }),
+        });
 
-        // Create a local cleanups array for this item
-        const localCleanups: (() => void)[] = [];
-        const itemCtx: RenderContext = {
-          ...ctx,
-          locals: itemLocals,
-          cleanups: localCleanups,
-        };
-
-        const itemNode = render(node.body, itemCtx);
-        currentNodes.push(itemNode);
-        // Collect all cleanups for this item into itemCleanups
-        itemCleanups.push(...localCleanups);
-
-        // Insert after anchor or last item
-        if (anchor.parentNode) {
-          let refNode: Node | null = anchor.nextSibling;
-          // Find the correct position after existing items
-          if (currentNodes.length > 1) {
-            const lastExisting = currentNodes[currentNodes.length - 2];
-            if (lastExisting) {
-              refNode = lastExisting.nextSibling;
-            }
+        // Duplicate key warning
+        if (seenKeys.has(keyValue)) {
+          if (typeof process !== 'undefined' && process.env?.['NODE_ENV'] !== 'production') {
+            console.warn(`Duplicate key "${keyValue}" in each loop. Keys should be unique.`);
           }
-          anchor.parentNode.insertBefore(itemNode, refNode);
+        }
+        seenKeys.add(keyValue);
+
+        // Check if we have existing state for this key
+        const existingState = itemStateMap.get(keyValue);
+
+        if (existingState) {
+          // Reuse existing node - update signals to trigger reactive updates
+          existingState.itemSignal.set(item);
+          existingState.indexSignal.set(index);
+          newItemStateMap.set(keyValue, existingState);
+          newNodes.push(existingState.node);
+        } else {
+          // Create new item with signals for reactivity
+          const itemSignal = createSignal<unknown>(item);
+          const indexSignal = createSignal<number>(index);
+
+          // Create reactive locals using proxy
+          const reactiveLocals = createReactiveLocals(
+            ctx.locals,
+            node.as,
+            itemSignal,
+            node.index,
+            indexSignal
+          );
+
+          const localCleanups: (() => void)[] = [];
+          const itemCtx: RenderContext = {
+            ...ctx,
+            locals: reactiveLocals,
+            cleanups: localCleanups,
+          };
+
+          const itemNode = render(node.body, itemCtx);
+          const newState: ItemState = {
+            key: keyValue,
+            node: itemNode,
+            cleanups: localCleanups,
+            itemSignal,
+            indexSignal,
+          };
+          newItemStateMap.set(keyValue, newState);
+          newNodes.push(itemNode);
         }
       });
+    }
+
+    // Cleanup removed items
+    for (const [key, state] of itemStateMap) {
+      if (!newItemStateMap.has(key)) {
+        // This item was removed
+        for (const cleanup of state.cleanups) {
+          cleanup();
+        }
+        if (state.node.parentNode) {
+          state.node.parentNode.removeChild(state.node);
+        }
+      }
+    }
+
+    // Reorder/insert nodes in correct position
+    // Save focus state before moving nodes (DOM operations can lose focus in some environments)
+    const activeElement = document.activeElement;
+    const shouldRestoreFocus = activeElement && activeElement !== document.body;
+
+    if (anchor.parentNode) {
+      let refNode: Node = anchor;
+      for (const itemNode of newNodes) {
+        const nextSibling = refNode.nextSibling;
+        if (nextSibling !== itemNode) {
+          // Node needs to be moved/inserted
+          anchor.parentNode.insertBefore(itemNode, refNode.nextSibling);
+        }
+        refNode = itemNode;
+      }
+    }
+
+    // Restore focus if it was lost during DOM operations
+    if (shouldRestoreFocus && activeElement instanceof HTMLElement && document.activeElement !== activeElement) {
+      activeElement.focus();
+    }
+
+    // Update state
+    itemStateMap = newItemStateMap;
+    currentNodes = newNodes;
+
+    // Collect all cleanups for disposal
+    itemCleanups = [];
+    for (const state of itemStateMap.values()) {
+      itemCleanups.push(...state.cleanups);
     }
   });
   ctx.cleanups?.push(effectCleanup);

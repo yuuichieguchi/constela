@@ -10,9 +10,13 @@ export type { Signal } from './reactive/signal.js';
 
 export { createEffect } from './reactive/effect.js';
 
+export { createComputed } from './reactive/computed.js';
+export type { Computed } from './reactive/computed.js';
+
 // State management
 export { createStateStore } from './state/store.js';
-export type { StateStore } from './state/store.js';
+export type { StateStore, TypedStateStore } from './state/store.js';
+export { createTypedStateStore } from './state/typed.js';
 
 // Expression evaluation
 export { evaluate, evaluateStyle } from './expression/evaluator.js';
@@ -33,3 +37,7 @@ export type { AppInstance } from './app.js';
 // Hydration
 export { hydrateApp } from './hydrate.js';
 export type { HydrateOptions } from './hydrate.js';
+
+// WebSocket connections
+export { createWebSocketConnection, createConnectionManager } from './connection/websocket.js';
+export type { WebSocketConnection, WebSocketHandlers, ConnectionManager } from './connection/websocket.js';

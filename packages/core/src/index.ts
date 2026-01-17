@@ -43,6 +43,7 @@ export type {
   ActionStep,
   SetStep,
   UpdateStep,
+  SetPathStep,
   FetchStep,
   StorageStep,
   ClipboardStep,
@@ -52,6 +53,8 @@ export type {
   SubscribeStep,
   DisposeStep,
   DomStep,
+  SendStep,
+  CloseStep,
   // Event Handler
   EventHandler,
   // Action Definition

@@ -63,6 +63,7 @@ export interface CompiledAction {
 export type CompiledActionStep =
   | CompiledSetStep
   | CompiledUpdateStep
+  | CompiledSetPathStep
   | CompiledFetchStep
   | CompiledStorageStep
   | CompiledClipboardStep
@@ -72,7 +73,9 @@ export type CompiledActionStep =
   | CompiledSubscribeStep
   | CompiledDisposeStep
   | CompiledDomStep
-  | CompiledIfStep;
+  | CompiledIfStep
+  | CompiledSendStep
+  | CompiledCloseStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -87,6 +90,13 @@ export interface CompiledUpdateStep {
   value?: CompiledExpression;
   index?: CompiledExpression;       // for replaceAt, insertAt, splice
   deleteCount?: CompiledExpression; // for splice
+}
+
+export interface CompiledSetPathStep {
+  do: 'setPath';
+  target: string;
+  path: CompiledExpression;
+  value: CompiledExpression;
 }
 
 export interface CompiledFetchStep {
@@ -191,6 +201,23 @@ export interface CompiledIfStep {
   condition: CompiledExpression;
   then: CompiledActionStep[];
   else?: CompiledActionStep[];
+}
+
+/**
+ * Compiled send step - sends data through a named WebSocket connection
+ */
+export interface CompiledSendStep {
+  do: 'send';
+  connection: string;
+  data: CompiledExpression;
+}
+
+/**
+ * Compiled close step - closes a named WebSocket connection
+ */
+export interface CompiledCloseStep {
+  do: 'close';
+  connection: string;
 }
 
 // ==================== Compiled View Node Types ====================
@@ -569,6 +596,16 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       return updateStep;
     }
 
+    case 'setPath': {
+      const setPathStep = step as import('@constela/core').SetPathStep;
+      return {
+        do: 'setPath',
+        target: setPathStep.target,
+        path: transformExpression(setPathStep.path, emptyContext),
+        value: transformExpression(setPathStep.value, emptyContext),
+      } as CompiledSetPathStep;
+    }
+
     case 'fetch': {
       const fetchStep: CompiledFetchStep = {
         do: 'fetch',
@@ -715,6 +752,23 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         ...(domStep.value && { value: transformExpression(domStep.value, emptyContext) }),
         ...(domStep.attribute && { attribute: domStep.attribute }),
       } as CompiledDomStep;
+    }
+
+    case 'send': {
+      const sendStep = step as import('@constela/core').SendStep;
+      return {
+        do: 'send',
+        connection: sendStep.connection,
+        data: transformExpression(sendStep.data, emptyContext),
+      } as CompiledSendStep;
+    }
+
+    case 'close': {
+      const closeStep = step as import('@constela/core').CloseStep;
+      return {
+        do: 'close',
+        connection: closeStep.connection,
+      } as CompiledCloseStep;
     }
   }
 }

@@ -11,11 +11,100 @@ export interface StateStore {
   get(name: string): unknown;
   set(name: string, value: unknown): void;
   subscribe(name: string, fn: (value: unknown) => void): () => void;
+  getPath(name: string, path: string | (string | number)[]): unknown;
+  setPath(name: string, path: string | (string | number)[], value: unknown): void;
+  subscribeToPath(
+    name: string,
+    path: string | (string | number)[],
+    fn: (value: unknown) => void
+  ): () => void;
 }
 
 export interface StateDefinition {
   type: string;
   initial: unknown;
+}
+
+/**
+ * TypedStateStore - Generic interface for type-safe state access
+ *
+ * Usage:
+ * interface AppState {
+ *   items: { id: number; liked: boolean }[];
+ *   filter: string;
+ * }
+ * const state = createStateStore(definitions) as TypedStateStore<AppState>;
+ * state.get('items'); // returns { id: number; liked: boolean }[]
+ */
+export interface TypedStateStore<T extends Record<string, unknown>> extends StateStore {
+  get<K extends keyof T>(name: K): T[K];
+  set<K extends keyof T>(name: K, value: T[K]): void;
+  subscribe<K extends keyof T>(name: K, fn: (value: T[K]) => void): () => void;
+  getPath<K extends keyof T>(name: K, path: string | (string | number)[]): unknown;
+  setPath<K extends keyof T>(name: K, path: string | (string | number)[], value: unknown): void;
+  subscribeToPath<K extends keyof T>(name: K, path: string | (string | number)[], fn: (value: unknown) => void): () => void;
+}
+
+/**
+ * Normalize path to array format
+ * Handles both string paths ("address.city") and array paths ([0, "liked"])
+ */
+function normalizePath(path: string | (string | number)[]): (string | number)[] {
+  if (typeof path === 'string') {
+    return path.split('.').map((segment) => {
+      const num = parseInt(segment, 10);
+      return isNaN(num) ? segment : num;
+    });
+  }
+  return path;
+}
+
+/**
+ * Get value at a nested path within an object
+ * Returns undefined if any intermediate value is nullish
+ */
+function getValueAtPath(obj: unknown, path: (string | number)[]): unknown {
+  let current = obj;
+  for (const key of path) {
+    if (current == null) return undefined;
+    current = (current as Record<string | number, unknown>)[key];
+  }
+  return current;
+}
+
+/**
+ * Set value at a nested path immutably
+ * Creates new objects/arrays at each level, preserving siblings
+ */
+function setValueAtPath(
+  obj: unknown,
+  path: (string | number)[],
+  value: unknown
+): unknown {
+  if (path.length === 0) return value;
+
+  // Safe to assert: path.length > 0 is guaranteed by the guard above
+  const head = path[0] as string | number;
+  const rest = path.slice(1);
+  const isArrayIndex = typeof head === 'number';
+
+  // Clone the current level appropriately
+  let clone: unknown;
+  if (isArrayIndex) {
+    clone = Array.isArray(obj) ? [...obj] : [];
+  } else {
+    clone = obj != null && typeof obj === 'object' ? { ...(obj as object) } : {};
+  }
+
+  // Recursively set the nested value
+  const objRecord = obj as Record<string | number, unknown> | null | undefined;
+  (clone as Record<string | number, unknown>)[head] = setValueAtPath(
+    objRecord?.[head],
+    rest,
+    value
+  );
+
+  return clone;
 }
 
 export function createStateStore(
@@ -69,6 +158,50 @@ export function createStateStore(
         throw new Error(`State field "${name}" does not exist`);
       }
       return signal.subscribe!(fn);
+    },
+
+    getPath(name: string, path: string | (string | number)[]): unknown {
+      const signal = signals.get(name);
+      if (!signal) {
+        throw new Error(`State field "${name}" does not exist`);
+      }
+      const normalizedPath = normalizePath(path);
+      return getValueAtPath(signal.get(), normalizedPath);
+    },
+
+    setPath(name: string, path: string | (string | number)[], value: unknown): void {
+      const signal = signals.get(name);
+      if (!signal) {
+        throw new Error(`State field "${name}" does not exist`);
+      }
+      const normalizedPath = normalizePath(path);
+      const currentState = signal.get();
+      const newState = setValueAtPath(currentState, normalizedPath, value);
+      signal.set(newState);
+    },
+
+    subscribeToPath(
+      name: string,
+      path: string | (string | number)[],
+      fn: (value: unknown) => void
+    ): () => void {
+      const signal = signals.get(name);
+      if (!signal) {
+        throw new Error(`State field "${name}" does not exist`);
+      }
+      const normalizedPath = normalizePath(path);
+
+      // Track the previous value at the path
+      let previousValue = getValueAtPath(signal.get(), normalizedPath);
+
+      // Subscribe to field-level changes and filter by path value changes
+      return signal.subscribe!((newFieldValue: unknown) => {
+        const newValue = getValueAtPath(newFieldValue, normalizedPath);
+        if (newValue !== previousValue) {
+          previousValue = newValue;
+          fn(newValue);
+        }
+      });
     },
   };
 }
