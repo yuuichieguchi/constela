@@ -1,5 +1,14 @@
 # @constela/cli
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.9.1
+  - @constela/compiler@0.9.1
+  - @constela/start@1.3.2
+
 ## 0.5.1
 
 ### Patch Changes

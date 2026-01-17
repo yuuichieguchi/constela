@@ -1,5 +1,15 @@
 # @constela/core
 
+## 0.9.1
+
+### Patch Changes
+
+- Add concat expression and evaluatePayload for object payloads
+
+  - Add ConcatExpr type to concatenate multiple expressions into a string
+  - Add evaluatePayload function to recursively evaluate object-shaped payloads
+  - Fix event handler payload evaluation for object-style payloads like `{ index: expr, liked: expr }`
+
 ## 0.9.0
 
 ### Minor Changes
