@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.4.2
+
+### Patch Changes
+
+- fix: integrate generateMetaTags in main SSG build process
+
 ## 1.4.1
 
 ### Patch Changes
