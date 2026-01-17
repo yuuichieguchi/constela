@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.4.1
+
+### Patch Changes
+
+- fix: export generateMetaTags and MetaContext from package, fix exactOptionalPropertyTypes type error in JsonPageLoader
+
 ## 1.4.0
 
 ### Minor Changes
