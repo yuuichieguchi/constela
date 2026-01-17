@@ -227,6 +227,22 @@ title: Getting Started
 </Callout>
 ```
 
+### Security
+
+MDX attribute expressions are validated at compile time. Dangerous patterns like `require()`, `eval()`, or `window` in actual code will throw explicit errors:
+
+```mdx
+<!-- Error: MDX attribute contains disallowed pattern: require -->
+<Button data={require("module")} />
+```
+
+However, these words are allowed inside string literals:
+
+```mdx
+<!-- OK: "require" is inside a string literal -->
+<PropsTable items={[{ description: "operations that require one" }]} />
+```
+
 ## Configuration
 
 Create `constela.config.json`:
