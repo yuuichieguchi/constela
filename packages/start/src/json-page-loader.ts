@@ -875,7 +875,7 @@ export interface JsonPageLoaderOptions {
  */
 export class JsonPageLoader {
   private projectRoot: string;
-  private routesDir?: string;
+  private routesDir: string | undefined;
   private cache: Map<string, PageInfo> = new Map();
 
   constructor(projectRoot: string, options?: JsonPageLoaderOptions) {
@@ -892,9 +892,12 @@ export class JsonPageLoader {
       return this.cache.get(pagePath)!;
     }
 
-    const pageInfo = await loadJsonPage(this.projectRoot, pagePath, {
-      routesDir: this.routesDir,
-    });
+    const options: LoadJsonPageOptions = {};
+    if (this.routesDir !== undefined) {
+      options.routesDir = this.routesDir;
+    }
+
+    const pageInfo = await loadJsonPage(this.projectRoot, pagePath, options);
     this.cache.set(pagePath, pageInfo);
     return pageInfo;
   }
