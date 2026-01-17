@@ -19,6 +19,7 @@ import {
   renderPage,
   wrapHtml,
   generateHydrationScript,
+  generateMetaTags,
   type SSRContext,
   type WrapHtmlOptions,
   type WidgetConfig,
@@ -766,8 +767,18 @@ async function renderPageToHtml(
     path: '/',
   };
 
+  // Generate meta tags from route definition
+  const metaTags = generateMetaTags(normalizedProgram.route, {
+    params,
+    query: {},
+    path: '/',
+  });
+
   // Generate CSS link tag if cssPath is provided
   const cssLinkTag = cssPath ? `<link rel="stylesheet" href="${cssPath}">` : undefined;
+
+  // Combine meta tags with CSS link tag
+  const head = [metaTags, cssLinkTag].filter(Boolean).join('\n') || undefined;
 
   // Convert CompiledWidget[] to WidgetConfig[] for generateHydrationScript
   const widgetConfigs: WidgetConfig[] | undefined = widgets?.map(w => ({ id: w.id, program: w.program }));
@@ -792,7 +803,7 @@ async function renderPageToHtml(
   return wrapHtml(
     content,
     hydrationScript,
-    cssLinkTag,
+    head,
     Object.keys(wrapOptions).length > 0 ? wrapOptions : undefined
   );
 }
