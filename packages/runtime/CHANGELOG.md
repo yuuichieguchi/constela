@@ -1,5 +1,13 @@
 # @constela/runtime
 
+## 0.15.1
+
+### Patch Changes
+
+- fix: add Secure attribute to theme cookie on HTTPS
+
+  Cookie now includes Secure attribute when running on HTTPS to follow security best practices.
+
 ## 0.15.0
 
 ### Minor Changes

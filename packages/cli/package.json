@@ -1,6 +1,6 @@
 {
   "name": "@constela/cli",
-  "version": "0.5.13",
+  "version": "0.5.14",
   "description": "CLI tools for Constela UI framework",
   "type": "module",
   "main": "./dist/index.js",
