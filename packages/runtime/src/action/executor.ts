@@ -27,6 +27,10 @@ import type {
   CompiledDomStep,
   CompiledSendStep,
   CompiledCloseStep,
+  CompiledDelayStep,
+  CompiledIntervalStep,
+  CompiledClearTimerStep,
+  CompiledFocusStep,
 } from '@constela/compiler';
 import type { ConnectionManager } from '../connection/websocket.js';
 import { evaluate } from '../expression/evaluator.js';
@@ -54,6 +58,7 @@ export interface ActionContext {
   eventPayload?: unknown;
   refs?: Record<string, Element>;          // DOM element refs
   subscriptions?: (() => void)[];          // Collected subscriptions for auto-disposal
+  cleanups?: (() => void)[];               // Cleanup functions for timers (delay, interval)
   route?: {
     params: Record<string, string>;
     query: Record<string, string>;
@@ -86,6 +91,9 @@ export async function executeAction(
   const isLocal = extAction._isLocalAction && extAction._localStore;
   const localStore = extAction._localStore;
 
+  // Collect delay promises to await at the end
+  const delayPromises: Promise<void>[] = [];
+
   for (const step of action.steps) {
     // Use synchronous execution for set/update/setPath steps to ensure
     // all state changes complete before returning
@@ -94,9 +102,21 @@ export async function executeAction(
     } else if (step.do === 'if') {
       // If steps need special handling to support both sync and async nested steps
       await executeIfStep(step, ctx, isLocal ? localStore : undefined);
+    } else if (step.do === 'delay') {
+      // Fire-and-forget delay, but collect promise to await at the end
+      const delayPromise = executeDelayStep(step as CompiledDelayStep, ctx);
+      delayPromises.push(delayPromise);
+    } else if (step.do === 'interval') {
+      // Interval is fire-and-forget, no promise to await
+      await executeIntervalStep(step as CompiledIntervalStep, ctx);
     } else {
       await executeStep(step, ctx);
     }
+  }
+
+  // Wait for all delay timers to complete
+  if (delayPromises.length > 0) {
+    await Promise.all(delayPromises);
   }
 }
 
@@ -500,6 +520,22 @@ async function executeStep(
 
     case 'close':
       await executeCloseStep(step, ctx);
+      break;
+
+    case 'delay':
+      await executeDelayStep(step, ctx);
+      break;
+
+    case 'interval':
+      await executeIntervalStep(step, ctx);
+      break;
+
+    case 'clearTimer':
+      await executeClearTimerStep(step, ctx);
+      break;
+
+    case 'focus':
+      await executeFocusStep(step, ctx);
       break;
   }
 }
@@ -1026,4 +1062,210 @@ async function executeCloseStep(
 ): Promise<void> {
   if (!ctx.connections) return;
   ctx.connections.close(step.connection);
+}
+
+/**
+ * Executes a delay step (setTimeout equivalent)
+ * Schedules execution of 'then' steps after the specified delay.
+ * Registers cleanup function in ctx.cleanups if provided.
+ *
+ * Note: The timer ID is stored as a number for browser compatibility,
+ * but clearTimeout/clearInterval work with both number and Timeout objects.
+ *
+ * The delay step returns a Promise that resolves when the timer fires
+ * OR when the timer is cleared (to prevent hanging awaits).
+ */
+async function executeDelayStep(
+  step: CompiledDelayStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const msValue = evaluate(step.ms, evalCtx);
+
+  // Convert to number, handle edge cases (NaN, negative values are treated as 0 by browser)
+  const ms = typeof msValue === 'number' ? Math.max(0, msValue) : 0;
+
+  return new Promise<void>((resolve) => {
+    let resolved = false;
+
+    const timeoutId = setTimeout(async () => {
+      if (resolved) return;
+      resolved = true;
+
+      // Execute 'then' steps sequentially
+      for (const thenStep of step.then) {
+        if (thenStep.do === 'set' || thenStep.do === 'update' || thenStep.do === 'setPath') {
+          executeStepSync(thenStep, ctx);
+        } else if (thenStep.do === 'if') {
+          await executeIfStep(thenStep as { do: 'if'; condition: CompiledExpression; then: CompiledActionStep[]; else?: CompiledActionStep[] }, ctx);
+        } else {
+          await executeStep(thenStep, ctx);
+        }
+      }
+      resolve();
+    }, ms);
+
+    // Store timeout ID in result variable if specified (convert to number for consistency)
+    const numericId = typeof timeoutId === 'number' ? timeoutId : Number(timeoutId);
+    if (step.result) {
+      ctx.locals[step.result] = numericId;
+    }
+
+    // Store a map of timer IDs to their resolve functions for clearTimer to use
+    if (!ctx.locals['_timerResolvers']) {
+      ctx.locals['_timerResolvers'] = new Map<number, () => void>();
+    }
+    (ctx.locals['_timerResolvers'] as Map<number, () => void>).set(numericId, () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutId);
+        resolve();
+      }
+    });
+
+    // Register cleanup function
+    if (ctx.cleanups) {
+      ctx.cleanups.push(() => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          resolve();
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Executes an interval step (setInterval equivalent)
+ * Executes the specified action repeatedly at the given interval.
+ * Registers cleanup function in ctx.cleanups if provided.
+ *
+ * Note: The timer ID is stored as a number for browser compatibility.
+ */
+async function executeIntervalStep(
+  step: CompiledIntervalStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const msValue = evaluate(step.ms, evalCtx);
+
+  // Convert to number, handle edge cases
+  const ms = typeof msValue === 'number' ? Math.max(0, msValue) : 0;
+
+  const intervalId = setInterval(async () => {
+    const action = ctx.actions[step.action];
+    if (action) {
+      await executeAction(action, ctx);
+    }
+  }, ms);
+
+  // Store interval ID in result variable if specified (convert to number for consistency)
+  const numericId = typeof intervalId === 'number' ? intervalId : Number(intervalId);
+  if (step.result) {
+    ctx.locals[step.result] = numericId;
+  }
+
+  // Register cleanup function
+  if (ctx.cleanups) {
+    ctx.cleanups.push(() => clearInterval(intervalId));
+  }
+}
+
+/**
+ * Executes a clearTimer step (clearTimeout/clearInterval equivalent)
+ * Clears the timer with the specified ID.
+ *
+ * For delay timers, this also resolves the pending Promise to prevent hanging awaits.
+ */
+async function executeClearTimerStep(
+  step: CompiledClearTimerStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const timerId = evaluate(step.target, evalCtx);
+
+  // Handle undefined or invalid timer ID gracefully
+  if (timerId == null) {
+    return;
+  }
+
+  const numericId = typeof timerId === 'number' ? timerId : Number(timerId);
+
+  // Check if there's a resolver for this timer (for delay timers)
+  const timerResolvers = ctx.locals['_timerResolvers'] as Map<number, () => void> | undefined;
+  if (timerResolvers?.has(numericId)) {
+    const resolver = timerResolvers.get(numericId);
+    if (resolver) {
+      resolver();
+    }
+    timerResolvers.delete(numericId);
+  }
+
+  // Both clearTimeout and clearInterval work for both types in browsers
+  clearTimeout(timerId as ReturnType<typeof setTimeout>);
+  clearInterval(timerId as ReturnType<typeof setInterval>);
+}
+
+/**
+ * Executes a focus step (focus/blur/select operations on form elements)
+ */
+async function executeFocusStep(
+  step: CompiledFocusStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const targetValue = evaluate(step.target, evalCtx);
+
+  // Determine the element: either directly from evaluation (ref expr returns Element)
+  // or by looking up a string ref name
+  let element: Element | null | undefined;
+  if (targetValue instanceof Element) {
+    element = targetValue;
+  } else if (typeof targetValue === 'string') {
+    element = ctx.refs?.[targetValue];
+  }
+
+  try {
+    if (!element) {
+      const refName = typeof targetValue === 'string' ? targetValue : 'unknown';
+      throw new Error(`Ref "${refName}" not found`);
+    }
+
+    switch (step.operation) {
+      case 'focus':
+        if (typeof (element as HTMLElement).focus === 'function') {
+          (element as HTMLElement).focus();
+        }
+        break;
+      case 'blur':
+        if (typeof (element as HTMLElement).blur === 'function') {
+          (element as HTMLElement).blur();
+        }
+        break;
+      case 'select':
+        if (typeof (element as HTMLInputElement).select === 'function') {
+          (element as HTMLInputElement).select();
+        } else {
+          throw new Error(`Element does not support select operation`);
+        }
+        break;
+    }
+
+    if (step.onSuccess) {
+      for (const successStep of step.onSuccess) {
+        await executeStep(successStep, ctx);
+      }
+    }
+  } catch (err) {
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
+    if (step.onError) {
+      for (const errorStep of step.onError) {
+        await executeStep(errorStep, ctx);
+      }
+    }
+  }
 }

@@ -17,6 +17,8 @@ export type {
   StorageType,
   ClipboardOperation,
   NavigateTarget,
+  FocusOperation,
+  ValidityProperty,
   // Expressions
   Expression,
   LitExpr,
@@ -33,6 +35,7 @@ export type {
   RefExpr,
   StyleExpr,
   ConcatExpr,
+  ValidityExpr,
   // State Fields
   StateField,
   NumberField,
@@ -56,8 +59,13 @@ export type {
   DomStep,
   SendStep,
   CloseStep,
+  DelayStep,
+  IntervalStep,
+  ClearTimerStep,
+  FocusStep,
   // Event Handler
   EventHandler,
+  EventHandlerOptions,
   // Action Definition
   ActionDefinition,
   // Local Action Types
@@ -73,6 +81,7 @@ export type {
   SlotNode,
   MarkdownNode,
   CodeNode,
+  PortalNode,
   // Component Definition
   ParamDef,
   ComponentDef,
@@ -106,6 +115,8 @@ export {
   STORAGE_TYPES,
   CLIPBOARD_OPERATIONS,
   NAVIGATE_TARGETS,
+  FOCUS_OPERATIONS,
+  VALIDITY_PROPERTIES,
 } from './types/ast.js';
 
 // ==================== Type Guards ====================
@@ -125,6 +136,7 @@ export {
   isRefExpr,
   isStyleExpr,
   isConcatExpr,
+  isValidityExpr,
   isExpression,
   // Route Definition type guard
   isRouteDefinition,
@@ -140,6 +152,7 @@ export {
   isSlotNode,
   isMarkdownNode,
   isCodeNode,
+  isPortalNode,
   isViewNode,
   // ActionStep type guards
   isSetStep,
@@ -153,6 +166,7 @@ export {
   isCallStep,
   isSubscribeStep,
   isDisposeStep,
+  isFocusStep,
   isActionStep,
   // LocalAction type guards
   isLocalActionStep,

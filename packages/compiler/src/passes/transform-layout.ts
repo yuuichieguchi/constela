@@ -432,6 +432,15 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         language: node.language,
         content: node.content,
       } as CompiledNode;
+
+    case 'portal':
+      return {
+        kind: 'portal',
+        target: (node as ViewNode & { target: string }).target,
+        children: ((node as ViewNode & { children: ViewNode[] }).children ?? []).map(
+          child => transformViewNode(child, ctx)
+        ),
+      } as CompiledNode;
   }
 }
 

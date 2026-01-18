@@ -76,7 +76,11 @@ export type CompiledActionStep =
   | CompiledDomStep
   | CompiledIfStep
   | CompiledSendStep
-  | CompiledCloseStep;
+  | CompiledCloseStep
+  | CompiledDelayStep
+  | CompiledIntervalStep
+  | CompiledClearTimerStep
+  | CompiledFocusStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -221,6 +225,45 @@ export interface CompiledCloseStep {
   connection: string;
 }
 
+/**
+ * Compiled delay step - executes steps after a delay (setTimeout equivalent)
+ */
+export interface CompiledDelayStep {
+  do: 'delay';
+  ms: CompiledExpression;
+  then: CompiledActionStep[];
+  result?: string;
+}
+
+/**
+ * Compiled interval step - executes an action repeatedly (setInterval equivalent)
+ */
+export interface CompiledIntervalStep {
+  do: 'interval';
+  ms: CompiledExpression;
+  action: string;
+  result?: string;
+}
+
+/**
+ * Compiled clearTimer step - clears a timer (clearTimeout/clearInterval equivalent)
+ */
+export interface CompiledClearTimerStep {
+  do: 'clearTimer';
+  target: CompiledExpression;
+}
+
+/**
+ * Compiled focus step - manages form element focus
+ */
+export interface CompiledFocusStep {
+  do: 'focus';
+  target: CompiledExpression;
+  operation: 'focus' | 'blur' | 'select';
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
 // ==================== Compiled Local State Types ====================
 
 /**
@@ -251,6 +294,7 @@ export type CompiledNode =
   | CompiledMarkdownNode
   | CompiledCodeNode
   | CompiledSlotNode
+  | CompiledPortalNode
   | CompiledLocalStateNode;
 
 export interface CompiledElementNode {
@@ -298,6 +342,12 @@ export interface CompiledSlotNode {
   name?: string;
 }
 
+export interface CompiledPortalNode {
+  kind: 'portal';
+  target: 'body' | 'head' | string;
+  children: CompiledNode[];
+}
+
 // ==================== Compiled Expression Types ====================
 
 export type CompiledExpression =
@@ -315,7 +365,8 @@ export type CompiledExpression =
   | CompiledIndexExpr
   | CompiledParamExpr
   | CompiledStyleExpr
-  | CompiledConcatExpr;
+  | CompiledConcatExpr
+  | CompiledValidityExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -400,12 +451,30 @@ export interface CompiledConcatExpr {
   items: CompiledExpression[];
 }
 
+export interface CompiledValidityExpr {
+  expr: 'validity';
+  ref: string;
+  property?: string;
+}
+
 // ==================== Compiled Event Handler ====================
+
+/**
+ * Compiled event handler options for special events like intersect
+ */
+export interface CompiledEventHandlerOptions {
+  threshold?: number;
+  rootMargin?: string;
+  once?: boolean;
+}
 
 export interface CompiledEventHandler {
   event: string;
   action: string;
   payload?: CompiledExpression | Record<string, CompiledExpression>;
+  debounce?: number;
+  throttle?: number;
+  options?: CompiledEventHandlerOptions;
 }
 
 // ==================== Transform Pass Result ====================
@@ -575,6 +644,17 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         expr: 'concat',
         items: expr.items.map(item => transformExpression(item, ctx)),
       };
+
+    case 'validity': {
+      const validityExpr: CompiledValidityExpr = {
+        expr: 'validity',
+        ref: expr.ref,
+      };
+      if (expr.property) {
+        validityExpr.property = expr.property;
+      }
+      return validityExpr;
+    }
   }
 }
 
@@ -591,6 +671,27 @@ function transformEventHandler(handler: EventHandler, ctx: TransformContext): Co
 
   if (handler.payload) {
     result.payload = transformExpression(handler.payload, ctx);
+  }
+
+  if (handler.debounce !== undefined) {
+    result.debounce = handler.debounce;
+  }
+
+  if (handler.throttle !== undefined) {
+    result.throttle = handler.throttle;
+  }
+
+  if (handler.options) {
+    result.options = {};
+    if (handler.options.threshold !== undefined) {
+      result.options.threshold = handler.options.threshold;
+    }
+    if (handler.options.rootMargin !== undefined) {
+      result.options.rootMargin = handler.options.rootMargin;
+    }
+    if (handler.options.once !== undefined) {
+      result.options.once = handler.options.once;
+    }
   }
 
   return result;
@@ -804,6 +905,56 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         connection: closeStep.connection,
       } as CompiledCloseStep;
     }
+
+    case 'delay': {
+      const delayStep = step as import('@constela/core').DelayStep;
+      const compiledDelayStep: CompiledDelayStep = {
+        do: 'delay',
+        ms: transformExpression(delayStep.ms, emptyContext),
+        then: delayStep.then.map(transformActionStep),
+      };
+      if (delayStep.result) {
+        compiledDelayStep.result = delayStep.result;
+      }
+      return compiledDelayStep;
+    }
+
+    case 'interval': {
+      const intervalStep = step as import('@constela/core').IntervalStep;
+      const compiledIntervalStep: CompiledIntervalStep = {
+        do: 'interval',
+        ms: transformExpression(intervalStep.ms, emptyContext),
+        action: intervalStep.action,
+      };
+      if (intervalStep.result) {
+        compiledIntervalStep.result = intervalStep.result;
+      }
+      return compiledIntervalStep;
+    }
+
+    case 'clearTimer': {
+      const clearTimerStep = step as import('@constela/core').ClearTimerStep;
+      return {
+        do: 'clearTimer',
+        target: transformExpression(clearTimerStep.target, emptyContext),
+      } as CompiledClearTimerStep;
+    }
+
+    case 'focus': {
+      const focusStep = step as import('@constela/core').FocusStep;
+      const compiledFocusStep: CompiledFocusStep = {
+        do: 'focus',
+        target: transformExpression(focusStep.target, emptyContext),
+        operation: focusStep.operation,
+      };
+      if (focusStep.onSuccess) {
+        compiledFocusStep.onSuccess = focusStep.onSuccess.map(transformActionStep);
+      }
+      if (focusStep.onError) {
+        compiledFocusStep.onError = focusStep.onError.map(transformActionStep);
+      }
+      return compiledFocusStep;
+    }
   }
 }
 
@@ -983,6 +1134,19 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       }
       // No children - return an empty text node
       return { kind: 'text', value: { expr: 'lit', value: '' } };
+    }
+
+    case 'portal': {
+      const portalNode = node as import('@constela/core').PortalNode;
+      const compiledChildren: CompiledNode[] = [];
+      for (const child of portalNode.children) {
+        compiledChildren.push(transformViewNode(child, ctx));
+      }
+      return {
+        kind: 'portal',
+        target: portalNode.target,
+        children: compiledChildren,
+      } as CompiledPortalNode;
     }
   }
 }

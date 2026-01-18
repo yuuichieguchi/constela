@@ -13,6 +13,7 @@ import type {
   CompiledEachNode,
   CompiledMarkdownNode,
   CompiledCodeNode,
+  CompiledPortalNode,
   CompiledLocalStateNode,
   CompiledExpression,
   CompiledEventHandler,
@@ -222,6 +223,12 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
           return val == null ? '' : String(val);
         })
         .join('');
+    }
+
+    case 'validity': {
+      // SSR context: DOM elements don't exist, return false for validity checks
+      // Client-side hydration will re-evaluate with actual DOM elements
+      return false;
     }
 
     default: {
@@ -447,6 +454,9 @@ async function renderNode(node: CompiledNode, ctx: SSRContext): Promise<string> 
       // Slots should be replaced during layout composition
       // If we reach here, render empty (slot content not provided)
       return '';
+    case 'portal':
+      // In SSR, portal children are rendered inline since we can't manipulate DOM
+      return await renderPortal(node as CompiledPortalNode, ctx);
     case 'localState':
       return await renderLocalState(node as CompiledLocalStateNode, ctx);
     default: {
@@ -596,6 +606,24 @@ async function renderCode(node: CompiledCodeNode, ctx: SSRContext): Promise<stri
   const copyButton = `<button class="constela-copy-btn absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/80 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100" data-copy-target="code" aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`;
 
   return `<div class="constela-code" data-code-content="${escapeHtml(content)}"><div class="group relative">${languageBadge}${copyButton}${highlightedCode}</div></div>`;
+}
+
+/**
+ * Renders a portal node to HTML string
+ *
+ * In SSR context, portal children are rendered inline as a comment marker
+ * followed by the children content. The client-side hydration will handle
+ * moving the content to the target location.
+ */
+async function renderPortal(node: CompiledPortalNode, ctx: SSRContext): Promise<string> {
+  // Render children
+  const childrenHtml = await Promise.all(
+    node.children.map(child => renderNode(child, ctx))
+  );
+
+  // In SSR, we render portal content inline with a marker
+  // The client will move it to the target during hydration
+  return `<!--portal:${node.target}-->${childrenHtml.join('')}<!--/portal-->`;
 }
 
 /**

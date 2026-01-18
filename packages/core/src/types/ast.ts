@@ -60,6 +60,20 @@ export type StorageType = (typeof STORAGE_TYPES)[number];
 export const CLIPBOARD_OPERATIONS = ['write', 'read'] as const;
 export type ClipboardOperation = (typeof CLIPBOARD_OPERATIONS)[number];
 
+// ==================== Focus Operations ====================
+
+export const FOCUS_OPERATIONS = ['focus', 'blur', 'select'] as const;
+export type FocusOperation = (typeof FOCUS_OPERATIONS)[number];
+
+// ==================== Validity Properties ====================
+
+export const VALIDITY_PROPERTIES = [
+  'valid', 'valueMissing', 'typeMismatch', 'patternMismatch',
+  'tooLong', 'tooShort', 'rangeUnderflow', 'rangeOverflow',
+  'customError', 'message'
+] as const;
+export type ValidityProperty = (typeof VALIDITY_PROPERTIES)[number];
+
 // ==================== Navigate Targets ====================
 
 export const NAVIGATE_TARGETS = ['_self', '_blank'] as const;
@@ -212,7 +226,16 @@ export interface ConcatExpr {
   items: Expression[];
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr;
+/**
+ * Validity expression - gets form element validation state
+ */
+export interface ValidityExpr {
+  expr: 'validity';
+  ref: string;
+  property?: ValidityProperty;
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr;
 
 // ==================== State Fields ====================
 
@@ -435,12 +458,60 @@ export interface CloseStep {
   connection: string;
 }
 
-export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep;
+/**
+ * Delay step - executes steps after a delay (setTimeout equivalent)
+ */
+export interface DelayStep {
+  do: 'delay';
+  ms: Expression;           // delay time in milliseconds
+  then: ActionStep[];       // steps to execute after delay
+  result?: string;          // optional: store timeout ID
+}
+
+/**
+ * Interval step - executes an action repeatedly (setInterval equivalent)
+ */
+export interface IntervalStep {
+  do: 'interval';
+  ms: Expression;           // interval time in milliseconds
+  action: string;           // action name to execute
+  result?: string;          // optional: store interval ID
+}
+
+/**
+ * ClearTimer step - clears a timer (clearTimeout/clearInterval equivalent)
+ */
+export interface ClearTimerStep {
+  do: 'clearTimer';
+  target: Expression;       // timer ID to clear
+}
+
+/**
+ * Focus step - manages form element focus
+ */
+export interface FocusStep {
+  do: 'focus';
+  target: Expression;  // ref name
+  operation: FocusOperation;
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep;
 
 // LocalActionStep - only set, update, setPath allowed for local actions
 export type LocalActionStep = SetStep | UpdateStep | SetPathStep;
 
 // ==================== Event Handler ====================
+
+/**
+ * Event handler options for special events like intersect
+ */
+export interface EventHandlerOptions {
+  threshold?: number;
+  rootMargin?: string;
+  once?: boolean;
+}
 
 /**
  * Event handler - binds an event to an action
@@ -449,6 +520,9 @@ export interface EventHandler {
   event: string;
   action: string;
   payload?: Expression;
+  debounce?: number;
+  throttle?: number;
+  options?: EventHandlerOptions;
 }
 
 // ==================== Action Definition ====================
@@ -549,7 +623,16 @@ export interface CodeNode {
   content: Expression;
 }
 
-export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode | MarkdownNode | CodeNode;
+/**
+ * Portal node - renders children to a different DOM location
+ */
+export interface PortalNode {
+  kind: 'portal';
+  target: 'body' | 'head' | string;
+  children: ViewNode[];
+}
+
+export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode | MarkdownNode | CodeNode | PortalNode;
 
 // ==================== Component Definition ====================
 

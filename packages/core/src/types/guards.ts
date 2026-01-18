@@ -14,6 +14,8 @@ import {
   STORAGE_TYPES,
   CLIPBOARD_OPERATIONS,
   NAVIGATE_TARGETS,
+  FOCUS_OPERATIONS,
+  VALIDITY_PROPERTIES,
   type Expression,
   type LitExpr,
   type StateExpr,
@@ -39,6 +41,7 @@ import {
   type SlotNode,
   type MarkdownNode,
   type CodeNode,
+  type PortalNode,
   type ActionStep,
   type SetStep,
   type UpdateStep,
@@ -51,14 +54,20 @@ import {
   type CallStep,
   type SubscribeStep,
   type DisposeStep,
+  type DelayStep,
+  type IntervalStep,
+  type ClearTimerStep,
+  type FocusStep,
   type RefExpr,
   type IndexExpr,
   type StyleExpr,
   type ConcatExpr,
+  type ValidityExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
   type NavigateTarget,
+  type FocusOperation,
   type StateField,
   type NumberField,
   type StringField,
@@ -284,6 +293,22 @@ export function isConcatExpr(value: unknown): value is ConcatExpr {
 }
 
 /**
+ * Checks if value is a validity expression
+ */
+export function isValidityExpr(value: unknown): value is ValidityExpr {
+  if (!isObject(value)) return false;
+  if (value['expr'] !== 'validity') return false;
+  if (typeof value['ref'] !== 'string') return false;
+  // Validate property if present
+  if ('property' in value && value['property'] !== undefined) {
+    if (!VALIDITY_PROPERTIES.includes(value['property'] as typeof VALIDITY_PROPERTIES[number])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Checks if value is a data source
  */
 export function isDataSource(value: unknown): value is DataSource {
@@ -360,7 +385,8 @@ export function isExpression(value: unknown): value is Expression {
     isRefExpr(value) ||
     isIndexExpr(value) ||
     isStyleExpr(value) ||
-    isConcatExpr(value)
+    isConcatExpr(value) ||
+    isValidityExpr(value)
   );
 }
 
@@ -454,6 +480,17 @@ export function isCodeNode(value: unknown): value is CodeNode {
 }
 
 /**
+ * Checks if value is a portal node
+ */
+export function isPortalNode(value: unknown): value is PortalNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'portal') return false;
+  if (typeof value['target'] !== 'string') return false;
+  if (!Array.isArray(value['children'])) return false;
+  return true;
+}
+
+/**
  * Checks if value is any valid view node
  */
 export function isViewNode(value: unknown): value is ViewNode {
@@ -465,7 +502,8 @@ export function isViewNode(value: unknown): value is ViewNode {
     isComponentNode(value) ||
     isSlotNode(value) ||
     isMarkdownNode(value) ||
-    isCodeNode(value)
+    isCodeNode(value) ||
+    isPortalNode(value)
   );
 }
 
@@ -611,6 +649,51 @@ export function isDisposeStep(value: unknown): value is DisposeStep {
 }
 
 /**
+ * Checks if value is a delay step
+ */
+export function isDelayStep(value: unknown): value is DelayStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'delay') return false;
+  if (!isObject(value['ms'])) return false;
+  if (!Array.isArray(value['then'])) return false;
+  return true;
+}
+
+/**
+ * Checks if value is an interval step
+ */
+export function isIntervalStep(value: unknown): value is IntervalStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'interval') return false;
+  if (!isObject(value['ms'])) return false;
+  if (typeof value['action'] !== 'string') return false;
+  return true;
+}
+
+/**
+ * Checks if value is a clearTimer step
+ */
+export function isClearTimerStep(value: unknown): value is ClearTimerStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'clearTimer') return false;
+  if (!isObject(value['target'])) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a focus step
+ */
+export function isFocusStep(value: unknown): value is FocusStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'focus') return false;
+  if (!isObject(value['target'])) return false;
+  if (!FOCUS_OPERATIONS.includes(value['operation'] as FocusOperation)) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Checks if value is any valid action step
  */
 export function isActionStep(value: unknown): value is ActionStep {
@@ -625,7 +708,11 @@ export function isActionStep(value: unknown): value is ActionStep {
     isImportStep(value) ||
     isCallStep(value) ||
     isSubscribeStep(value) ||
-    isDisposeStep(value)
+    isDisposeStep(value) ||
+    isDelayStep(value) ||
+    isIntervalStep(value) ||
+    isClearTimerStep(value) ||
+    isFocusStep(value)
   );
 }
 

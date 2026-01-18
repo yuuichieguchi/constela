@@ -32,6 +32,7 @@ export type {
   CompiledMarkdownNode,
   CompiledCodeNode,
   CompiledSlotNode,
+  CompiledPortalNode,
   CompiledLocalStateNode,
   CompiledLocalAction,
   CompiledExpression,
@@ -66,8 +67,14 @@ export type {
   CompiledStyleExpr,
   CompiledConcatExpr,
   CompiledEventHandler,
+  CompiledEventHandlerOptions,
   CompiledSendStep,
   CompiledCloseStep,
+  CompiledDelayStep,
+  CompiledIntervalStep,
+  CompiledClearTimerStep,
+  CompiledFocusStep,
+  CompiledValidityExpr,
 } from './passes/transform.js';
 
 // Layout passes

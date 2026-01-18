@@ -1,5 +1,16 @@
 # @constela/core
 
+## 0.11.0
+
+### Minor Changes
+
+- feat: add high-priority features for React/Next.js parity
+
+  - Timer functionality: delay, interval, clearTimer action steps
+  - Event info expansion: KeyboardEvent, MouseEvent, TouchEvent, scroll data extraction
+  - Form functionality: focus step, validity expression, file input support
+  - Portal & Observer: PortalNode, IntersectionObserver, debounce/throttle for event handlers
+
 ## 0.10.0
 
 ### Minor Changes

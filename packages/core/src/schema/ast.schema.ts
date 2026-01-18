@@ -56,6 +56,7 @@ export const astSchema = {
         { $ref: '#/$defs/GetExpr' },
         { $ref: '#/$defs/IndexExpr' },
         { $ref: '#/$defs/StyleExpr' },
+        { $ref: '#/$defs/ValidityExpr' },
       ],
     },
     LitExpr: {
@@ -172,6 +173,19 @@ export const astSchema = {
         },
       },
     },
+    ValidityExpr: {
+      type: 'object',
+      required: ['expr', 'ref'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'validity' },
+        ref: { type: 'string' },
+        property: {
+          type: 'string',
+          enum: ['valid', 'valueMissing', 'typeMismatch', 'patternMismatch', 'tooLong', 'tooShort', 'rangeUnderflow', 'rangeOverflow', 'customError', 'message'],
+        },
+      },
+    },
 
     // ==================== Style Presets ====================
     StylePreset: {
@@ -268,6 +282,10 @@ export const astSchema = {
         { $ref: '#/$defs/SetStep' },
         { $ref: '#/$defs/UpdateStep' },
         { $ref: '#/$defs/FetchStep' },
+        { $ref: '#/$defs/DelayStep' },
+        { $ref: '#/$defs/IntervalStep' },
+        { $ref: '#/$defs/ClearTimerStep' },
+        { $ref: '#/$defs/FocusStep' },
       ],
     },
     SetStep: {
@@ -319,6 +337,61 @@ export const astSchema = {
         },
       },
     },
+    DelayStep: {
+      type: 'object',
+      required: ['do', 'ms', 'then'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'delay' },
+        ms: { $ref: '#/$defs/Expression' },
+        then: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+        result: { type: 'string' },
+      },
+    },
+    IntervalStep: {
+      type: 'object',
+      required: ['do', 'ms', 'action'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'interval' },
+        ms: { $ref: '#/$defs/Expression' },
+        action: { type: 'string' },
+        result: { type: 'string' },
+      },
+    },
+    ClearTimerStep: {
+      type: 'object',
+      required: ['do', 'target'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'clearTimer' },
+        target: { $ref: '#/$defs/Expression' },
+      },
+    },
+    FocusStep: {
+      type: 'object',
+      required: ['do', 'target', 'operation'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'focus' },
+        target: { $ref: '#/$defs/Expression' },
+        operation: {
+          type: 'string',
+          enum: ['focus', 'blur', 'select'],
+        },
+        onSuccess: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+        onError: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+      },
+    },
 
     // ==================== Event Handler ====================
     EventHandler: {
@@ -329,6 +402,18 @@ export const astSchema = {
         event: { type: 'string' },
         action: { type: 'string' },
         payload: { $ref: '#/$defs/Expression' },
+        debounce: { type: 'number' },
+        throttle: { type: 'number' },
+        options: { $ref: '#/$defs/EventHandlerOptions' },
+      },
+    },
+    EventHandlerOptions: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        threshold: { type: 'number' },
+        rootMargin: { type: 'string' },
+        once: { type: 'boolean' },
       },
     },
 
@@ -357,6 +442,7 @@ export const astSchema = {
         { $ref: '#/$defs/SlotNode' },
         { $ref: '#/$defs/MarkdownNode' },
         { $ref: '#/$defs/CodeNode' },
+        { $ref: '#/$defs/PortalNode' },
       ],
     },
     ElementNode: {
@@ -456,6 +542,19 @@ export const astSchema = {
         kind: { type: 'string', const: 'code' },
         language: { $ref: '#/$defs/Expression' },
         content: { $ref: '#/$defs/Expression' },
+      },
+    },
+    PortalNode: {
+      type: 'object',
+      required: ['kind', 'target', 'children'],
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', const: 'portal' },
+        target: { type: 'string' },
+        children: {
+          type: 'array',
+          items: { $ref: '#/$defs/ViewNode' },
+        },
       },
     },
 

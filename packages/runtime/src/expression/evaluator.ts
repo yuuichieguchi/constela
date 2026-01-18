@@ -205,6 +205,24 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
         .join('');
     }
 
+    case 'validity': {
+      const element = ctx.refs?.[expr.ref];
+      if (!element) return null;
+
+      // Check if element has validity property (form elements)
+      const formElement = element as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (!formElement.validity) return null;
+
+      const validity = formElement.validity;
+      const property = expr.property || 'valid';
+
+      if (property === 'message') {
+        return formElement.validationMessage || '';
+      }
+
+      return validity[property as keyof ValidityState] ?? null;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

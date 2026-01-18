@@ -17,6 +17,7 @@ import type {
   CompiledEachNode,
   CompiledMarkdownNode,
   CompiledCodeNode,
+  CompiledPortalNode,
   CompiledLocalStateNode,
   CompiledLocalAction,
   CompiledAction,
@@ -73,6 +74,288 @@ function isEventHandler(value: unknown): value is CompiledEventHandler {
   );
 }
 
+// ==================== Debounce/Throttle Utilities ====================
+
+/**
+ * Creates a debounced function that delays invoking fn until after wait ms
+ * have elapsed since the last time the debounced function was invoked.
+ */
+function debounce(
+  fn: (event: Event) => void | Promise<void>,
+  wait: number,
+  ctx: RenderContext
+): (event: Event) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const debouncedFn = (event: Event) => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      fn(event);
+    }, wait);
+  };
+
+  // Register cleanup for pending timeout
+  ctx.cleanups?.push(() => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  });
+
+  return debouncedFn;
+}
+
+/**
+ * Creates a throttled function that only invokes fn at most once per wait ms.
+ * The first call is immediate, subsequent calls within the wait period are ignored.
+ */
+function throttle(
+  fn: (event: Event) => void | Promise<void>,
+  wait: number,
+  ctx: RenderContext
+): (event: Event) => void {
+  let lastTime = 0;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastEvent: Event | null = null;
+
+  const throttledFn = (event: Event) => {
+    const now = Date.now();
+    const remaining = wait - (now - lastTime);
+
+    if (remaining <= 0) {
+      // Execute immediately
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      lastTime = now;
+      fn(event);
+    } else {
+      // Schedule for later and save event
+      lastEvent = event;
+      if (timeoutId === null) {
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          lastTime = Date.now();
+          if (lastEvent) {
+            fn(lastEvent);
+            lastEvent = null;
+          }
+        }, remaining);
+      }
+    }
+  };
+
+  // Register cleanup for pending timeout
+  ctx.cleanups?.push(() => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  });
+
+  return throttledFn;
+}
+
+// ==================== Event Handler Utilities ====================
+
+/**
+ * Creates the base event callback that extracts event data and executes action
+ */
+function createEventCallback(
+  handler: CompiledEventHandler,
+  ctx: RenderContext
+): (event: Event) => Promise<void> {
+  return async (event: Event) => {
+    const action = ctx.actions[handler.action];
+    if (!action) return;
+
+    // Create event-specific locals
+    const eventLocals: Record<string, unknown> = {};
+    const target = event.target;
+
+    // Extract value for input-like elements
+    if (target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement) {
+      eventLocals['value'] = target.value;
+
+      // Also provide checked for checkbox inputs
+      if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+        eventLocals['checked'] = target.checked;
+      }
+
+      // File input data
+      if (target instanceof HTMLInputElement && target.type === 'file') {
+        eventLocals['files'] = Array.from(target.files || []).map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          _file: f,
+        }));
+      }
+    }
+
+    // KeyboardEvent data
+    if (event instanceof KeyboardEvent) {
+      eventLocals['key'] = event.key;
+      eventLocals['code'] = event.code;
+      eventLocals['ctrlKey'] = event.ctrlKey;
+      eventLocals['shiftKey'] = event.shiftKey;
+      eventLocals['altKey'] = event.altKey;
+      eventLocals['metaKey'] = event.metaKey;
+    }
+
+    // MouseEvent data
+    if (event instanceof MouseEvent) {
+      eventLocals['clientX'] = event.clientX;
+      eventLocals['clientY'] = event.clientY;
+      eventLocals['pageX'] = event.pageX;
+      eventLocals['pageY'] = event.pageY;
+      eventLocals['button'] = event.button;
+    }
+
+    // TouchEvent data - check for touches property for jsdom compatibility
+    const touchEvent = event as { touches?: TouchList; changedTouches?: TouchList };
+    if (touchEvent.touches && touchEvent.changedTouches) {
+      eventLocals['touches'] = Array.from(touchEvent.touches).map(t => ({
+        clientX: t.clientX,
+        clientY: t.clientY,
+        pageX: t.pageX,
+        pageY: t.pageY,
+      }));
+      eventLocals['changedTouches'] = Array.from(touchEvent.changedTouches).map(t => ({
+        clientX: t.clientX,
+        clientY: t.clientY,
+        pageX: t.pageX,
+        pageY: t.pageY,
+      }));
+    }
+
+    // Scroll event data
+    if (handler.event === 'scroll' && event.target instanceof Element) {
+      eventLocals['scrollTop'] = event.target.scrollTop;
+      eventLocals['scrollLeft'] = event.target.scrollLeft;
+    }
+
+    // Evaluate payload with event locals merged into context locals
+    let payload: unknown = undefined;
+    if (handler.payload) {
+      payload = evaluatePayload(handler.payload, {
+        state: ctx.state,
+        locals: { ...ctx.locals, ...eventLocals },
+        ...(ctx.imports && { imports: ctx.imports })
+      });
+    }
+
+    const actionCtx = {
+      state: ctx.state,
+      actions: ctx.actions,
+      locals: { ...ctx.locals, ...eventLocals, payload },
+      eventPayload: payload,
+    };
+    await executeAction(action, actionCtx);
+  };
+}
+
+/**
+ * Wraps an event callback with debounce or throttle if specified
+ */
+function wrapWithDebounceThrottle(
+  callback: (event: Event) => Promise<void>,
+  handler: CompiledEventHandler,
+  ctx: RenderContext
+): (event: Event) => void {
+  // Debounce takes precedence if both are specified
+  if (handler.debounce !== undefined && handler.debounce >= 0) {
+    return debounce(callback, handler.debounce, ctx);
+  }
+  if (handler.throttle !== undefined && handler.throttle >= 0) {
+    return throttle(callback, handler.throttle, ctx);
+  }
+  return callback;
+}
+
+// ==================== IntersectionObserver Support ====================
+
+/**
+ * Sets up an IntersectionObserver for the 'intersect' event
+ */
+function setupIntersectionObserver(
+  el: Element,
+  handler: CompiledEventHandler,
+  ctx: RenderContext
+): void {
+  const options: IntersectionObserverInit = {};
+
+  if (handler.options?.threshold !== undefined) {
+    options.threshold = handler.options.threshold;
+  }
+  if (handler.options?.rootMargin !== undefined) {
+    options.rootMargin = handler.options.rootMargin;
+  }
+
+  let hasTriggered = false;
+
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.target !== el) continue;
+
+      // If once option is set and already triggered, skip
+      if (handler.options?.once && hasTriggered) {
+        continue;
+      }
+
+      const action = ctx.actions[handler.action];
+      if (!action) continue;
+
+      // Create intersection-specific locals
+      const intersectLocals: Record<string, unknown> = {
+        isIntersecting: entry.isIntersecting,
+        intersectionRatio: entry.intersectionRatio,
+      };
+
+      // Evaluate payload with intersection locals
+      let payload: unknown = undefined;
+      if (handler.payload) {
+        payload = evaluatePayload(handler.payload, {
+          state: ctx.state,
+          locals: { ...ctx.locals, ...intersectLocals },
+          ...(ctx.imports && { imports: ctx.imports })
+        });
+      }
+
+      const actionCtx = {
+        state: ctx.state,
+        actions: ctx.actions,
+        locals: { ...ctx.locals, ...intersectLocals, payload },
+        eventPayload: payload,
+      };
+
+      // Execute action
+      executeAction(action, actionCtx);
+
+      // Mark as triggered and unobserve if once
+      if (handler.options?.once) {
+        hasTriggered = true;
+        observer.unobserve(el);
+      }
+    }
+  }, options);
+
+  observer.observe(el);
+
+  // Register cleanup
+  ctx.cleanups?.push(() => {
+    observer.disconnect();
+  });
+}
+
+// ==================== Render Functions ====================
+
 export function render(node: CompiledNode, ctx: RenderContext): Node {
   switch (node.kind) {
     case 'element':
@@ -87,6 +370,8 @@ export function render(node: CompiledNode, ctx: RenderContext): Node {
       return renderMarkdown(node, ctx);
     case 'code':
       return renderCode(node, ctx);
+    case 'portal':
+      return renderPortal(node as CompiledPortalNode, ctx);
     case 'localState':
       return renderLocalState(node as CompiledLocalStateNode, ctx);
     default:
@@ -118,44 +403,16 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): Element {
         // Bind event handler
         const handler = propValue;
         const eventName = handler.event;
-        el.addEventListener(eventName, async (event) => {
-          const action = ctx.actions[handler.action];
-          if (action) {
-            // Create event-specific locals
-            const eventLocals: Record<string, unknown> = {};
-            const target = event.target;
 
-            // Extract value for input-like elements
-            if (target instanceof HTMLInputElement ||
-                target instanceof HTMLTextAreaElement ||
-                target instanceof HTMLSelectElement) {
-              eventLocals['value'] = target.value;
-
-              // Also provide checked for checkbox inputs
-              if (target instanceof HTMLInputElement && target.type === 'checkbox') {
-                eventLocals['checked'] = target.checked;
-              }
-            }
-
-            // Evaluate payload with event locals merged into context locals
-            let payload: unknown = undefined;
-            if (handler.payload) {
-              payload = evaluatePayload(handler.payload, {
-                state: ctx.state,
-                locals: { ...ctx.locals, ...eventLocals },
-                ...(ctx.imports && { imports: ctx.imports })
-              });
-            }
-
-            const actionCtx = {
-              state: ctx.state,
-              actions: ctx.actions,
-              locals: { ...ctx.locals, ...eventLocals, payload },
-              eventPayload: payload,
-            };
-            await executeAction(action, actionCtx);
-          }
-        });
+        // Handle IntersectionObserver for 'intersect' event
+        if (eventName === 'intersect') {
+          setupIntersectionObserver(el, handler, ctx);
+        } else {
+          // Regular DOM event with optional debounce/throttle
+          const eventCallback = createEventCallback(handler, ctx);
+          const wrappedCallback = wrapWithDebounceThrottle(eventCallback, handler, ctx);
+          el.addEventListener(eventName, wrappedCallback);
+        }
       } else {
         // Apply prop with effect for reactivity
         const cleanup = createEffect(() => {
@@ -610,6 +867,67 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
   ctx.cleanups?.push(cleanup);
 
   return container;
+}
+
+// ==================== Portal Support ====================
+
+/**
+ * Renders a portal node by rendering children to a different DOM location.
+ * Returns a comment node as a placeholder in the original location.
+ */
+function renderPortal(node: CompiledPortalNode, ctx: RenderContext): Node {
+  // Determine target element
+  let targetElement: Element | null = null;
+
+  if (node.target === 'body') {
+    targetElement = document.body;
+  } else if (node.target === 'head') {
+    targetElement = document.head;
+  } else {
+    // CSS selector
+    targetElement = document.querySelector(node.target);
+  }
+
+  // If target doesn't exist, return an empty comment and don't render children
+  if (!targetElement) {
+    return document.createComment('portal:target-not-found');
+  }
+
+  // Create a container for portal content with data-portal attribute
+  const portalContainer = document.createElement('div');
+  portalContainer.setAttribute('data-portal', 'true');
+  portalContainer.style.display = 'contents';
+
+  // Create cleanups array for portal children
+  const portalCleanups: (() => void)[] = [];
+  const portalCtx: RenderContext = {
+    ...ctx,
+    cleanups: portalCleanups,
+  };
+
+  // Render children into portal container
+  for (const child of node.children) {
+    const childNode = render(child, portalCtx);
+    portalContainer.appendChild(childNode);
+  }
+
+  // Append portal container to target
+  targetElement.appendChild(portalContainer);
+
+  // Register cleanup to remove portal content
+  ctx.cleanups?.push(() => {
+    // Run child cleanups first
+    for (const cleanup of portalCleanups) {
+      cleanup();
+    }
+    // Remove portal container from target
+    if (portalContainer.parentNode) {
+      portalContainer.parentNode.removeChild(portalContainer);
+    }
+  });
+
+  // Return a comment node as placeholder
+  return document.createComment('portal');
 }
 
 // ==================== Local State Support ====================
