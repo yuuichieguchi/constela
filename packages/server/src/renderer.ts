@@ -535,14 +535,16 @@ async function renderIf(node: CompiledIfNode, ctx: SSRContext): Promise<string> 
   const condition = evaluate(node.condition, ctx);
 
   if (condition) {
-    return await renderNode(node.then, ctx);
+    const content = await renderNode(node.then, ctx);
+    return `<!--if:then-->${content}`;
   }
 
   if (node.else) {
-    return await renderNode(node.else, ctx);
+    const content = await renderNode(node.else, ctx);
+    return `<!--if:else-->${content}`;
   }
 
-  return '';
+  return '<!--if:none-->';
 }
 
 /**

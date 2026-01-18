@@ -347,6 +347,39 @@ function hydrateElement(
 }
 
 /**
+ * Finds an SSR if branch marker in the DOM.
+ * Searches for <!--if:then-->, <!--if:else-->, or <!--if:none--> comments.
+ *
+ * @param parent - The parent node to search in
+ * @param beforeNode - Search for markers before this node (or at end of parent if null)
+ * @returns The marker info or null if not found
+ */
+function findSsrIfBranchMarker(
+  parent: Node,
+  beforeNode: Node | null
+): { branch: 'then' | 'else' | 'none'; marker: Comment } | null {
+  // Search backwards from beforeNode (or from end of parent)
+  let current: Node | null = beforeNode
+    ? beforeNode.previousSibling
+    : parent.lastChild;
+
+  while (current) {
+    if (current.nodeType === Node.COMMENT_NODE) {
+      const comment = current as Comment;
+      const text = comment.textContent;
+      if (text === 'if:then') return { branch: 'then', marker: comment };
+      if (text === 'if:else') return { branch: 'else', marker: comment };
+      if (text === 'if:none') return { branch: 'none', marker: comment };
+    }
+    // Stop at element nodes - marker should be immediately before if content
+    if (current.nodeType === Node.ELEMENT_NODE) break;
+    current = current.previousSibling;
+  }
+
+  return null; // No marker found (backward compatibility)
+}
+
+/**
  * Hydrates children nodes, handling text node merging from SSR
  */
 function hydrateChildren(
@@ -395,24 +428,52 @@ function hydrateChildren(
         domIndex++;
       }
     } else if (childNode.kind === 'if') {
-      // For if nodes, evaluate condition to check if DOM exists
       const ifNode = childNode as CompiledIfNode;
-      const initialCondition = evaluate(ifNode.condition, {
+
+      // Evaluate client-side condition
+      const clientCondition = evaluate(ifNode.condition, {
         state: ctx.state,
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
         ...(ctx.route && { route: ctx.route }),
       });
-      const hasDomForIf = Boolean(initialCondition) || Boolean(ifNode.else);
+      const clientBranch: 'then' | 'else' | 'none' = Boolean(clientCondition)
+        ? 'then'
+        : ifNode.else
+          ? 'else'
+          : 'none';
 
+      // Find SSR marker
       const domChild = domChildren[domIndex];
-      if (hasDomForIf && domChild) {
-        // DOM exists - hydrate normally
-        hydrate(childNode, domChild, ctx);
+      const ssrInfo = findSsrIfBranchMarker(parent, domChild || null);
+      const ssrBranch = ssrInfo?.branch ?? null;
+
+      // Determine if SSR produced DOM
+      const ssrHasDom = ssrBranch === 'then' || ssrBranch === 'else';
+
+      if (ssrInfo?.marker) {
+        // Remove the marker comment
+        ssrInfo.marker.remove();
+      }
+
+      if (ssrHasDom && domChild) {
+        // SSR rendered content - hydrate with branch info
+        hydrateIf(ifNode, domChild, ctx, { ssrBranch: ssrBranch!, clientBranch });
         domIndex++;
+      } else if (ssrBranch === 'none') {
+        // SSR rendered nothing
+        hydrateIfWithoutDom(ifNode, parent, domChildren[domIndex] || null, ctx, {
+          clientBranch,
+        });
       } else {
-        // No DOM - create effect to render when condition becomes true
-        hydrateIfWithoutDom(ifNode, parent, domChildren[domIndex] || null, ctx);
+        // No marker (backward compatibility) - use existing logic
+        const hasDomForIf = Boolean(clientCondition) || Boolean(ifNode.else);
+        if (hasDomForIf && domChild) {
+          hydrate(childNode, domChild, ctx);
+          domIndex++;
+        } else {
+          hydrateIfWithoutDom(ifNode, parent, domChildren[domIndex] || null, ctx);
+        }
       }
     } else if (childNode.kind === 'each') {
       // For each nodes, count how many items are rendered
@@ -534,11 +595,17 @@ function formatValue(value: unknown): string {
 
 /**
  * Hydrates an if node with conditional rendering
+ *
+ * @param node - The compiled if node
+ * @param initialDomNode - The initial DOM node (SSR-rendered content)
+ * @param ctx - The hydration context
+ * @param branchInfo - Optional branch info for SSR/client mismatch handling
  */
 function hydrateIf(
   node: CompiledIfNode,
   initialDomNode: Node,
-  ctx: HydrateContext
+  ctx: HydrateContext,
+  branchInfo?: { ssrBranch: 'then' | 'else'; clientBranch: 'then' | 'else' | 'none' }
 ): void {
   // Create an anchor comment for the if node
   const anchor = document.createComment('if');
@@ -549,32 +616,42 @@ function hydrateIf(
   parent.insertBefore(anchor, initialDomNode);
 
   let currentNode: Node | null = initialDomNode;
-  let currentBranch: 'then' | 'else' | 'none' = 'none';
   let branchCleanups: (() => void)[] = [];
 
   // Track if this is the first run of the effect
   let isFirstRun = true;
 
-  // Determine initial branch
-  const initialCondition = evaluate(node.condition, {
-    state: ctx.state,
-    locals: ctx.locals,
-    ...(ctx.imports && { imports: ctx.imports }),
-    ...(ctx.route && { route: ctx.route }),
-  });
-  currentBranch = Boolean(initialCondition) ? 'then' : node.else ? 'else' : 'none';
+  // Determine if there's a mismatch between SSR and client
+  const hasMismatch = branchInfo && branchInfo.ssrBranch !== branchInfo.clientBranch;
 
-  // Hydrate initial branch if showing
-  if (currentBranch === 'then') {
-    const localCleanups: (() => void)[] = [];
-    const branchCtx: HydrateContext = { ...ctx, cleanups: localCleanups };
-    hydrate(node.then, currentNode, branchCtx);
-    branchCleanups = localCleanups;
-  } else if (currentBranch === 'else' && node.else) {
-    const localCleanups: (() => void)[] = [];
-    const branchCtx: HydrateContext = { ...ctx, cleanups: localCleanups };
-    hydrate(node.else, currentNode, branchCtx);
-    branchCleanups = localCleanups;
+  // Set currentBranch based on what SSR rendered (so we know what DOM we have)
+  let currentBranch: 'then' | 'else' | 'none' = branchInfo?.ssrBranch ?? 'none';
+
+  // If no mismatch, determine based on client evaluation (backward compatibility)
+  if (!branchInfo) {
+    const initialCondition = evaluate(node.condition, {
+      state: ctx.state,
+      locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
+    });
+    currentBranch = Boolean(initialCondition) ? 'then' : node.else ? 'else' : 'none';
+  }
+
+  // Hydrate initial branch only if there's no mismatch
+  // If there's a mismatch, we'll replace the DOM in the first effect run
+  if (!hasMismatch) {
+    if (currentBranch === 'then') {
+      const localCleanups: (() => void)[] = [];
+      const branchCtx: HydrateContext = { ...ctx, cleanups: localCleanups };
+      hydrate(node.then, currentNode, branchCtx);
+      branchCleanups = localCleanups;
+    } else if (currentBranch === 'else' && node.else) {
+      const localCleanups: (() => void)[] = [];
+      const branchCtx: HydrateContext = { ...ctx, cleanups: localCleanups };
+      hydrate(node.else, currentNode, branchCtx);
+      branchCleanups = localCleanups;
+    }
   }
 
   const effectCleanup = createEffect(() => {
@@ -588,10 +665,16 @@ function hydrateIf(
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
 
-    // Skip the first run - initial hydration already done above
+    // Handle first run
     if (isFirstRun) {
       isFirstRun = false;
-      return;
+      // If there's a mismatch, we need to replace the DOM on first run
+      if (hasMismatch) {
+        // Don't skip - fall through to perform the replacement
+      } else {
+        // No mismatch - skip first run (initial hydration already done above)
+        return;
+      }
     }
 
     if (newBranch !== currentBranch) {
@@ -648,12 +731,19 @@ function hydrateIf(
 /**
  * Hydrates an if node when there is no initial DOM (condition was initially false)
  * Creates an anchor and effect to render when condition becomes true
+ *
+ * @param node - The compiled if node
+ * @param parent - The parent element
+ * @param nextSibling - The next sibling node (for insertion position)
+ * @param ctx - The hydration context
+ * @param branchInfo - Optional branch info for SSR/client mismatch handling
  */
 function hydrateIfWithoutDom(
   node: CompiledIfNode,
   parent: HTMLElement,
   nextSibling: Node | null,
-  ctx: HydrateContext
+  ctx: HydrateContext,
+  branchInfo?: { clientBranch: 'then' | 'else' | 'none' }
 ): void {
   // Create an anchor comment for the if node
   const anchor = document.createComment('if');
@@ -667,6 +757,12 @@ function hydrateIfWithoutDom(
   let currentBranch: 'then' | 'else' | 'none' = 'none';
   let branchCleanups: (() => void)[] = [];
 
+  // If branchInfo indicates client wants a branch (SSR was none but client wants then/else),
+  // we need to immediately render it
+  const needsImmediateRender =
+    branchInfo && branchInfo.clientBranch !== 'none';
+  let isFirstRun = true;
+
   const effectCleanup = createEffect(() => {
     // Read state to track dependencies
     const condition = evaluate(node.condition, {
@@ -677,6 +773,18 @@ function hydrateIfWithoutDom(
     });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
+
+    // Handle first run with mismatch - we need to render immediately
+    if (isFirstRun) {
+      isFirstRun = false;
+      if (needsImmediateRender) {
+        // Fall through to perform the render
+      } else if (newBranch === 'none') {
+        // No mismatch and nothing to render - skip
+        return;
+      }
+      // If newBranch is not 'none', we need to render (normal case)
+    }
 
     if (newBranch !== currentBranch) {
       // Cleanup previous branch effects

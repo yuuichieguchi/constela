@@ -375,7 +375,7 @@ describe('renderToString', () => {
       const result = await renderToString(program);
 
       // Assert
-      expect(result).toBe('<div>Visible</div>');
+      expect(result).toBe('<!--if:then--><div>Visible</div>');
     });
 
     it('should render else branch when condition is false', async () => {
@@ -408,7 +408,7 @@ describe('renderToString', () => {
       const result = await renderToString(program);
 
       // Assert
-      expect(result).toBe('<span>Hidden</span>');
+      expect(result).toBe('<!--if:else--><span>Hidden</span>');
     });
 
     it('should render empty string when condition is false and no else', async () => {
@@ -434,7 +434,7 @@ describe('renderToString', () => {
       const result = await renderToString(program);
 
       // Assert
-      expect(result).toBe('');
+      expect(result).toBe('<!--if:none-->');
     });
 
     it('should evaluate literal true condition', async () => {
@@ -455,7 +455,7 @@ describe('renderToString', () => {
       const result = await renderToString(program);
 
       // Assert
-      expect(result).toBe('<div>Always visible</div>');
+      expect(result).toBe('<!--if:then--><div>Always visible</div>');
     });
 
     it('should evaluate literal false condition', async () => {
@@ -476,7 +476,7 @@ describe('renderToString', () => {
       const result = await renderToString(program);
 
       // Assert
-      expect(result).toBe('');
+      expect(result).toBe('<!--if:none-->');
     });
   });
 
@@ -886,7 +886,7 @@ describe('renderToString', () => {
 
       // Assert
       expect(result).toBe(
-        '<ul><li>First</li><li>Second</li><li>Third</li></ul>'
+        '<!--if:then--><ul><li>First</li><li>Second</li><li>Third</li></ul>'
       );
     });
   });
