@@ -1,6 +1,6 @@
 {
   "name": "@constela/builder",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Type-safe builders for constructing Constela AST programmatically",
   "type": "module",
   "main": "./dist/index.js",

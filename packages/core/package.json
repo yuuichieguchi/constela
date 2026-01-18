@@ -1,6 +1,6 @@
 {
   "name": "@constela/core",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "Core types, schema, and validator for Constela UI framework",
   "type": "module",
   "main": "./dist/index.js",

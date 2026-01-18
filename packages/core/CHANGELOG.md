@@ -1,5 +1,15 @@
 # @constela/core
 
+## 0.12.3
+
+### Patch Changes
+
+- fix(compiler): support object payload in event handler transformation
+
+  - transformEventHandler now correctly handles object payload format (`{ key: Expression }`)
+  - Added `Record<string, Expression>` to EventHandler.payload type definition
+  - Single expression payloads (`{ expr: ... }`) continue to work as before
+
 ## 0.12.2
 
 ### Patch Changes
