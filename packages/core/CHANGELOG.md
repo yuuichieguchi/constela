@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.12.2
+
+### Patch Changes
+
+- Add IfStep action type to validator, schema, and compiler transform
+
 ## 0.12.1
 
 ### Patch Changes
