@@ -1,5 +1,14 @@
 # @constela/runtime
 
+## 0.15.2
+
+### Patch Changes
+
+- fix(runtime): handle SSR/client branch mismatch in hydrateIf
+
+  - Add SSR branch markers (<!--if:then-->, <!--if:else-->, <!--if:none-->) to detect and fix SSG/client state mismatches during hydration
+  - Prioritize cookie over localStorage in createStateStore when using cookie expression
+
 ## 0.15.1
 
 ### Patch Changes
