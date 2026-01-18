@@ -143,25 +143,27 @@ export function createStateStore(
 
     // Evaluate cookie expression for initial value
     if (isCookieInitialExpr(def.initial)) {
+      // Cookie expression is the source of truth - do NOT read localStorage
       const cookieValue = getCookieValue(def.initial.key);
       initialValue = cookieValue !== undefined ? cookieValue : def.initial.default;
     } else {
       initialValue = def.initial;
-    }
 
-    // Read localStorage for 'theme' state to sync with anti-flash script
-    if (name === 'theme' && typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('theme');
-        if (stored !== null) {
-          try {
-            initialValue = JSON.parse(stored);
-          } catch {
-            initialValue = stored;
+      // Read localStorage for 'theme' state to sync with anti-flash script
+      // Only when NOT using cookie expression (backward compatibility)
+      if (name === 'theme' && typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('theme');
+          if (stored !== null) {
+            try {
+              initialValue = JSON.parse(stored);
+            } catch {
+              initialValue = stored;
+            }
           }
+        } catch {
+          // Ignore localStorage errors (SSR, private browsing, etc.)
         }
-      } catch {
-        // Ignore localStorage errors (SSR, private browsing, etc.)
       }
     }
 
