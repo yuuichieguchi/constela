@@ -316,9 +316,23 @@ export function wrapHtml(
     themeScript = `<script>
 (function() {
   try {
-    var raw = localStorage.getItem('${options.themeStorageKey}');
-    var theme = raw;
-    try { theme = JSON.parse(raw); } catch (e) {}
+    var theme;
+    // Check cookie first (for SSR/SSG sync)
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var cookie = cookies[i].trim();
+      if (cookie.indexOf('${options.themeStorageKey}=') === 0) {
+        theme = decodeURIComponent(cookie.substring('${options.themeStorageKey}='.length));
+        break;
+      }
+    }
+    // Fallback to localStorage
+    if (!theme) {
+      var raw = localStorage.getItem('${options.themeStorageKey}');
+      theme = raw;
+      try { theme = JSON.parse(raw); } catch (e) {}
+    }
+    // Apply theme
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else if (theme === 'light') {

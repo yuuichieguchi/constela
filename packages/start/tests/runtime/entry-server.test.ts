@@ -290,6 +290,55 @@ describe('wrapHtml', () => {
       // localStorage の値は JSON.stringify されているため、JSON.parse が必要
       expect(result).toContain('JSON.parse');
     });
+
+    it('should check cookie before localStorage for theme (SSG/SSR sync)', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme' };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Should include document.cookie in the anti-flash script
+      expect(result).toContain('document.cookie');
+      // Cookie check should appear before localStorage check
+      const cookieIndex = result.indexOf('document.cookie');
+      const localStorageIndex = result.indexOf('localStorage');
+      expect(cookieIndex).toBeLessThan(localStorageIndex);
+    });
+
+    it('should use themeStorageKey for cookie name', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const customKey = 'my-theme';
+      const options = { themeStorageKey: customKey };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Should use the custom key for cookie lookup
+      expect(result).toContain(`${customKey}=`);
+    });
+
+    it('should fallback to localStorage when cookie is not present', () => {
+      // Arrange
+      const content = SAMPLE_CONTENT;
+      const hydrationScript = SAMPLE_HYDRATION_SCRIPT;
+      const options = { themeStorageKey: 'theme' };
+
+      // Act
+      const result = wrapHtml(content, hydrationScript, undefined, options);
+
+      // Assert
+      // Should still include localStorage as fallback
+      expect(result).toContain('localStorage.getItem');
+      // The script should have conditional logic: if no cookie, check localStorage
+      expect(result).toMatch(/if\s*\(\s*!theme\s*\)/);
+    });
   });
 
   // ==================== Integration ====================
