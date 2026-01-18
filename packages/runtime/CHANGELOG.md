@@ -1,5 +1,22 @@
 # @constela/runtime
 
+## 0.16.3
+
+### Patch Changes
+
+- fix(runtime): add refs and route to all evaluate/evaluatePayload calls
+
+  Fixed 10 locations in renderer where refs and route were not passed to evaluate context:
+
+  - renderElement props evaluation
+  - renderText value evaluation
+  - renderIf condition evaluation
+  - renderEach items/key evaluation
+  - renderMarkdown content evaluation
+  - renderCode language/content evaluation
+  - createEventCallback payload evaluation
+  - setupIntersectionObserver payload evaluation
+
 ## 0.16.2
 
 ### Patch Changes
