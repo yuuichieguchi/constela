@@ -62,6 +62,12 @@ export interface RenderContext {
     store: LocalStateStore;
     actions: Record<string, CompiledLocalAction>;
   };
+  // Route context for route expressions
+  route?: {
+    params: Record<string, string>;
+    query: Record<string, string>;
+    path: string;
+  };
 }
 
 // Type guard for event handlers
@@ -416,7 +422,7 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): Element {
       } else {
         // Apply prop with effect for reactivity
         const cleanup = createEffect(() => {
-          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
+          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
           applyProp(el, propName, value, useSvgNamespace);
         });
         ctx.cleanups?.push(cleanup);
@@ -481,7 +487,7 @@ function renderText(node: CompiledTextNode, ctx: RenderContext): Text {
   const textNode = document.createTextNode('');
 
   const cleanup = createEffect(() => {
-    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
+    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     textNode.textContent = formatValue(value);
   });
   ctx.cleanups?.push(cleanup);
@@ -507,7 +513,7 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
   let branchCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
+    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : (node.else ? 'else' : 'none');
 
@@ -626,7 +632,7 @@ function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
   let itemCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) as unknown[];
+    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) as unknown[];
 
     if (!hasKey || !node.key) {
       // No key: use current behavior (re-render all)
@@ -824,7 +830,7 @@ function renderMarkdown(node: CompiledMarkdownNode, ctx: RenderContext): HTMLEle
   container.className = 'constela-markdown';
 
   const cleanup = createEffect(() => {
-    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) });
+    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     const html = parseMarkdown(String(content ?? ''));
     container.innerHTML = html;
   });
@@ -843,8 +849,8 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
   pre.appendChild(codeEl);
 
   const cleanup = createEffect(() => {
-    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) ?? 'plaintext');
-    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }) }) ?? '');
+    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? 'plaintext');
+    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? '');
 
     // Set language class for immediate access
     codeEl.className = `language-${language || 'plaintext'}`;
@@ -1030,6 +1036,15 @@ function createStateWithLocalState(
       fn: (value: unknown) => void
     ): () => void {
       return globalState.subscribeToPath(name, path, fn);
+    },
+    serialize(): Record<string, unknown> {
+      return globalState.serialize();
+    },
+    restore(
+      snapshot: Record<string, unknown>,
+      newDefinitions: import('../state/store.js').StateDefinition[]
+    ): void {
+      globalState.restore(snapshot, newDefinitions);
     },
   };
 }

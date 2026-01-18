@@ -41,3 +41,11 @@ export type { HydrateOptions } from './hydrate.js';
 // WebSocket connections
 export { createWebSocketConnection, createConnectionManager } from './connection/websocket.js';
 export type { WebSocketConnection, WebSocketHandlers, ConnectionManager } from './connection/websocket.js';
+
+// HMR (Hot Module Replacement)
+export { createHMRClient } from './hmr/client.js';
+export type { HMRClient, HMRClientOptions } from './hmr/client.js';
+export { createHMRHandler } from './hmr/handler.js';
+export type { HMRHandler, HMRHandlerOptions, RouteContext } from './hmr/handler.js';
+export { createErrorOverlay } from './hmr/overlay.js';
+export type { ErrorOverlay, ErrorInfo } from './hmr/overlay.js';

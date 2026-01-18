@@ -4,7 +4,14 @@
  */
 
 import type { CompiledProgram } from '@constela/compiler';
-import { hydrateApp, type AppInstance } from '@constela/runtime';
+import {
+  hydrateApp,
+  createHMRClient,
+  createHMRHandler,
+  createErrorOverlay,
+  type AppInstance,
+  type HMRClient,
+} from '@constela/runtime';
 
 /**
  * Context provided to EscapeHandler mount functions
@@ -149,4 +156,83 @@ export function initClient(options: InitClientOptions): AppInstance {
       return appInstance.subscribe(name, fn);
     },
   };
+}
+
+/**
+ * Options for initializing the client application with HMR support
+ */
+export interface InitClientWithHMROptions extends InitClientOptions {
+  /** WebSocket URL for HMR server (e.g., "ws://localhost:3001") */
+  hmrUrl?: string;
+}
+
+/**
+ * Initialize the client application with HMR (Hot Module Replacement) support.
+ *
+ * This function extends initClient with automatic HMR setup:
+ * - Connects to HMR WebSocket server
+ * - Handles update messages by preserving state and re-hydrating
+ * - Shows error overlay on compilation errors
+ *
+ * @param options - Configuration options including optional HMR URL
+ * @returns AppInstance for controlling the application
+ */
+export function initClientWithHMR(options: InitClientWithHMROptions): AppInstance {
+  const { hmrUrl, ...clientOptions } = options;
+  const app = initClient(clientOptions);
+
+  // Only enable HMR if URL is provided (development mode)
+  if (hmrUrl) {
+    const overlay = createErrorOverlay();
+    const handlerOptions = {
+      container: options.container,
+      program: options.program,
+      ...(options.route && { route: options.route }),
+    };
+    const handler = createHMRHandler(handlerOptions);
+
+    const client = createHMRClient({
+      url: hmrUrl,
+      onUpdate: (_file: string, program: CompiledProgram) => {
+        overlay.hide();
+        handler.handleUpdate(program);
+      },
+      onError: (file: string, errors: unknown[]) => {
+        overlay.show({
+          file,
+          errors: errors.map((e) => {
+            if (typeof e === 'object' && e !== null) {
+              const errObj = e as { code?: string; message?: string; suggestion?: string };
+              const result: { code?: string; message: string; suggestion?: string } = {
+                message: errObj.message ?? 'Unknown error',
+              };
+              if (errObj.code !== undefined) result.code = errObj.code;
+              if (errObj.suggestion !== undefined) result.suggestion = errObj.suggestion;
+              return result;
+            }
+            return { message: String(e) };
+          }),
+        });
+      },
+      onConnect: () => {
+        console.log('[HMR] Connected');
+      },
+      onDisconnect: () => {
+        console.log('[HMR] Disconnected');
+      },
+    });
+
+    client.connect();
+
+    // Extend destroy to cleanup HMR
+    const originalDestroy = app.destroy;
+    app.destroy = () => {
+      client.disconnect();
+      handler.destroy();
+      overlay.hide();
+      originalDestroy();
+    };
+  }
+
+  return app;
 }

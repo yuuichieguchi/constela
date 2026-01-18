@@ -19,9 +19,12 @@ export interface StateStore {
     path: string | (string | number)[],
     fn: (value: unknown) => void
   ): () => void;
+  serialize(): Record<string, unknown>;
+  restore(snapshot: Record<string, unknown>, newDefinitions: StateDefinition[]): void;
 }
 
 export interface StateDefinition {
+  name?: string;
   type: string;
   initial: unknown;
 }
@@ -251,5 +254,76 @@ export function createStateStore(
         }
       });
     },
+
+    serialize(): Record<string, unknown> {
+      const result: Record<string, unknown> = {};
+      for (const [name, signal] of signals) {
+        const value = signal.get();
+        // Skip function values (not serializable)
+        if (typeof value !== 'function') {
+          result[name] = value;
+        }
+      }
+      return result;
+    },
+
+    restore(snapshot: Record<string, unknown>, newDefinitions: StateDefinition[]): void {
+      for (const def of newDefinitions) {
+        const name = def.name;
+        if (!name) continue;
+
+        const signal = signals.get(name);
+        if (!signal) continue;
+
+        // Check if field exists in snapshot
+        if (!(name in snapshot)) {
+          // Field doesn't exist in snapshot - use new initial value (already set)
+          continue;
+        }
+
+        const snapshotValue = snapshot[name];
+        const initialValue = def.initial;
+
+        // Check if types match
+        if (typesMatch(snapshotValue, initialValue)) {
+          // Same type - restore from snapshot
+          signal.set(snapshotValue);
+        } else {
+          // Type changed - use new initial value and warn
+          console.warn(
+            `State field "${name}" type changed. Using new initial value.`
+          );
+          signal.set(initialValue);
+        }
+      }
+    },
   };
+}
+
+/**
+ * Check if two values have the same type for restoration purposes
+ * - null is considered compatible with object types (nullable objects)
+ * - Arrays are compared with Array.isArray()
+ * - Primitives are compared with typeof
+ */
+function typesMatch(a: unknown, b: unknown): boolean {
+  // Handle null - null is compatible with object types
+  if (a === null) {
+    // null can be restored if the initial value is an object (including null)
+    return b === null || (typeof b === 'object' && !Array.isArray(b));
+  }
+  if (b === null) {
+    // If initial value is null, allow any object (including null) from snapshot
+    return typeof a === 'object' && !Array.isArray(a);
+  }
+
+  // Handle arrays
+  const aIsArray = Array.isArray(a);
+  const bIsArray = Array.isArray(b);
+  if (aIsArray || bIsArray) {
+    return aIsArray && bIsArray;
+  }
+
+  // Handle primitives and objects with typeof
+  return typeof a === typeof b;
 }

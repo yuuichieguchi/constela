@@ -1,9 +1,9 @@
 import { createServer, type Server } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { join, isAbsolute, dirname, basename } from 'node:path';
+import { join, isAbsolute, dirname, basename, relative } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
-import { type ViewNode, isCookieInitialExpr } from '@constela/core';
+import { type ViewNode, isCookieInitialExpr, ConstelaError } from '@constela/core';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
@@ -12,6 +12,8 @@ import { parseCookies } from '../edge/adapter.js';
 import { scanRoutes } from '../router/file-router.js';
 import { LayoutResolver } from '../layout/resolver.js';
 import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
+import { createHMRServer, type HMRServer } from './hmr-server.js';
+import { createWatcher, type FileWatcher } from './watcher.js';
 
 // ==================== Types ====================
 
@@ -25,6 +27,8 @@ export interface DevServer {
   close(): Promise<void>;
   /** The port number the server is listening on */
   port: number;
+  /** The port number the HMR WebSocket server is listening on */
+  hmrPort: number;
 }
 
 // ==================== Constants ====================
@@ -231,6 +235,8 @@ export async function createDevServer(
   let httpServer: Server | null = null;
   let actualPort = port;
   let viteServer: ViteDevServer | null = null;
+  let hmrServer: HMRServer | null = null;
+  let watcher: FileWatcher | null = null;
 
   // Create Vite server if CSS option is provided
   if (css) {
@@ -269,6 +275,10 @@ export async function createDevServer(
   const devServer: DevServer = {
     get port(): number {
       return actualPort;
+    },
+
+    get hmrPort(): number {
+      return hmrServer?.port ?? 0;
     },
 
     async listen(): Promise<void> {
@@ -409,8 +419,13 @@ export async function createDevServer(
                     .join('\n')
                 : '';
 
-              // Combine meta tags with CSS head
-              const head = [metaTags, cssHead].filter(Boolean).join('\n');
+              // Generate HMR script to inject WebSocket URL for client
+              const hmrScript = hmrServer
+                ? `<script>window.__CONSTELA_HMR_URL__ = "ws://${host}:${hmrServer.port}";</script>`
+                : '';
+
+              // Combine meta tags with CSS head and HMR script
+              const head = [metaTags, cssHead, hmrScript].filter(Boolean).join('\n');
 
               // Get initial theme from composed program state (handle both string and cookie expression)
               const themeState = composedProgram.state?.['theme'];
@@ -495,19 +510,93 @@ h1 { color: #666; }
           reject(err);
         });
 
-        httpServer.listen(port, host, () => {
+        httpServer.listen(port, host, async () => {
           // Get the actual port (important when port is 0)
           const address = httpServer?.address() as AddressInfo | null;
           if (address) {
             actualPort = address.port;
           }
+
+          // Initialize HMR server
+          try {
+            hmrServer = await createHMRServer({ port: 0 });
+
+            // Initialize file watcher for routes directory
+            watcher = await createWatcher({
+              directory: absoluteRoutesDir,
+              patterns: ['**/*.json'],
+            });
+
+            // Handle file changes
+            watcher.on('change', async (event) => {
+              const projectRoot = process.cwd();
+              const pageLoader = new JsonPageLoader(projectRoot);
+
+              try {
+                // Normalize path to use forward slashes (for Windows compatibility)
+                const relativePath = relative(projectRoot, event.path).replace(/\\/g, '/');
+                const pageInfo = await pageLoader.loadPage(relativePath);
+                const program = await convertToCompiledProgram(pageInfo);
+
+                if (hmrServer) {
+                  hmrServer.broadcastUpdate(event.path, program);
+                }
+              } catch (error) {
+                if (hmrServer) {
+                  if (error instanceof ConstelaError) {
+                    hmrServer.broadcastError(event.path, [error]);
+                  } else {
+                    // Create a generic error object with minimal ConstelaError shape
+                    const genericError = {
+                      code: 'COMPILE_ERROR',
+                      message: error instanceof Error ? error.message : String(error),
+                      path: event.path,
+                      severity: 'error' as const,
+                      suggestion: undefined,
+                      expected: undefined,
+                      actual: undefined,
+                      context: undefined,
+                      name: 'ConstelaError',
+                      toJSON: () => ({
+                        code: 'COMPILE_ERROR',
+                        message: error instanceof Error ? error.message : String(error),
+                        path: event.path,
+                        severity: 'error',
+                        suggestion: undefined,
+                        expected: undefined,
+                        actual: undefined,
+                        context: undefined,
+                      }),
+                    } as unknown as ConstelaError;
+                    hmrServer.broadcastError(event.path, [genericError]);
+                  }
+                }
+              }
+            });
+          } catch (hmrError) {
+            // HMR initialization failed - log but don't fail server startup
+            console.warn('HMR initialization failed:', hmrError);
+          }
+
           resolve();
         });
       });
     },
 
     async close(): Promise<void> {
-      // Close Vite server first if it exists
+      // Close file watcher first
+      if (watcher) {
+        await watcher.close();
+        watcher = null;
+      }
+
+      // Close HMR server
+      if (hmrServer) {
+        await hmrServer.close();
+        hmrServer = null;
+      }
+
+      // Close Vite server if it exists
       if (viteServer) {
         await viteServer.close();
         viteServer = null;
