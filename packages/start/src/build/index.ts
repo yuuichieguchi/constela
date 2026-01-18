@@ -3,7 +3,7 @@ import { mkdir, writeFile, cp, readdir, stat } from 'node:fs/promises';
 import { join, dirname, relative, basename, isAbsolute, resolve } from 'node:path';
 import { resolveImports } from '../utils/import-resolver.js';
 import type { CompiledProgram } from '@constela/compiler';
-import type { ViewNode } from '@constela/core';
+import { type ViewNode, isCookieInitialExpr } from '@constela/core';
 import type { BuildOptions, ScannedRoute } from '../types.js';
 import { scanRoutes, filePathToPattern } from '../router/file-router.js';
 import {
@@ -793,11 +793,20 @@ async function renderPageToHtml(
     wrapOptions.importMap = externalImports;
   }
 
-  // Detect theme state from program
-  const themeState = program.state?.['theme'] as { initial?: string } | undefined;
-  if (themeState?.initial) {
-    wrapOptions.defaultTheme = themeState.initial as 'dark' | 'light';
-    wrapOptions.themeStorageKey = 'theme';
+  // Detect theme state from program (handle both string and cookie expression)
+  const themeState = program.state?.['theme'];
+  if (themeState) {
+    let defaultTheme: 'dark' | 'light' | undefined;
+    if (isCookieInitialExpr(themeState.initial)) {
+      // For SSG, use the default value from cookie expression
+      defaultTheme = themeState.initial.default as 'dark' | 'light';
+    } else if (typeof themeState.initial === 'string') {
+      defaultTheme = themeState.initial as 'dark' | 'light';
+    }
+    if (defaultTheme) {
+      wrapOptions.defaultTheme = defaultTheme;
+      wrapOptions.themeStorageKey = 'theme';
+    }
   }
 
   return wrapHtml(

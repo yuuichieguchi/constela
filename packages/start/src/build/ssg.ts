@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import type { CompiledProgram } from '@constela/compiler';
+import { isCookieInitialExpr } from '@constela/core';
 import type { ScannedRoute, PageModule, StaticPathsResult } from '../types.js';
 import {
   renderPage,
@@ -174,11 +175,20 @@ async function generateSinglePage(
   // Build wrapHtml options with theme support
   const wrapOptions: WrapHtmlOptions = {};
 
-  // Detect theme state from program
-  const themeState = program.state?.['theme'] as { initial?: string } | undefined;
-  if (themeState?.initial) {
-    wrapOptions.defaultTheme = themeState.initial as 'dark' | 'light';
-    wrapOptions.themeStorageKey = 'theme';
+  // Detect theme state from program (handle both string and cookie expression)
+  const themeState = program.state?.['theme'];
+  if (themeState) {
+    let defaultTheme: 'dark' | 'light' | undefined;
+    if (isCookieInitialExpr(themeState.initial)) {
+      // For SSG, use the default value from cookie expression
+      defaultTheme = themeState.initial.default as 'dark' | 'light';
+    } else if (typeof themeState.initial === 'string') {
+      defaultTheme = themeState.initial as 'dark' | 'light';
+    }
+    if (defaultTheme) {
+      wrapOptions.defaultTheme = defaultTheme;
+      wrapOptions.themeStorageKey = 'theme';
+    }
   }
 
   // Wrap in full HTML document
