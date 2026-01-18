@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.5.2
+
+### Patch Changes
+
+- fix: anti-flash script checks cookie before localStorage for SSG/SSR theme sync
+
+  The anti-flash script now checks cookie first for theme value, then falls back to localStorage. This fixes theme flashing on SSG-built pages when user has a different theme saved in cookie.
+
 ## 1.5.1
 
 ### Patch Changes
