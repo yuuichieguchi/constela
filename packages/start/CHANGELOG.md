@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.5.1
+
+### Patch Changes
+
+- fix: handle cookie expression in theme state for wrapHtml
+
+  When theme state uses cookie expression, the initialTheme detection for wrapHtml was not handling the expression object correctly. Now uses isCookieInitialExpr to detect and evaluate cookie expressions.
+
 ## 1.5.0
 
 ### Minor Changes
