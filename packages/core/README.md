@@ -40,9 +40,27 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 }
 ```
 
+### Cookie Expression for Initial Value
+
+String state can use a cookie expression to read initial value from cookies (SSR/SSG-safe):
+
+```json
+{
+  "theme": {
+    "type": "string",
+    "initial": { "expr": "cookie", "key": "theme", "default": "dark" }
+  }
+}
+```
+
+- `key`: Cookie name to read
+- `default`: Fallback value when cookie is not set
+- Works in both SSR and client-side rendering
+- Useful for theme persistence, user preferences, etc.
+
 ## Expression Types
 
-14 expression types for constrained computation:
+15 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -60,6 +78,7 @@ All fields except `version`, `state`, `actions`, and `view` are optional.
 | `ref` | `{ "expr": "ref", "name": "inputEl" }` | DOM element ref |
 | `style` | `{ "expr": "style", "name": "button", "variants": {...} }` | Style reference |
 | `concat` | `{ "expr": "concat", "items": [...] }` | String concatenation |
+| `cookie` | `{ "expr": "cookie", "key": "theme", "default": "dark" }` | Cookie value (SSR-safe) |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
