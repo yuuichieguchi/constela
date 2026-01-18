@@ -1,5 +1,16 @@
 # @constela/runtime
 
+## 0.16.0
+
+### Minor Changes
+
+- Add HMR (Hot Module Replacement) support for JSON DSL files
+
+  - WebSocket HMR server and file watcher for development
+  - State serialize/restore methods for preserving state during updates
+  - HMR client with auto-reconnect and error overlay
+  - `initClientWithHMR()` function for client-side HMR setup
+
 ## 0.15.2
 
 ### Patch Changes
