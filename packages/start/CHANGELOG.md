@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.5.3
+
+### Patch Changes
+
+- fix: handle cookie expression in SSG build theme detection
+
+  ssg.ts and index.ts now properly handle cookie expressions in theme state, extracting the default value for SSG builds instead of treating the expression object as a string.
+
 ## 1.5.2
 
 ### Patch Changes
