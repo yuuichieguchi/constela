@@ -135,7 +135,7 @@ Declare application state with explicit types:
 
 ### View Nodes
 
-Four node types for building UI:
+Five node types for building UI:
 
 ```json
 // Element node
@@ -149,7 +149,12 @@ Four node types for building UI:
 
 // Loop node
 { "kind": "each", "items": { "expr": "state", "name": "todos" }, "as": "item", "body": {...} }
+
+// Portal node (render children to a different DOM location)
+{ "kind": "portal", "target": "body", "children": [...] }
 ```
+
+**Portal targets:** `body`, `head`, or any CSS selector
 
 ### Expressions
 
@@ -185,11 +190,17 @@ Constrained expression system (no arbitrary JavaScript):
 
 // Build-time data reference (requires data field)
 { "expr": "data", "name": "posts", "path": "0.title" }
+
+// Form validation state (requires ref on form element)
+{ "expr": "validity", "ref": "emailInput", "property": "valid" }
+{ "expr": "validity", "ref": "emailInput", "property": "message" }
 ```
 
 **Binary operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
 **Route sources:** `param` (default), `query`, `path`
+
+**Validity properties:** `valid`, `valueMissing`, `typeMismatch`, `patternMismatch`, `tooLong`, `tooShort`, `rangeUnderflow`, `rangeOverflow`, `customError`, `message`
 
 ### Actions
 
@@ -222,6 +233,10 @@ Named actions with declarative steps:
 - `storage` - localStorage/sessionStorage operations
 - `clipboard` - Clipboard read/write
 - `navigate` - Page navigation
+- `delay` - Execute steps after a delay
+- `interval` - Execute action periodically
+- `clearTimer` - Stop a running timer
+- `focus` - Focus, blur, or select form elements
 
 **Update operations:**
 
@@ -287,6 +302,50 @@ Named actions with declarative steps:
 **Storage types:** `local`, `session`
 **Clipboard operations:** `write`, `read`
 **Navigate targets:** `_self` (default), `_blank`
+
+### Timer Actions
+
+```json
+// Delay execution
+{
+  "do": "delay",
+  "ms": { "expr": "lit", "value": 2000 },
+  "then": [
+    { "do": "set", "target": "message", "value": { "expr": "lit", "value": "Delayed!" } }
+  ]
+}
+
+// Periodic execution (returns timer ID)
+{
+  "do": "interval",
+  "ms": { "expr": "lit", "value": 5000 },
+  "action": "fetchData",
+  "result": "pollTimerId"
+}
+
+// Stop a timer
+{ "do": "clearTimer", "target": { "expr": "state", "name": "pollTimerId" } }
+```
+
+**Timer operations:**
+- `delay` - Execute `then` steps after `ms` milliseconds
+- `interval` - Execute `action` every `ms` milliseconds, stores timer ID in `result`
+- `clearTimer` - Stop a running timer by its ID
+
+### Form Actions
+
+```json
+// Focus an input element
+{ "do": "focus", "target": { "expr": "ref", "name": "emailInput" }, "operation": "focus" }
+
+// Select text in an input
+{ "do": "focus", "target": { "expr": "ref", "name": "codeInput" }, "operation": "select" }
+
+// Blur (unfocus) an element
+{ "do": "focus", "target": { "expr": "ref", "name": "searchInput" }, "operation": "blur" }
+```
+
+**Focus operations:** `focus`, `blur`, `select`
 
 ### Advanced Actions
 
@@ -495,6 +554,39 @@ For input events with payload:
   }
 }
 ```
+
+**Debounce & Throttle:**
+
+```json
+// Debounce: Wait 300ms after last event before executing
+{ "event": "input", "action": "search", "debounce": 300 }
+
+// Throttle: Execute at most once per 100ms
+{ "event": "scroll", "action": "trackScroll", "throttle": 100 }
+```
+
+**IntersectionObserver (visibility tracking):**
+
+```json
+{
+  "onIntersect": {
+    "event": "intersect",
+    "action": "loadMore",
+    "options": { "threshold": 0.5, "rootMargin": "100px" }
+  }
+}
+```
+
+**Available event data variables:**
+
+| Event Type | Available Variables |
+|------------|---------------------|
+| Input | `value`, `checked` |
+| Keyboard | `key`, `code`, `ctrlKey`, `shiftKey`, `altKey`, `metaKey` |
+| Mouse | `clientX`, `clientY`, `pageX`, `pageY`, `button` |
+| Touch | `touches` (array with `clientX`, `clientY`, `pageX`, `pageY`) |
+| Scroll | `scrollTop`, `scrollLeft` |
+| File Input | `files` (array with `name`, `size`, `type`) |
 
 ### Route Definition
 
@@ -1240,6 +1332,11 @@ To test your Constela application:
 - [x] Enhanced error messages with "Did you mean?" suggestions
 - [x] CLI improvements (`--json`, `--watch`, `--verbose`, `--debug`)
 - [x] New CLI commands (`validate`, `inspect`)
+- [x] Timer actions (`delay`, `interval`, `clearTimer`)
+- [x] Enhanced event data (keyboard, mouse, touch, scroll, files)
+- [x] Form features (`focus` step, `validity` expression)
+- [x] Portal node for rendering outside component tree
+- [x] Event handler options (`debounce`, `throttle`, `intersect`)
 
 ### Planned
 
