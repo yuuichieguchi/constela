@@ -39,10 +39,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 // ==================== Recursive Validation ====================
 
-const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style'];
+const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
-const VALID_ACTION_TYPES = ['set', 'update', 'fetch'];
+const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
@@ -68,7 +68,7 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
   }
 
   if (!VALID_VIEW_KINDS.includes(kind)) {
-    return { path: path + '/kind', message: 'must be one of: element, text, if, each, component, slot, markdown, code' };
+    return { path: path + '/kind', message: 'must be one of: element, text, if, each, component, slot, markdown, code, portal' };
   }
 
   // Check based on kind
@@ -183,6 +183,19 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
         if (langError) return langError;
         return validateExpression(node['content'], path + '/content');
       }
+
+    case 'portal':
+      if (typeof node['target'] !== 'string') {
+        return { path: path + '/target', message: 'target is required' };
+      }
+      // Check children
+      if (Array.isArray(node['children'])) {
+        for (let i = 0; i < node['children'].length; i++) {
+          const error = validateViewNode(node['children'][i], path + '/children/' + i);
+          if (error) return error;
+        }
+      }
+      break;
   }
 
   return null;
@@ -202,7 +215,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style' };
+    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style, validity, index' };
   }
 
   switch (exprType) {
@@ -300,6 +313,27 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         }
       }
       break;
+
+    case 'validity':
+      if (typeof expr['ref'] !== 'string') {
+        return { path: path + '/ref', message: 'ref is required' };
+      }
+      break;
+
+    case 'index':
+      if (!('base' in expr)) {
+        return { path: path + '/base', message: 'base is required' };
+      }
+      if (!('key' in expr)) {
+        return { path: path + '/key', message: 'key is required' };
+      }
+      {
+        const baseError = validateExpression(expr['base'], path + '/base');
+        if (baseError) return baseError;
+        const keyError = validateExpression(expr['key'], path + '/key');
+        if (keyError) return keyError;
+      }
+      break;
   }
 
   return null;
@@ -319,7 +353,7 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_ACTION_TYPES.includes(doType)) {
-    return { path: path + '/do', message: 'must be one of: set, update, fetch' };
+    return { path: path + '/do', message: 'must be one of: set, update, fetch, delay, interval, clearTimer, focus' };
   }
 
   switch (doType) {
@@ -365,6 +399,54 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
         if (bodyError) return bodyError;
       }
       break;
+
+    case 'delay':
+      if (!('ms' in step)) {
+        return { path: path + '/ms', message: 'ms is required' };
+      }
+      if (!('then' in step)) {
+        return { path: path + '/then', message: 'then is required' };
+      }
+      {
+        const msError = validateExpression(step['ms'], path + '/ms');
+        if (msError) return msError;
+        if (!Array.isArray(step['then'])) {
+          return { path: path + '/then', message: 'then must be an array' };
+        }
+        for (let i = 0; i < step['then'].length; i++) {
+          const thenError = validateActionStep(step['then'][i], path + '/then/' + i);
+          if (thenError) return thenError;
+        }
+      }
+      break;
+
+    case 'interval':
+      if (!('ms' in step)) {
+        return { path: path + '/ms', message: 'ms is required' };
+      }
+      if (typeof step['action'] !== 'string') {
+        return { path: path + '/action', message: 'action is required' };
+      }
+      {
+        const msError = validateExpression(step['ms'], path + '/ms');
+        if (msError) return msError;
+      }
+      break;
+
+    case 'clearTimer':
+      if (!('target' in step)) {
+        return { path: path + '/target', message: 'target is required' };
+      }
+      return validateExpression(step['target'], path + '/target');
+
+    case 'focus':
+      if (!('target' in step)) {
+        return { path: path + '/target', message: 'target is required' };
+      }
+      if (typeof step['operation'] !== 'string') {
+        return { path: path + '/operation', message: 'operation is required' };
+      }
+      return validateExpression(step['target'], path + '/target');
   }
 
   return null;

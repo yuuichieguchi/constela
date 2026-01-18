@@ -1849,6 +1849,215 @@ describe('validateAst - Invalid Component Schema', () => {
   });
 });
 
+// ==================== Whitelist Coverage Tests ====================
+// These tests verify that all valid kinds, expression types, and action types
+// are accepted by the validator. Currently, some items are missing from the whitelist.
+
+describe('validateAst - Whitelist Coverage (TDD Red Phase)', () => {
+  // ==================== Portal View Node ====================
+
+  describe('Portal View Node', () => {
+    it('should accept valid portal node with target', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'portal',
+          target: 'modal-root',
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Portal content' } },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept portal node inside element children', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'portal',
+              target: 'tooltip-container',
+              children: [
+                { kind: 'element', tag: 'span' },
+              ],
+            },
+          ],
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== Validity Expression ====================
+
+  describe('Validity Expression', () => {
+    it('should accept valid validity expression with ref', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'text',
+          value: {
+            expr: 'validity',
+            ref: 'emailInput',
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== Index Expression ====================
+
+  describe('Index Expression', () => {
+    it('should accept valid index expression with base and key', () => {
+      const ast = {
+        version: '1.0',
+        state: { items: { type: 'list', initial: ['a', 'b', 'c'] } },
+        actions: [],
+        view: {
+          kind: 'text',
+          value: {
+            expr: 'index',
+            base: { expr: 'state', name: 'items' },
+            key: { expr: 'lit', value: 0 },
+          },
+        },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== Delay Action ====================
+
+  describe('Delay Action', () => {
+    it('should accept valid delay action with ms and then', () => {
+      const ast = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: [
+          {
+            name: 'delayedIncrement',
+            steps: [
+              {
+                do: 'delay',
+                ms: { expr: 'lit', value: 1000 },
+                then: [
+                  { do: 'update', target: 'count', operation: 'increment' },
+                ],
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== Interval Action ====================
+
+  describe('Interval Action', () => {
+    it('should accept valid interval action with ms and action', () => {
+      const ast = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: [
+          {
+            name: 'startCounter',
+            steps: [
+              {
+                do: 'interval',
+                ms: { expr: 'lit', value: 1000 },
+                action: 'incrementCount',
+              },
+            ],
+          },
+          {
+            name: 'incrementCount',
+            steps: [
+              { do: 'update', target: 'count', operation: 'increment' },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== ClearTimer Action ====================
+
+  describe('ClearTimer Action', () => {
+    it('should accept valid clearTimer action with target', () => {
+      const ast = {
+        version: '1.0',
+        state: { timerId: { type: 'number', initial: 0 } },
+        actions: [
+          {
+            name: 'stopCounter',
+            steps: [
+              { do: 'clearTimer', target: { expr: 'state', name: 'timerId' } },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  // ==================== Focus Action ====================
+
+  describe('Focus Action', () => {
+    it('should accept valid focus action with target and operation', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'focusInput',
+            steps: [
+              {
+                do: 'focus',
+                target: { expr: 'lit', value: 'emailInput' },
+                operation: 'focus',
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
+});
+
 // NOTE: Component semantic validation (COMPONENT_NOT_FOUND, COMPONENT_PROP_MISSING,
 // COMPONENT_CYCLE, PARAM_UNDEFINED) is implemented in @constela/compiler analyze pass,
 // not in the core validator. These tests are skipped here and will be tested in the compiler package.
