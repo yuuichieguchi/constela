@@ -2056,6 +2056,68 @@ describe('validateAst - Whitelist Coverage (TDD Red Phase)', () => {
       expect(result.ok).toBe(true);
     });
   });
+
+  // ==================== If Action ====================
+
+  describe('If Action', () => {
+    it('should accept valid if action with condition and then', () => {
+      const ast = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: [
+          {
+            name: 'conditionalIncrement',
+            steps: [
+              {
+                do: 'if',
+                condition: {
+                  expr: 'bin',
+                  op: '<',
+                  left: { expr: 'state', name: 'count' },
+                  right: { expr: 'lit', value: 10 },
+                },
+                then: [
+                  { do: 'update', target: 'count', operation: 'increment' },
+                ],
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept if action with else branch', () => {
+      const ast = {
+        version: '1.0',
+        state: { count: { type: 'number', initial: 0 } },
+        actions: [
+          {
+            name: 'conditionalAction',
+            steps: [
+              {
+                do: 'if',
+                condition: { expr: 'state', name: 'count' },
+                then: [
+                  { do: 'update', target: 'count', operation: 'increment' },
+                ],
+                else: [
+                  { do: 'update', target: 'count', operation: 'decrement' },
+                ],
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+      expect(result.ok).toBe(true);
+    });
+  });
 });
 
 // NOTE: Component semantic validation (COMPONENT_NOT_FOUND, COMPONENT_PROP_MISSING,

@@ -506,7 +506,17 @@ export interface FocusStep {
   onError?: ActionStep[];
 }
 
-export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep;
+/**
+ * If step - conditional action execution
+ */
+export interface IfStep {
+  do: 'if';
+  condition: Expression;
+  then: ActionStep[];
+  else?: ActionStep[];
+}
+
+export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep | IfStep;
 
 // LocalActionStep - only set, update, setPath allowed for local actions
 export type LocalActionStep = SetStep | UpdateStep | SetPathStep;

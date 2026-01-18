@@ -64,6 +64,7 @@ export type {
   IntervalStep,
   ClearTimerStep,
   FocusStep,
+  IfStep,
   // Event Handler
   EventHandler,
   EventHandlerOptions,

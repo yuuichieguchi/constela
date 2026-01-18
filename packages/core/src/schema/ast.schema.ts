@@ -301,6 +301,7 @@ export const astSchema = {
         { $ref: '#/$defs/IntervalStep' },
         { $ref: '#/$defs/ClearTimerStep' },
         { $ref: '#/$defs/FocusStep' },
+        { $ref: '#/$defs/IfStep' },
       ],
     },
     SetStep: {
@@ -402,6 +403,23 @@ export const astSchema = {
           items: { $ref: '#/$defs/ActionStep' },
         },
         onError: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+      },
+    },
+    IfStep: {
+      type: 'object',
+      required: ['do', 'condition', 'then'],
+      additionalProperties: false,
+      properties: {
+        do: { type: 'string', const: 'if' },
+        condition: { $ref: '#/$defs/Expression' },
+        then: {
+          type: 'array',
+          items: { $ref: '#/$defs/ActionStep' },
+        },
+        else: {
           type: 'array',
           items: { $ref: '#/$defs/ActionStep' },
         },

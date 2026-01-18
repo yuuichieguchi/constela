@@ -955,6 +955,19 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       }
       return compiledFocusStep;
     }
+
+    case 'if': {
+      const ifStep = step as import('@constela/core').IfStep;
+      const compiledIfStep: CompiledIfStep = {
+        do: 'if',
+        condition: transformExpression(ifStep.condition, emptyContext),
+        then: ifStep.then.map(transformActionStep),
+      };
+      if (ifStep.else) {
+        compiledIfStep.else = ifStep.else.map(transformActionStep);
+      }
+      return compiledIfStep;
+    }
   }
 }
 

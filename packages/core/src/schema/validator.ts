@@ -42,7 +42,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
-const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus'];
+const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
@@ -353,7 +353,7 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_ACTION_TYPES.includes(doType)) {
-    return { path: path + '/do', message: 'must be one of: set, update, fetch, delay, interval, clearTimer, focus' };
+    return { path: path + '/do', message: 'must be one of: set, update, fetch, delay, interval, clearTimer, focus, if' };
   }
 
   switch (doType) {
@@ -447,6 +447,35 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
         return { path: path + '/operation', message: 'operation is required' };
       }
       return validateExpression(step['target'], path + '/target');
+
+    case 'if':
+      if (!('condition' in step)) {
+        return { path: path + '/condition', message: 'condition is required' };
+      }
+      if (!('then' in step)) {
+        return { path: path + '/then', message: 'then is required' };
+      }
+      {
+        const condError = validateExpression(step['condition'], path + '/condition');
+        if (condError) return condError;
+        if (!Array.isArray(step['then'])) {
+          return { path: path + '/then', message: 'then must be an array' };
+        }
+        for (let i = 0; i < step['then'].length; i++) {
+          const thenError = validateActionStep(step['then'][i], path + '/then/' + i);
+          if (thenError) return thenError;
+        }
+        if ('else' in step) {
+          if (!Array.isArray(step['else'])) {
+            return { path: path + '/else', message: 'else must be an array' };
+          }
+          for (let i = 0; i < step['else'].length; i++) {
+            const elseError = validateActionStep(step['else'][i], path + '/else/' + i);
+            if (elseError) return elseError;
+          }
+        }
+      }
+      break;
   }
 
   return null;
