@@ -188,7 +188,8 @@ export function createStateStore(
         try {
           const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
           const oneYear = 365 * 24 * 60 * 60;
-          document.cookie = `theme=${encodeURIComponent(valueStr)}; path=/; max-age=${oneYear}; SameSite=Lax`;
+          const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+          document.cookie = `theme=${encodeURIComponent(valueStr)}; path=/; max-age=${oneYear}; SameSite=Lax${secure}`;
         } catch {
           // Ignore cookie setting errors
         }

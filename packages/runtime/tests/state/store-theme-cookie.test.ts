@@ -279,6 +279,76 @@ describe('theme state cookie persistence', () => {
     });
 
     /**
+     * Given: HTTPS environment (location.protocol === 'https:')
+     * When: theme state is changed
+     * Then: Cookie should include Secure attribute
+     */
+    it('should include Secure attribute when on HTTPS', () => {
+      // Arrange
+      // Mock location.protocol as https:
+      const originalLocation = globalThis.location;
+      Object.defineProperty(globalThis, 'location', {
+        value: { protocol: 'https:' },
+        writable: true,
+        configurable: true,
+      });
+
+      const store = createStateStore({
+        theme: { type: 'string', initial: 'light' },
+      });
+
+      // Act
+      store.set('theme', 'dark');
+
+      // Assert
+      const lastCookie = cookieMock.getLastSetCookie();
+      expect(lastCookie).toBeDefined();
+      expect(lastCookie?.toLowerCase()).toContain('secure');
+
+      // Cleanup
+      Object.defineProperty(globalThis, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    /**
+     * Given: HTTP environment (location.protocol === 'http:')
+     * When: theme state is changed
+     * Then: Cookie should NOT include Secure attribute
+     */
+    it('should not include Secure attribute when on HTTP', () => {
+      // Arrange
+      // Mock location.protocol as http:
+      const originalLocation = globalThis.location;
+      Object.defineProperty(globalThis, 'location', {
+        value: { protocol: 'http:' },
+        writable: true,
+        configurable: true,
+      });
+
+      const store = createStateStore({
+        theme: { type: 'string', initial: 'light' },
+      });
+
+      // Act
+      store.set('theme', 'dark');
+
+      // Assert
+      const lastCookie = cookieMock.getLastSetCookie();
+      expect(lastCookie).toBeDefined();
+      expect(lastCookie?.toLowerCase()).not.toContain('secure');
+
+      // Cleanup
+      Object.defineProperty(globalThis, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    /**
      * Given: A state store with theme state
      * When: theme state is set to a value with special characters
      * Then: Cookie value should be properly encoded
