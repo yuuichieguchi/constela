@@ -7,6 +7,7 @@ import {
 } from '../runtime/entry-server.js';
 import { createAPIHandler } from '../api/handler.js';
 import { resolvePageExport } from '../utils/resolve-page.js';
+import { isCookieInitialExpr } from '@constela/core';
 
 // ==================== Type Definitions ====================
 
@@ -166,9 +167,17 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
 
         const hydrationScript = generateHydrationScript(program, undefined, routeContext);
 
-        // Detect theme state from program
-        const themeState = program.state?.['theme'] as { initial?: string } | undefined;
-        const initialTheme = themeState?.initial as 'dark' | 'light' | undefined;
+        // Detect theme state from program (handle both string and cookie expression)
+        const themeState = program.state?.['theme'];
+        let initialTheme: 'dark' | 'light' | undefined;
+        if (themeState) {
+          if (isCookieInitialExpr(themeState.initial)) {
+            const cookieValue = cookies[themeState.initial.key];
+            initialTheme = (cookieValue ?? themeState.initial.default) as 'dark' | 'light';
+          } else if (typeof themeState.initial === 'string') {
+            initialTheme = themeState.initial as 'dark' | 'light';
+          }
+        }
 
         const html = wrapHtml(content, hydrationScript, undefined, initialTheme ? {
           theme: initialTheme,

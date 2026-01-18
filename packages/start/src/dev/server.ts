@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { join, isAbsolute, dirname, basename } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
-import type { ViewNode } from '@constela/core';
+import { type ViewNode, isCookieInitialExpr } from '@constela/core';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
@@ -412,9 +412,17 @@ export async function createDevServer(
               // Combine meta tags with CSS head
               const head = [metaTags, cssHead].filter(Boolean).join('\n');
 
-              // Get initial theme from composed program state
+              // Get initial theme from composed program state (handle both string and cookie expression)
               const themeState = composedProgram.state?.['theme'];
-              const initialTheme = themeState?.initial as 'dark' | 'light' | undefined;
+              let initialTheme: 'dark' | 'light' | undefined;
+              if (themeState) {
+                if (isCookieInitialExpr(themeState.initial)) {
+                  const cookieValue = cookies[themeState.initial.key];
+                  initialTheme = (cookieValue ?? themeState.initial.default) as 'dark' | 'light';
+                } else if (typeof themeState.initial === 'string') {
+                  initialTheme = themeState.initial as 'dark' | 'light';
+                }
+              }
 
               // Import map for resolving bare module specifiers in browser
               const importMap = {

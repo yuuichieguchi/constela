@@ -584,4 +584,239 @@ describe('Cookie parsing in Edge adapter', () => {
       expect(body).toEqual({ message: 'ok' });
     });
   });
+
+  // ==================== Cookie Expression for Theme State ====================
+
+  describe('cookie expression for theme state initial value', () => {
+    /**
+     * Creates a program with cookie expression for theme state.
+     *
+     * This simulates a program defined as:
+     * {
+     *   "state": {
+     *     "theme": {
+     *       "type": "string",
+     *       "initial": { "expr": "cookie", "key": "theme", "default": "dark" }
+     *     }
+     *   }
+     * }
+     */
+    function createCookieExpressionThemeProgram(defaultTheme: string = 'dark'): CompiledProgram {
+      return createProgram(
+        {
+          kind: 'element',
+          tag: 'div',
+          props: {
+            'data-theme': { expr: 'state', name: 'theme' },
+          },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: 'theme' } },
+          ],
+        },
+        {
+          theme: {
+            type: 'string',
+            initial: {
+              expr: 'cookie',
+              key: 'theme',
+              default: defaultTheme,
+            },
+          },
+        }
+      );
+    }
+
+    /**
+     * Given: A program with cookie expression for theme (default: "dark")
+     * When: Request includes Cookie: theme=light
+     * Then: wrapHtml should receive "light" as the theme value
+     *
+     * Bug: Current implementation (line 170-171 in adapter.ts) treats
+     * initial as a string, resulting in undefined when it's a CookieInitialExpr.
+     */
+    it('should pass cookie value to wrapHtml when theme uses cookie expression', async () => {
+      // Arrange
+      const { createAdapter } = await import('../../src/edge/adapter.js');
+      const program = createCookieExpressionThemeProgram('dark');
+      const mockPageModule: PageModule = {
+        default: program,
+      };
+      const moduleLoader = vi.fn().mockResolvedValue(mockPageModule);
+
+      const adapter = createAdapter({
+        platform: 'cloudflare',
+        routes: sampleRoutes,
+        loadModule: moduleLoader,
+      });
+
+      const request = new Request('http://localhost/', {
+        headers: {
+          Cookie: 'theme=light',
+        },
+      });
+
+      // Act
+      const response = await adapter.fetch(request);
+      const html = await response.text();
+
+      // Assert
+      // For light theme, the <html> element should NOT have class="dark"
+      // (Tailwind CSS pattern: dark mode uses class="dark", light mode has no class)
+      expect(html).not.toMatch(/<html[^>]*class="dark"/);
+    });
+
+    /**
+     * Given: A program with cookie expression for theme (default: "dark")
+     * When: Request has no theme cookie
+     * Then: wrapHtml should receive the default value "dark"
+     *
+     * Bug: Current implementation returns undefined instead of the default value.
+     */
+    it('should use default value from cookie expression when no cookie present', async () => {
+      // Arrange
+      const { createAdapter } = await import('../../src/edge/adapter.js');
+      const program = createCookieExpressionThemeProgram('dark');
+      const mockPageModule: PageModule = {
+        default: program,
+      };
+      const moduleLoader = vi.fn().mockResolvedValue(mockPageModule);
+
+      const adapter = createAdapter({
+        platform: 'cloudflare',
+        routes: sampleRoutes,
+        loadModule: moduleLoader,
+      });
+
+      // Request without theme cookie
+      const request = new Request('http://localhost/');
+
+      // Act
+      const response = await adapter.fetch(request);
+      const html = await response.text();
+
+      // Assert
+      // The HTML should have class="dark" on the <html> element
+      // because the default value from cookie expression is "dark"
+      expect(html).toMatch(/<html[^>]*class="dark"/);
+    });
+
+    /**
+     * Given: A program with regular string initial value for theme
+     * When: Request is made
+     * Then: wrapHtml should receive the string value directly
+     *
+     * This ensures backward compatibility with existing non-cookie expression programs.
+     */
+    it('should work with regular string initial value (backward compatibility)', async () => {
+      // Arrange
+      const { createAdapter } = await import('../../src/edge/adapter.js');
+      // Use the original createThemeAwareProgram which has string initial value
+      const program = createThemeAwareProgram();
+      const mockPageModule: PageModule = {
+        default: program,
+      };
+      const moduleLoader = vi.fn().mockResolvedValue(mockPageModule);
+
+      const adapter = createAdapter({
+        platform: 'cloudflare',
+        routes: sampleRoutes,
+        loadModule: moduleLoader,
+      });
+
+      // Request without cookie - should use initial value 'light' from state definition
+      const request = new Request('http://localhost/');
+
+      // Act
+      const response = await adapter.fetch(request);
+      const html = await response.text();
+
+      // Assert
+      // For light theme, the <html> element should NOT have class="dark"
+      // (Tailwind CSS pattern: dark mode uses class="dark", light mode has no class)
+      expect(html).not.toMatch(/<html[^>]*class="dark"/);
+    });
+
+    /**
+     * Given: A program with cookie expression for theme (default: "light")
+     * When: Request includes Cookie: theme=dark
+     * Then: Both renderPage content AND wrapHtml should use "dark"
+     *
+     * This verifies end-to-end consistency: the SSR content and HTML wrapper
+     * should both reflect the same theme value.
+     */
+    it('should have consistent theme between renderPage content and wrapHtml', async () => {
+      // Arrange
+      const { createAdapter } = await import('../../src/edge/adapter.js');
+      // Create a program that renders different content based on theme
+      const program: CompiledProgram = createProgram(
+        {
+          kind: 'if',
+          condition: {
+            expr: 'bin',
+            op: '==',
+            left: { expr: 'state', name: 'theme' },
+            right: { expr: 'lit', value: 'dark' },
+          },
+          then: {
+            kind: 'element',
+            tag: 'div',
+            props: {
+              class: { expr: 'lit', value: 'dark-theme-content' },
+            },
+            children: [
+              { kind: 'text', value: { expr: 'lit', value: 'Dark Mode Active' } },
+            ],
+          },
+          else: {
+            kind: 'element',
+            tag: 'div',
+            props: {
+              class: { expr: 'lit', value: 'light-theme-content' },
+            },
+            children: [
+              { kind: 'text', value: { expr: 'lit', value: 'Light Mode Active' } },
+            ],
+          },
+        },
+        {
+          theme: {
+            type: 'string',
+            initial: {
+              expr: 'cookie',
+              key: 'theme',
+              default: 'light',
+            },
+          },
+        }
+      );
+      const mockPageModule: PageModule = {
+        default: program,
+      };
+      const moduleLoader = vi.fn().mockResolvedValue(mockPageModule);
+
+      const adapter = createAdapter({
+        platform: 'cloudflare',
+        routes: sampleRoutes,
+        loadModule: moduleLoader,
+      });
+
+      const request = new Request('http://localhost/', {
+        headers: {
+          Cookie: 'theme=dark',
+        },
+      });
+
+      // Act
+      const response = await adapter.fetch(request);
+      const html = await response.text();
+
+      // Assert
+      // 1. The SSR content should show dark theme (this works because renderPage handles cookie expr)
+      expect(html).toContain('dark-theme-content');
+      expect(html).toContain('Dark Mode Active');
+
+      // 2. The HTML wrapper should also have dark theme class (this is the bug)
+      expect(html).toMatch(/<html[^>]*class="dark"/);
+    });
+  });
 });
