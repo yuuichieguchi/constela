@@ -253,7 +253,9 @@ function createEventCallback(
       payload = evaluatePayload(handler.payload, {
         state: ctx.state,
         locals: { ...ctx.locals, ...eventLocals },
-        ...(ctx.imports && { imports: ctx.imports })
+        ...(ctx.refs && { refs: ctx.refs }),
+        ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.route && { route: ctx.route })
       });
     }
 
@@ -330,7 +332,9 @@ function setupIntersectionObserver(
         payload = evaluatePayload(handler.payload, {
           state: ctx.state,
           locals: { ...ctx.locals, ...intersectLocals },
-          ...(ctx.imports && { imports: ctx.imports })
+          ...(ctx.refs && { refs: ctx.refs }),
+          ...(ctx.imports && { imports: ctx.imports }),
+          ...(ctx.route && { route: ctx.route })
         });
       }
 
@@ -422,7 +426,7 @@ function renderElement(node: CompiledElementNode, ctx: RenderContext): Element {
       } else {
         // Apply prop with effect for reactivity
         const cleanup = createEffect(() => {
-          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
+          const value = evaluate(propValue as CompiledExpression, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
           applyProp(el, propName, value, useSvgNamespace);
         });
         ctx.cleanups?.push(cleanup);
@@ -487,7 +491,7 @@ function renderText(node: CompiledTextNode, ctx: RenderContext): Text {
   const textNode = document.createTextNode('');
 
   const cleanup = createEffect(() => {
-    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
+    const value = evaluate(node.value, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     textNode.textContent = formatValue(value);
   });
   ctx.cleanups?.push(cleanup);
@@ -513,7 +517,7 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
   let branchCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
+    const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : (node.else ? 'else' : 'none');
 
@@ -632,7 +636,7 @@ function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
   let itemCleanups: (() => void)[] = [];
 
   const effectCleanup = createEffect(() => {
-    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) as unknown[];
+    const items = evaluate(node.items, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) as unknown[];
 
     if (!hasKey || !node.key) {
       // No key: use current behavior (re-render all)
@@ -707,7 +711,9 @@ function renderEach(node: CompiledEachNode, ctx: RenderContext): Node {
         const keyValue = evaluate(node.key!, {
           state: ctx.state,
           locals: tempLocals,
+          ...(ctx.refs && { refs: ctx.refs }),
           ...(ctx.imports && { imports: ctx.imports }),
+          ...(ctx.route && { route: ctx.route }),
         });
 
         // Duplicate key warning
@@ -830,7 +836,7 @@ function renderMarkdown(node: CompiledMarkdownNode, ctx: RenderContext): HTMLEle
   container.className = 'constela-markdown';
 
   const cleanup = createEffect(() => {
-    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
+    const content = evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) });
     const html = parseMarkdown(String(content ?? ''));
     container.innerHTML = html;
   });
@@ -849,8 +855,8 @@ function renderCode(node: CompiledCodeNode, ctx: RenderContext): HTMLElement {
   pre.appendChild(codeEl);
 
   const cleanup = createEffect(() => {
-    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? 'plaintext');
-    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? '');
+    const language = String(evaluate(node.language, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? 'plaintext');
+    const content = String(evaluate(node.content, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }) }) ?? '');
 
     // Set language class for immediate access
     codeEl.className = `language-${language || 'plaintext'}`;
