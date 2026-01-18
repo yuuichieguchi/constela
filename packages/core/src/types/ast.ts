@@ -538,7 +538,7 @@ export interface EventHandlerOptions {
 export interface EventHandler {
   event: string;
   action: string;
-  payload?: Expression;
+  payload?: Expression | Record<string, Expression>;
   debounce?: number;
   throttle?: number;
   options?: EventHandlerOptions;

@@ -670,7 +670,17 @@ function transformEventHandler(handler: EventHandler, ctx: TransformContext): Co
   };
 
   if (handler.payload) {
-    result.payload = transformExpression(handler.payload, ctx);
+    // Check if payload is a single Expression (has 'expr' property)
+    if ('expr' in handler.payload) {
+      result.payload = transformExpression(handler.payload as Expression, ctx);
+    } else {
+      // Object payload - transform each field
+      const objectPayload: Record<string, CompiledExpression> = {};
+      for (const [key, value] of Object.entries(handler.payload)) {
+        objectPayload[key] = transformExpression(value as Expression, ctx);
+      }
+      result.payload = objectPayload;
+    }
   }
 
   if (handler.debounce !== undefined) {

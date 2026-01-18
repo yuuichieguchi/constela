@@ -1103,3 +1103,79 @@ describe('transformPass - Idempotency', () => {
     expect(JSON.stringify(result1)).toBe(JSON.stringify(result2));
   });
 });
+
+// ==================== Event Handler Payload Transformation ====================
+
+describe('transformPass - Event Handler Payload', () => {
+  it('should transform object payload in event handler', () => {
+    const ast = createAst({
+      state: { currentPage: { type: 'string', initial: 'home' } },
+      actions: [
+        {
+          name: 'navigate',
+          steps: [{ do: 'set', target: 'currentPage', value: { expr: 'var', name: 'payload', path: 'page' } }],
+        },
+      ],
+      view: {
+        kind: 'element',
+        tag: 'button',
+        props: {
+          onClick: {
+            event: 'click',
+            action: 'navigate',
+            payload: { page: { expr: 'lit', value: 'about' } },
+          },
+        },
+      },
+    });
+    const context = createContext({
+      stateNames: new Set(['currentPage']),
+      actionNames: new Set(['navigate']),
+    });
+
+    const result = transformPass(ast, context);
+
+    const button = result.view as CompiledElementNode;
+    const onClick = button.props?.['onClick'] as { event: string; action: string; payload?: unknown };
+
+    expect(onClick.event).toBe('click');
+    expect(onClick.action).toBe('navigate');
+    expect(onClick.payload).toEqual({ page: { expr: 'lit', value: 'about' } });
+  });
+
+  it('should transform single expression payload in event handler', () => {
+    const ast = createAst({
+      state: { value: { type: 'number', initial: 0 } },
+      actions: [
+        {
+          name: 'setValue',
+          steps: [{ do: 'set', target: 'value', value: { expr: 'var', name: 'payload' } }],
+        },
+      ],
+      view: {
+        kind: 'element',
+        tag: 'button',
+        props: {
+          onClick: {
+            event: 'click',
+            action: 'setValue',
+            payload: { expr: 'lit', value: 42 },
+          },
+        },
+      },
+    });
+    const context = createContext({
+      stateNames: new Set(['value']),
+      actionNames: new Set(['setValue']),
+    });
+
+    const result = transformPass(ast, context);
+
+    const button = result.view as CompiledElementNode;
+    const onClick = button.props?.['onClick'] as { event: string; action: string; payload?: unknown };
+
+    expect(onClick.event).toBe('click');
+    expect(onClick.action).toBe('setValue');
+    expect(onClick.payload).toEqual({ expr: 'lit', value: 42 });
+  });
+});
