@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.12.1
+
+### Patch Changes
+
+- Add missing types to validator whitelist: portal, validity, index, delay, interval, clearTimer, focus
+
 ## 0.12.0
 
 ### Minor Changes
