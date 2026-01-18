@@ -927,6 +927,17 @@ Features:
 - Layout composition
 - SSR with hydration
 
+### Hot Module Replacement (HMR)
+
+The dev server includes built-in HMR that works automatically:
+
+- **Edit JSON, save, see changes** - No manual refresh needed
+- **State is preserved** - Form inputs, counters, and UI state survive updates
+- **Error overlay** - Compile errors are shown with suggestions
+- **Auto-reconnect** - Connection loss is handled gracefully
+
+Just run `npx constela dev` and start editing your JSON files.
+
 ### Production Build
 
 ```bash
@@ -1013,10 +1024,10 @@ export default { fetch: adapter.fetch };
 |---------|---------|-------------|
 | `@constela/core` | 0.8.0 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
 | `@constela/compiler` | 0.8.0 | 3-pass compiler: validate → analyze → transform, Style analysis |
-| `@constela/runtime` | 0.11.0 | DOM renderer, hydration, reactive signals, Style evaluation |
+| `@constela/runtime` | 0.16.0 | DOM renderer, hydration, reactive signals, Style evaluation |
 | `@constela/router` | 9.0.0 | History API routing, dynamic params, catch-all routes |
 | `@constela/server` | 4.1.0 | SSR with Shiki dual-theme syntax highlighting |
-| `@constela/start` | 1.2.25 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/start` | 1.6.0 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
 | `@constela/cli` | 0.4.1 | CLI: compile, dev, build, start, validate, inspect commands |
 | `@constela/builder` | 0.2.0 | Type-safe builders for programmatic AST construction |
 
@@ -1337,6 +1348,7 @@ To test your Constela application:
 - [x] Form features (`focus` step, `validity` expression)
 - [x] Portal node for rendering outside component tree
 - [x] Event handler options (`debounce`, `throttle`, `intersect`)
+- [x] Hot Module Replacement (HMR)
 
 ### Planned
 
