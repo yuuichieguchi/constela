@@ -78,6 +78,7 @@ import {
   type LayoutProgram,
   type LocalActionStep,
   type LocalActionDefinition,
+  type CookieInitialExpr,
 } from './ast.js';
 
 // ==================== Helper Functions ====================
@@ -750,12 +751,28 @@ export function isNumberField(value: unknown): value is NumberField {
 }
 
 /**
+ * Checks if value is a cookie initial expression
+ */
+export function isCookieInitialExpr(value: unknown): value is CookieInitialExpr {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'expr' in value &&
+    (value as { expr: unknown }).expr === 'cookie' &&
+    'key' in value &&
+    typeof (value as { key: unknown }).key === 'string' &&
+    'default' in value &&
+    typeof (value as { default: unknown }).default === 'string'
+  );
+}
+
+/**
  * Checks if value is a string field
  */
 export function isStringField(value: unknown): value is StringField {
   if (!isObject(value)) return false;
   if (value['type'] !== 'string') return false;
-  return typeof value['initial'] === 'string';
+  return typeof value['initial'] === 'string' || isCookieInitialExpr(value['initial']);
 }
 
 /**

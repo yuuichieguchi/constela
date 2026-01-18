@@ -43,6 +43,7 @@ export type {
   ListField,
   BooleanField,
   ObjectField,
+  CookieInitialExpr,
   // Action Steps
   ActionStep,
   SetStep,
@@ -178,6 +179,8 @@ export {
   isBooleanField,
   isObjectField,
   isStateField,
+  // Cookie initial expression type guard
+  isCookieInitialExpr,
   // EventHandler type guard
   isEventHandler,
   // Layout type guards

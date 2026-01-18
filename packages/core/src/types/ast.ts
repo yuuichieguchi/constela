@@ -240,6 +240,15 @@ export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | Par
 // ==================== State Fields ====================
 
 /**
+ * Cookie expression for state initial value
+ */
+export interface CookieInitialExpr {
+  expr: 'cookie';
+  key: string;
+  default: string;
+}
+
+/**
  * Number state field
  */
 export interface NumberField {
@@ -252,7 +261,7 @@ export interface NumberField {
  */
 export interface StringField {
   type: 'string';
-  initial: string;
+  initial: string | CookieInitialExpr;
 }
 
 /**

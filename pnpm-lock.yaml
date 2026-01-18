@@ -212,6 +212,9 @@ importers:
       '@constela/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@constela/core':
+        specifier: workspace:*
+        version: link:../core
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.27

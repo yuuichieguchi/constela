@@ -1,6 +1,6 @@
 {
   "name": "@constela/server",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Server-side rendering for Constela UI framework",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts --format esm --dts --clean --external @constela/core",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -23,7 +23,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.11.0"
+    "@constela/compiler": "^0.11.1",
+    "@constela/core": "^0.12.0"
   },
   "dependencies": {
     "isomorphic-dompurify": "^2.35.0",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@constela/compiler": "workspace:*",
+    "@constela/core": "workspace:*",
     "@types/node": "^20.10.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",

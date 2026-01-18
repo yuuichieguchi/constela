@@ -1,5 +1,30 @@
 # @constela/runtime
 
+## 0.15.0
+
+### Minor Changes
+
+- feat: SSR theme state synchronization with cookies
+
+  Phase 1:
+
+  - Add `stateOverrides` option to `RenderOptions` for overriding state initial values during SSR
+  - Add `cookies` property to `SSRContext` for reading cookies in SSR
+  - Add `parseCookies` helper function in edge adapter
+  - Save theme state to cookie when changed for SSR synchronization
+
+  Phase 2:
+
+  - Add `CookieInitialExpr` type for DSL cookie expressions in state initial values
+  - Support `{ "expr": "cookie", "key": "theme", "default": "dark" }` syntax for state initial values
+  - Evaluate cookie expressions during SSR and client-side initialization
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.12.0
+  - @constela/compiler@0.11.1
+
 ## 0.14.0
 
 ### Minor Changes

@@ -1,11 +1,12 @@
 /**
  * StateStore - Centralized state management
- * 
+ *
  * Creates signals for each state field defined in the program.
  * Provides get/set methods for accessing state.
  */
 
 import { createSignal, type Signal } from '../reactive/signal.js';
+import { isCookieInitialExpr } from '@constela/core';
 
 export interface StateStore {
   get(name: string): unknown;
@@ -107,6 +108,30 @@ function setValueAtPath(
   return clone;
 }
 
+/**
+ * Get cookie value by key from document.cookie
+ * @param key - The cookie key to retrieve
+ * @returns The cookie value or undefined if not found
+ */
+function getCookieValue(key: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  for (const cookie of document.cookie.split(';')) {
+    const eqIndex = cookie.indexOf('=');
+    if (eqIndex === -1) continue;
+    // Only trim the name part (before =), preserve value as-is
+    const name = cookie.slice(0, eqIndex).trim();
+    if (name === key) {
+      const value = cookie.slice(eqIndex + 1);
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
 export function createStateStore(
   definitions: Record<string, StateDefinition>
 ): StateStore {
@@ -114,7 +139,15 @@ export function createStateStore(
 
   // Create a signal for each state field
   for (const [name, def] of Object.entries(definitions)) {
-    let initialValue = def.initial;
+    let initialValue: unknown;
+
+    // Evaluate cookie expression for initial value
+    if (isCookieInitialExpr(def.initial)) {
+      const cookieValue = getCookieValue(def.initial.key);
+      initialValue = cookieValue !== undefined ? cookieValue : def.initial.default;
+    } else {
+      initialValue = def.initial;
+    }
 
     // Read localStorage for 'theme' state to sync with anti-flash script
     if (name === 'theme' && typeof window !== 'undefined') {
@@ -149,6 +182,18 @@ export function createStateStore(
       if (!signal) {
         throw new Error(`State field "${name}" does not exist`);
       }
+
+      // Save theme to cookie for SSR synchronization (before signal.set to ensure it's set before subscribers are notified)
+      if (name === 'theme' && typeof document !== 'undefined') {
+        try {
+          const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+          const oneYear = 365 * 24 * 60 * 60;
+          document.cookie = `theme=${encodeURIComponent(valueStr)}; path=/; max-age=${oneYear}; SameSite=Lax`;
+        } catch {
+          // Ignore cookie setting errors
+        }
+      }
+
       signal.set(value);
     },
 

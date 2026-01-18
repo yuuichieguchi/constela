@@ -8,6 +8,7 @@ import type { DevServerOptions, ScannedRoute } from '../types.js';
 import { resolveStaticFile } from '../static/index.js';
 import { JsonPageLoader, convertToCompiledProgram } from '../json-page-loader.js';
 import { renderPage, wrapHtml, generateHydrationScript, generateMetaTags, type WidgetConfig } from '../runtime/entry-server.js';
+import { parseCookies } from '../edge/adapter.js';
 import { scanRoutes } from '../router/file-router.js';
 import { LayoutResolver } from '../layout/resolver.js';
 import { analyzeLayoutPass, transformLayoutPass, composeLayoutWithPage } from '@constela/compiler';
@@ -372,11 +373,15 @@ export async function createDevServer(
                 }
               }
 
+              // Parse cookies from request headers
+              const cookies = parseCookies(req.headers.cookie ?? null);
+
               // Create SSR context
               const ssrContext = {
                 url: pathname,
                 params: match.params,
                 query: url.searchParams,
+                cookies,
               };
 
               // Render the page

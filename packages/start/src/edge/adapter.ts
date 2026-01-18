@@ -63,6 +63,28 @@ function createErrorResponse(error: unknown): Response {
   });
 }
 
+// ==================== Cookie Parsing ====================
+
+/**
+ * Parse Cookie header into key-value pairs
+ */
+export function parseCookies(cookieHeader: string | null): Record<string, string> {
+  if (!cookieHeader) return {};
+  const cookies: Record<string, string> = {};
+  for (const part of cookieHeader.split(';')) {
+    const [name, ...valueParts] = part.trim().split('=');
+    if (name) {
+      const value = valueParts.join('=').trim();
+      try {
+        cookies[name.trim()] = decodeURIComponent(value);
+      } catch {
+        cookies[name.trim()] = value;
+      }
+    }
+  }
+  return cookies;
+}
+
 // ==================== Adapter Creation ====================
 
 /**
@@ -124,10 +146,15 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
         const pageModule = module as PageModule;
         const program = await resolvePageExport(pageModule.default, matchedParams, matchedRoute.params);
 
+        // Parse cookies from request headers
+        const cookieHeader = request.headers.get('Cookie');
+        const cookies = parseCookies(cookieHeader);
+
         const content = await renderPage(program, {
           url: request.url,
           params: matchedParams,
           query: url.searchParams,
+          cookies,
         });
 
         // Create route context for hydration

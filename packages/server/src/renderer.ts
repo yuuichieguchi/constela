@@ -18,6 +18,7 @@ import type {
   CompiledExpression,
   CompiledEventHandler,
 } from '@constela/compiler';
+import { isCookieInitialExpr } from '@constela/core';
 import { parseMarkdownSSRAsync } from './markdown.js';
 import { renderCodeSSR } from './code.js';
 import { escapeHtml } from './utils/escape.js';
@@ -666,6 +667,8 @@ export interface RenderOptions {
   };
   imports?: Record<string, unknown>;
   styles?: Record<string, StylePreset>;
+  stateOverrides?: Record<string, unknown>;
+  cookies?: Record<string, string>;
 }
 
 /**
@@ -679,10 +682,18 @@ export async function renderToString(
   program: CompiledProgram,
   options?: RenderOptions
 ): Promise<string> {
-  // Initialize state from program's initial values
+  // Initialize state from program's initial values, with optional overrides
   const state = new Map<string, unknown>();
   for (const [name, field] of Object.entries(program.state)) {
-    state.set(name, field.initial);
+    const overrideValue = options?.stateOverrides?.[name];
+    if (overrideValue !== undefined) {
+      state.set(name, overrideValue);
+    } else if (isCookieInitialExpr(field.initial)) {
+      const cookieValue = options?.cookies?.[field.initial.key];
+      state.set(name, cookieValue !== undefined ? cookieValue : field.initial.default);
+    } else {
+      state.set(name, field.initial);
+    }
   }
 
   const ctx: SSRContext = {

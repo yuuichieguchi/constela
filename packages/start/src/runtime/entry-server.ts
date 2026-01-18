@@ -12,6 +12,7 @@ export interface SSRContext {
   url: string;
   params: Record<string, string>;
   query: URLSearchParams;
+  cookies?: Record<string, string>;
 }
 
 export interface WrapHtmlOptions {
@@ -46,6 +47,20 @@ export async function renderPage(
   program: CompiledProgram,
   ctx: SSRContext
 ): Promise<string> {
+  // Build state overrides from cookies
+  const stateOverrides: Record<string, unknown> = {};
+
+  // Read theme from cookie if available and theme state exists in program.
+  // Note: Theme value validation (e.g., restricting to 'dark'|'light') is intentionally
+  // deferred to the application level. This allows custom themes and doesn't break
+  // SSR if a user has an unexpected cookie value - the runtime will handle it gracefully.
+  if (ctx.cookies?.['theme'] && program.state?.['theme']) {
+    const themeFromCookie = ctx.cookies['theme'];
+    if (themeFromCookie) {
+      stateOverrides['theme'] = themeFromCookie;
+    }
+  }
+
   const options: RenderOptions = {
     route: {
       params: ctx.params,
@@ -53,6 +68,16 @@ export async function renderPage(
       path: ctx.url,
     },
   };
+
+  // Pass cookies if available
+  if (ctx.cookies) {
+    options.cookies = ctx.cookies;
+  }
+
+  // Only add stateOverrides if there are any
+  if (Object.keys(stateOverrides).length > 0) {
+    options.stateOverrides = stateOverrides;
+  }
 
   // Pass importData if present
   if (program.importData) {

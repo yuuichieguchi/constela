@@ -245,7 +245,22 @@ export const astSchema = {
       additionalProperties: false,
       properties: {
         type: { type: 'string', const: 'string' },
-        initial: { type: 'string' },
+        initial: {
+          oneOf: [
+            { type: 'string' },
+            { $ref: '#/$defs/CookieInitialExpr' },
+          ],
+        },
+      },
+    },
+    CookieInitialExpr: {
+      type: 'object',
+      required: ['expr', 'key', 'default'],
+      additionalProperties: false,
+      properties: {
+        expr: { type: 'string', const: 'cookie' },
+        key: { type: 'string' },
+        default: { type: 'string' },
       },
     },
     ListField: {
