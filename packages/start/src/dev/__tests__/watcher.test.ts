@@ -380,6 +380,10 @@ describe('createWatcher()', () => {
        */
       // Arrange
       watcher = await createWatcher({ directory: testDir });
+
+      // Give watcher time to initialize
+      await delay(100);
+
       const changePromise = waitForEvent<FileChangeEvent>(watcher, 'change');
 
       // Act

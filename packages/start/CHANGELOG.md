@@ -1,5 +1,32 @@
 # @constela/start
 
+## 1.8.0
+
+### Minor Changes
+
+- fix: SEO features (seo.lang, canonical, jsonLd) now properly reflected in build output
+
+  - Load constela.config.json and pass seo.lang to wrapHtml during build
+  - Copy title, canonical, jsonLd from route definition to compiled program
+  - Add seo option to BuildOptions and DevServerOptions
+
+  feat: Extended BCP 47 language tag support
+
+  - Support extended language subtags (zh-cmn-Hans)
+  - Support variant subtags (sl-rozaj-biske)
+  - Support extension subtags (de-DE-u-co-phonebk)
+  - Support grandfathered tags (i-klingon)
+
+  feat: JSON-LD nested object/array support
+
+  - Support expr: 'object' with optional @type
+  - Support expr: 'array' for itemListElement etc.
+  - Recursive evaluation for complex structures like BreadcrumbList
+
+  fix: Flaky watcher test
+
+  - Add delay after watcher creation to prevent race condition
+
 ## 1.7.0
 
 ### Minor Changes

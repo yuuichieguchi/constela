@@ -107,6 +107,10 @@ export interface DevServerOptions {
   layoutsDir?: string;
   /** CSS entry point(s) for Vite middleware processing */
   css?: string | string[];
+  /** SEO configuration */
+  seo?: {
+    lang?: string;
+  };
 }
 
 /**
@@ -122,4 +126,8 @@ export interface BuildOptions {
   /** Content paths for Tailwind CSS class scanning (enables PostCSS processing) */
   cssContent?: string[] | undefined;
   target?: 'node' | 'edge' | undefined;
+  /** SEO configuration */
+  seo?: {
+    lang?: string;
+  };
 }

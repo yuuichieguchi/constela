@@ -455,6 +455,7 @@ export async function createDevServer(
                   themeStorageKey: 'theme'
                 } : {}),
                 importMap,
+                ...(options.seo?.lang ? { lang: options.seo.lang } : {}),
               });
 
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });

@@ -284,8 +284,10 @@ export function wrapHtml(
   let langAttr = '';
   if (options?.lang) {
     // Validate lang to prevent injection attacks (BCP 47 language tag format)
-    if (!/^[a-zA-Z]{2,3}(-[a-zA-Z]{4})?(-[a-zA-Z]{2}|-[0-9]{3})?$/.test(options.lang)) {
-      throw new Error(`Invalid lang: ${options.lang}. Expected BCP 47 language tag (e.g., 'en', 'ja', 'en-US', 'zh-Hans-CN').`);
+    // Supports: extended language subtags (zh-cmn-Hans), variants (de-CH-1901),
+    // extensions (de-DE-u-co-phonebk), private use (en-x-custom), grandfathered (i-klingon)
+    if (!/^([a-zA-Z]{2,3}|i)(-[a-zA-Z0-9]{1,8})*$/.test(options.lang)) {
+      throw new Error(`Invalid lang: ${options.lang}. Expected BCP 47 language tag (e.g., 'en', 'ja', 'en-US', 'zh-Hans-CN', 'zh-cmn-Hans', 'de-DE-u-co-phonebk').`);
     }
     langAttr = ` lang="${options.lang}"`;
   }
@@ -425,13 +427,27 @@ export function evaluateMetaExpression(
   }
 }
 
+// JSON-LD specific expression types (not part of standard CompiledExpression)
+interface JsonLdObjectExpr {
+  expr: 'object';
+  type?: string;
+  properties: Record<string, JsonLdExpression>;
+}
+
+interface JsonLdArrayExpr {
+  expr: 'array';
+  items: JsonLdExpression[];
+}
+
+type JsonLdExpression = CompiledExpression | JsonLdObjectExpr | JsonLdArrayExpr;
+
 /**
  * Evaluates a compiled expression for JSON-LD property values.
  * Unlike evaluateMetaExpression, this preserves the original types
  * (number, boolean, null) for proper JSON serialization.
  */
 function evaluateJsonLdExpression(
-  expr: CompiledExpression,
+  expr: JsonLdExpression,
   ctx: MetaContext
 ): unknown {
   switch (expr.expr) {
@@ -455,6 +471,18 @@ function evaluateJsonLdExpression(
       return '';
     case 'concat':
       return expr.items.map(item => String(evaluateJsonLdExpression(item, ctx))).join('');
+    case 'object': {
+      const obj: Record<string, unknown> = {};
+      if (expr.type) {
+        obj['@type'] = expr.type;
+      }
+      for (const [key, propExpr] of Object.entries(expr.properties)) {
+        obj[key] = evaluateJsonLdExpression(propExpr, ctx);
+      }
+      return obj;
+    }
+    case 'array':
+      return expr.items.map(item => evaluateJsonLdExpression(item, ctx));
     default:
       return '';
   }

@@ -30,6 +30,10 @@ export interface GenerateStaticPagesOptions {
    * Primarily used for testing purposes.
    */
   staticPathsProvider?: StaticPathsProvider;
+  /**
+   * Optional language code for HTML lang attribute.
+   */
+  lang?: string;
 }
 
 /**
@@ -137,7 +141,8 @@ async function generateSinglePage(
   pattern: string,
   outDir: string,
   program: CompiledProgram,
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
+  lang?: string
 ): Promise<string> {
   const outputPath = getOutputPath(pattern, outDir);
   const outputDir = dirname(outputPath);
@@ -190,6 +195,9 @@ async function generateSinglePage(
       wrapOptions.themeStorageKey = 'theme';
     }
   }
+  if (lang) {
+    wrapOptions.lang = lang;
+  }
 
   // Wrap in full HTML document
   const html = wrapHtml(
@@ -218,7 +226,7 @@ export async function generateStaticPages(
   outDir: string,
   options: GenerateStaticPagesOptions = {}
 ): Promise<string[]> {
-  const { staticPathsProvider } = options;
+  const { staticPathsProvider, lang } = options;
   const generatedPaths: string[] = [];
 
   // Filter to only page routes (skip api and middleware)
@@ -260,14 +268,15 @@ export async function generateStaticPages(
           resolvedPattern,
           outDir,
           program,
-          pathData.params
+          pathData.params,
+          lang
         );
         generatedPaths.push(filePath);
       }
     } else {
       // Static route: generate directly (with empty params)
       const program = await resolvePageExport(pageExport, {});
-      const filePath = await generateSinglePage(route.pattern, outDir, program);
+      const filePath = await generateSinglePage(route.pattern, outDir, program, {}, lang);
       generatedPaths.push(filePath);
     }
   }

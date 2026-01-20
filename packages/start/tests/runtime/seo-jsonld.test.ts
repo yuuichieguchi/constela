@@ -755,4 +755,462 @@ describe('SEO JSON-LD', () => {
       });
     });
   });
+
+  // ==================== Nested Objects and Arrays ====================
+
+  describe('nested objects and arrays', () => {
+    describe('nested objects in properties', () => {
+      it('should generate JSON-LD with nested object property (author as Person)', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/posts/:slug',
+          params: ['slug'],
+          jsonLd: {
+            type: 'Article',
+            properties: {
+              headline: { expr: 'lit', value: 'Understanding TypeScript' },
+              author: {
+                expr: 'object',
+                type: 'Person',
+                properties: {
+                  name: { expr: 'lit', value: 'John Doe' },
+                  url: { expr: 'lit', value: 'https://example.com/john' },
+                },
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext(
+          { slug: 'typescript-guide' },
+          {},
+          '/posts/typescript-guide'
+        );
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        // Should contain nested author object with @type
+        expect(result).toContain('"author":{');
+        expect(result).toContain('"@type":"Person"');
+        expect(result).toContain('"name":"John Doe"');
+        expect(result).toContain('"url":"https://example.com/john"');
+
+        // Verify it's valid JSON
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.author).toEqual({
+          '@type': 'Person',
+          name: 'John Doe',
+          url: 'https://example.com/john',
+        });
+      });
+
+      it('should generate JSON-LD with deeply nested objects (offers with priceSpecification)', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/products/:id',
+          params: ['id'],
+          jsonLd: {
+            type: 'Product',
+            properties: {
+              name: { expr: 'lit', value: 'Premium Widget' },
+              offers: {
+                expr: 'object',
+                type: 'Offer',
+                properties: {
+                  price: { expr: 'lit', value: 99.99 },
+                  priceCurrency: { expr: 'lit', value: 'USD' },
+                  priceSpecification: {
+                    expr: 'object',
+                    type: 'UnitPriceSpecification',
+                    properties: {
+                      price: { expr: 'lit', value: 99.99 },
+                      priceCurrency: { expr: 'lit', value: 'USD' },
+                      unitCode: { expr: 'lit', value: 'EA' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext({ id: 'widget-001' }, {}, '/products/widget-001');
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.offers['@type']).toBe('Offer');
+        expect(parsed.offers.priceSpecification['@type']).toBe('UnitPriceSpecification');
+        expect(parsed.offers.priceSpecification.unitCode).toBe('EA');
+      });
+
+      it('should evaluate dynamic expressions in nested object properties', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/posts/:slug',
+          params: ['slug'],
+          jsonLd: {
+            type: 'Article',
+            properties: {
+              headline: { expr: 'route', source: 'param', name: 'slug' },
+              author: {
+                expr: 'object',
+                type: 'Person',
+                properties: {
+                  name: { expr: 'lit', value: 'John Doe' },
+                  url: {
+                    expr: 'concat',
+                    items: [
+                      { expr: 'lit', value: 'https://example.com/authors/' },
+                      { expr: 'route', source: 'param', name: 'slug' },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext(
+          { slug: 'john-doe' },
+          {},
+          '/posts/john-doe'
+        );
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.author.url).toBe('https://example.com/authors/john-doe');
+      });
+    });
+
+    describe('arrays in properties', () => {
+      it('should generate JSON-LD with array of literal values', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/posts/:slug',
+          params: ['slug'],
+          jsonLd: {
+            type: 'Article',
+            properties: {
+              headline: { expr: 'lit', value: 'TypeScript Tips' },
+              keywords: {
+                expr: 'array',
+                items: [
+                  { expr: 'lit', value: 'typescript' },
+                  { expr: 'lit', value: 'javascript' },
+                  { expr: 'lit', value: 'programming' },
+                ],
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext(
+          { slug: 'ts-tips' },
+          {},
+          '/posts/ts-tips'
+        );
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.keywords).toEqual(['typescript', 'javascript', 'programming']);
+      });
+
+      it('should generate JSON-LD with array of objects (multiple authors)', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/posts/:slug',
+          params: ['slug'],
+          jsonLd: {
+            type: 'Article',
+            properties: {
+              headline: { expr: 'lit', value: 'Collaborative Article' },
+              author: {
+                expr: 'array',
+                items: [
+                  {
+                    expr: 'object',
+                    type: 'Person',
+                    properties: {
+                      name: { expr: 'lit', value: 'Alice' },
+                    },
+                  },
+                  {
+                    expr: 'object',
+                    type: 'Person',
+                    properties: {
+                      name: { expr: 'lit', value: 'Bob' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext(
+          { slug: 'collab-article' },
+          {},
+          '/posts/collab-article'
+        );
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.author).toHaveLength(2);
+        expect(parsed.author[0]).toEqual({ '@type': 'Person', name: 'Alice' });
+        expect(parsed.author[1]).toEqual({ '@type': 'Person', name: 'Bob' });
+      });
+
+      it('should generate JSON-LD with array containing dynamic expressions', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/search',
+          params: [],
+          jsonLd: {
+            type: 'ItemList',
+            properties: {
+              name: { expr: 'lit', value: 'Search Results' },
+              itemListElement: {
+                expr: 'array',
+                items: [
+                  {
+                    expr: 'object',
+                    type: 'ListItem',
+                    properties: {
+                      position: { expr: 'lit', value: 1 },
+                      name: { expr: 'route', source: 'query', name: 'q' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext({}, { q: 'typescript' }, '/search');
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.itemListElement[0].name).toBe('typescript');
+      });
+    });
+
+    describe('BreadcrumbList structure', () => {
+      it('should generate complete BreadcrumbList JSON-LD with itemListElement array', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/docs/:category/:slug',
+          params: ['category', 'slug'],
+          jsonLd: {
+            type: 'BreadcrumbList',
+            properties: {
+              itemListElement: {
+                expr: 'array',
+                items: [
+                  {
+                    expr: 'object',
+                    type: 'ListItem',
+                    properties: {
+                      position: { expr: 'lit', value: 1 },
+                      name: { expr: 'lit', value: 'Home' },
+                      item: { expr: 'lit', value: 'https://example.com/' },
+                    },
+                  },
+                  {
+                    expr: 'object',
+                    type: 'ListItem',
+                    properties: {
+                      position: { expr: 'lit', value: 2 },
+                      name: { expr: 'lit', value: 'Documentation' },
+                      item: { expr: 'lit', value: 'https://example.com/docs' },
+                    },
+                  },
+                  {
+                    expr: 'object',
+                    type: 'ListItem',
+                    properties: {
+                      position: { expr: 'lit', value: 3 },
+                      name: { expr: 'route', source: 'param', name: 'category' },
+                      item: {
+                        expr: 'concat',
+                        items: [
+                          { expr: 'lit', value: 'https://example.com/docs/' },
+                          { expr: 'route', source: 'param', name: 'category' },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext(
+          { category: 'guides', slug: 'getting-started' },
+          {},
+          '/docs/guides/getting-started'
+        );
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+
+        // Verify structure
+        expect(parsed['@context']).toBe('https://schema.org');
+        expect(parsed['@type']).toBe('BreadcrumbList');
+        expect(parsed.itemListElement).toHaveLength(3);
+
+        // Verify first item
+        expect(parsed.itemListElement[0]).toEqual({
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: 'https://example.com/',
+        });
+
+        // Verify second item
+        expect(parsed.itemListElement[1]).toEqual({
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Documentation',
+          item: 'https://example.com/docs',
+        });
+
+        // Verify third item (with dynamic values)
+        expect(parsed.itemListElement[2]).toEqual({
+          '@type': 'ListItem',
+          position: 3,
+          name: 'guides',
+          item: 'https://example.com/docs/guides',
+        });
+      });
+
+      it('should escape XSS in nested object/array values', () => {
+        // Arrange
+        const route: CompiledRouteDefinition = {
+          path: '/docs/:category',
+          params: ['category'],
+          jsonLd: {
+            type: 'BreadcrumbList',
+            properties: {
+              itemListElement: {
+                expr: 'array',
+                items: [
+                  {
+                    expr: 'object',
+                    type: 'ListItem',
+                    properties: {
+                      position: { expr: 'lit', value: 1 },
+                      name: { expr: 'lit', value: '</script><script>alert(1)</script>' },
+                      item: { expr: 'lit', value: 'https://example.com/' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext({ category: 'test' }, {}, '/docs/test');
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        // Should not contain unescaped </script>
+        expect(result).not.toContain('</script><script>');
+        // Should have only one legitimate </script> tag
+        const scriptCloseMatches = result.match(/<\/script>/g) || [];
+        expect(scriptCloseMatches.length).toBe(1);
+
+        // Should still be valid JSON
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        expect(() => JSON.parse(match![1])).not.toThrow();
+      });
+    });
+
+    describe('nested object without @type', () => {
+      it('should generate JSON-LD with plain nested object (no @type)', () => {
+        // Arrange
+        // Some JSON-LD properties don't need @type (e.g., address as plain object)
+        const route: CompiledRouteDefinition = {
+          path: '/contact',
+          params: [],
+          jsonLd: {
+            type: 'Organization',
+            properties: {
+              name: { expr: 'lit', value: 'Acme Corp' },
+              contactPoint: {
+                expr: 'object',
+                // No type specified - should be plain object without @type
+                properties: {
+                  telephone: { expr: 'lit', value: '+1-800-555-1234' },
+                  email: { expr: 'lit', value: 'contact@acme.example.com' },
+                },
+              },
+            },
+          },
+        };
+        const ctx = createMetaContext({}, {}, '/contact');
+
+        // Act
+        const result = generateMetaTags(route, ctx);
+
+        // Assert
+        const match = result.match(
+          /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+        );
+        expect(match).not.toBeNull();
+        const parsed = JSON.parse(match![1]);
+        expect(parsed.contactPoint).toEqual({
+          telephone: '+1-800-555-1234',
+          email: 'contact@acme.example.com',
+        });
+        // Should NOT have @type in contactPoint
+        expect(parsed.contactPoint['@type']).toBeUndefined();
+      });
+    });
+  });
 });

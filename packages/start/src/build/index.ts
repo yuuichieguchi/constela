@@ -25,6 +25,7 @@ import {
   type WidgetConfig,
 } from '../runtime/entry-server.js';
 import { bundleRuntime, bundleCSS } from './bundler.js';
+import { loadConfig } from '../config/config-loader.js';
 
 const DEFAULT_PUBLIC_DIR = 'public';
 
@@ -744,7 +745,8 @@ async function renderPageToHtml(
   runtimePath?: string,
   cssPath?: string,
   externalImports?: Record<string, string>,
-  widgets?: CompiledWidget[]
+  widgets?: CompiledWidget[],
+  lang?: string
 ): Promise<string> {
   // Normalize the view to handle legacy expression formats
   const normalizedProgram: CompiledProgram = {
@@ -791,6 +793,9 @@ async function renderPageToHtml(
   }
   if (externalImports && Object.keys(externalImports).length > 0) {
     wrapOptions.importMap = externalImports;
+  }
+  if (lang) {
+    wrapOptions.lang = lang;
   }
 
   // Detect theme state from program (handle both string and cookie expression)
@@ -958,6 +963,14 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
   // We walk up from routesDir to find a reasonable project root
   const projectRoot = dirname(dirname(absoluteRoutesDir));
 
+  // Load config from constela.config.json in project root
+  // Note: We use projectRoot (derived from routesDir) instead of process.cwd()
+  // This ensures tests with temp directories can provide their own config
+  const config = await loadConfig(projectRoot);
+
+  // Merge seo.lang from config with options (options takes precedence)
+  const seoLang = options?.seo?.lang ?? config.seo?.lang;
+
   // Process each JSON page
   for (const route of jsonPages) {
     // Calculate relative paths
@@ -1035,7 +1048,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const program = await convertToCompiledProgram(processedPageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports, processedPageInfo.widgets);
+        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports, processedPageInfo.widgets, seoLang);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
@@ -1107,7 +1120,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports, pageInfo.widgets);
+      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports, pageInfo.widgets, seoLang);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });

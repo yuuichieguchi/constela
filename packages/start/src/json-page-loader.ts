@@ -52,7 +52,10 @@ export interface JsonPage {
     layout?: string;
     layoutProps?: Record<string, unknown>;
     layoutParams?: Record<string, Expression>;
+    title?: unknown;
     meta?: Record<string, unknown>;
+    canonical?: unknown;
+    jsonLd?: { type: string; properties: Record<string, unknown> };
   } | undefined;
   imports?: Record<string, string> | undefined;
   data?: Record<string, DataSource> | undefined;
@@ -836,8 +839,19 @@ export async function convertToCompiledProgram(pageInfo: PageInfo): Promise<Comp
       // Convert meta to CompiledExpression format
       program.route.meta = {};
       for (const [key, value] of Object.entries(page.route.meta)) {
-        program.route.meta[key] = { expr: 'lit', value } as CompiledProgram['route'] extends { meta?: Record<string, infer T> } ? T : never;
+        // If value is already an expression object, use it directly; otherwise wrap in lit
+        const isExpression = value && typeof value === 'object' && 'expr' in value;
+        program.route.meta[key] = (isExpression ? value : { expr: 'lit', value }) as CompiledProgram['route'] extends { meta?: Record<string, infer T> } ? T : never;
       }
+    }
+    if (page.route.title) {
+      program.route.title = page.route.title as CompiledProgram['route'] extends { title?: infer T } ? T : never;
+    }
+    if (page.route.canonical) {
+      program.route.canonical = page.route.canonical as CompiledProgram['route'] extends { canonical?: infer T } ? T : never;
+    }
+    if (page.route.jsonLd) {
+      program.route.jsonLd = page.route.jsonLd as CompiledProgram['route'] extends { jsonLd?: infer T } ? T : never;
     }
   }
 

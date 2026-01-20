@@ -293,4 +293,218 @@ describe('SEO lang attribute', () => {
       expect(() => wrapHtml('', '', undefined, { lang: 'pt-BR' })).not.toThrow();
     });
   });
+
+  // ==================== Extended BCP 47 Language Tag Support ====================
+  // These tests verify support for extended BCP 47 language tags beyond basic format.
+  // Reference: https://www.rfc-editor.org/rfc/rfc5646.html
+
+  describe('extended language subtags (extlang)', () => {
+    /**
+     * Extended language subtags (extlang) are 3-letter codes that follow
+     * the primary language subtag to provide more specific language identification.
+     * Format: language-extlang (e.g., zh-cmn for Mandarin Chinese)
+     */
+
+    it('should accept extended language subtag: zh-cmn (Mandarin Chinese)', () => {
+      // Arrange
+      const lang = 'zh-cmn';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-cmn"/);
+    });
+
+    it('should accept extended language subtag with script: zh-cmn-Hans (Simplified Mandarin)', () => {
+      // Arrange
+      const lang = 'zh-cmn-Hans';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-cmn-Hans"/);
+    });
+
+    it('should accept extended language subtag with script and region: zh-cmn-Hans-CN', () => {
+      // Arrange
+      const lang = 'zh-cmn-Hans-CN';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-cmn-Hans-CN"/);
+    });
+
+    it('should accept extended language subtag: zh-yue (Cantonese)', () => {
+      // Arrange
+      const lang = 'zh-yue';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-yue"/);
+    });
+
+    it('should accept extended language subtag: zh-gan (Gan Chinese)', () => {
+      // Arrange
+      const lang = 'zh-gan';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-gan"/);
+    });
+  });
+
+  describe('variant subtags', () => {
+    /**
+     * Variant subtags indicate dialects, orthographies, or other variations.
+     * Format: language-variant or language-region-variant
+     * Variants are 5-8 alphanumeric characters (or 4 characters starting with a digit).
+     */
+
+    it('should accept variant subtag: sl-rozaj (Resian dialect of Slovenian)', () => {
+      // Arrange
+      const lang = 'sl-rozaj';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="sl-rozaj"/);
+    });
+
+    it('should accept multiple variant subtags: sl-rozaj-biske (San Giorgio dialect of Resian)', () => {
+      // Arrange
+      const lang = 'sl-rozaj-biske';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="sl-rozaj-biske"/);
+    });
+
+    it('should accept variant subtag: de-CH-1901 (German, Swiss, traditional orthography)', () => {
+      // Arrange - variant starting with digit (4 chars)
+      const lang = 'de-CH-1901';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="de-CH-1901"/);
+    });
+
+    it('should accept variant subtag: de-1996 (German, new orthography)', () => {
+      // Arrange - variant without region
+      const lang = 'de-1996';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="de-1996"/);
+    });
+
+    it('should accept variant subtag: en-scotland (Scottish Standard English)', () => {
+      // Arrange - variant with 8 characters
+      const lang = 'en-scotland';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="en-scotland"/);
+    });
+  });
+
+  describe('extension subtags', () => {
+    /**
+     * Extension subtags provide additional information about the language tag.
+     * Format: language-extension where extension starts with a singleton letter
+     * followed by subtags (e.g., -u- for Unicode locale extensions).
+     */
+
+    it('should accept Unicode locale extension: de-DE-u-co-phonebk (German with phonebook collation)', () => {
+      // Arrange
+      const lang = 'de-DE-u-co-phonebk';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="de-DE-u-co-phonebk"/);
+    });
+
+    it('should accept Unicode locale extension: ja-u-ca-japanese (Japanese with Japanese calendar)', () => {
+      // Arrange
+      const lang = 'ja-u-ca-japanese';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="ja-u-ca-japanese"/);
+    });
+
+    it('should accept Unicode locale extension: en-US-u-hc-h12 (US English with 12-hour time)', () => {
+      // Arrange
+      const lang = 'en-US-u-hc-h12';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="en-US-u-hc-h12"/);
+    });
+
+    it('should accept transformed extension: ja-t-it (Japanese transliterated from Italian)', () => {
+      // Arrange - t singleton for transformed content
+      const lang = 'ja-t-it';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="ja-t-it"/);
+    });
+
+    it('should accept multiple extension subtags: zh-Hans-CN-u-co-pinyin-nu-latn', () => {
+      // Arrange - multiple Unicode extension keys
+      const lang = 'zh-Hans-CN-u-co-pinyin-nu-latn';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="zh-Hans-CN-u-co-pinyin-nu-latn"/);
+    });
+  });
+
+  describe('complex BCP 47 language tags', () => {
+    /**
+     * Complex tags combining multiple subtag types.
+     */
+
+    it('should accept complex tag with extlang, script, region, and variant', () => {
+      // Arrange - sr-Latn-RS-ijekavsk (Serbian, Latin, Serbia, Ijekavian pronunciation)
+      const lang = 'sr-Latn-RS-ijekavsk';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="sr-Latn-RS-ijekavsk"/);
+    });
+
+    it('should accept private use subtag: en-x-custom', () => {
+      // Arrange - x singleton for private use
+      const lang = 'en-x-custom';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="en-x-custom"/);
+    });
+
+    it('should accept grandfathered tag: i-klingon', () => {
+      // Arrange - grandfathered irregular tag
+      const lang = 'i-klingon';
+
+      // Act & Assert
+      expect(() => wrapHtml('', '', undefined, { lang })).not.toThrow();
+      const result = wrapHtml('', '', undefined, { lang });
+      expect(result).toMatch(/<html[^>]*lang="i-klingon"/);
+    });
+  });
 });
