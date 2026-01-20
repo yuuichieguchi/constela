@@ -669,6 +669,68 @@ Access route params in expressions with `{ "expr": "route", "name": "id" }`.
 - `{ "expr": "route", "name": "", "source": "path" }` - Current path
 - `{ "expr": "concat", "items": [...] }` - Concatenate multiple expressions
 
+#### Canonical URL
+
+Set canonical URL via `route.canonical`:
+
+```json
+{
+  "route": {
+    "path": "/posts/:slug",
+    "canonical": {
+      "expr": "bin",
+      "op": "+",
+      "left": { "expr": "lit", "value": "https://example.com" },
+      "right": { "expr": "route", "source": "path" }
+    }
+  }
+}
+```
+
+**Output (for `/posts/hello-world`):**
+```html
+<link rel="canonical" href="https://example.com/posts/hello-world">
+```
+
+#### JSON-LD Structured Data
+
+Add structured data via `route.jsonLd`:
+
+```json
+{
+  "route": {
+    "path": "/posts/:slug",
+    "jsonLd": {
+      "type": "Article",
+      "properties": {
+        "headline": { "expr": "route", "name": "slug", "source": "param" },
+        "author": {
+          "expr": "object",
+          "type": "Person",
+          "properties": {
+            "name": { "expr": "lit", "value": "John Doe" }
+          }
+        },
+        "datePublished": { "expr": "lit", "value": "2024-01-15" }
+      }
+    }
+  }
+}
+```
+
+**Output:**
+```html
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"hello-world","author":{"@type":"Person","name":"John Doe"},"datePublished":"2024-01-15"}
+</script>
+```
+
+**JSON-LD features:**
+- Nested objects with `{ "expr": "object", "type": "Person", "properties": {...} }`
+- Arrays with `{ "expr": "array", "items": [...] }`
+- Dynamic values using any expression type
+- XSS protection (automatically escapes `</script>` and other dangerous sequences)
+
 ### Imports
 
 Import external JSON data files:
@@ -913,6 +975,26 @@ export default {
 ## Full-Stack Development (via @constela/start)
 
 `@constela/start` provides a complete framework for building Constela applications:
+
+### Configuration
+
+Configure your application via `constela.config.json`:
+
+#### HTML lang Attribute
+
+Set the `lang` attribute on `<html>`:
+
+```json
+{
+  "seo": {
+    "lang": "ja"
+  }
+}
+```
+
+**Output:** `<html lang="ja">`
+
+Supports all BCP 47 language tags including extended forms like `zh-Hans-CN`, `de-DE-u-co-phonebk`.
 
 ### Dev Server
 
