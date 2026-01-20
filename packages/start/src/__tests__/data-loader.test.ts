@@ -460,6 +460,58 @@ author:
       // Frontmatter slug should take priority over parent directory name
       expect(result.slug).toBe('custom-override');
     });
+
+    // ==================== Non-index.mdx Slug Generation (Directory Path Preservation) ====================
+
+    it('should include directory path in slug for non-index file in subdirectory', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'core/installation.mdx');
+
+      // Assert
+      // For core/installation.mdx, slug should be 'core/installation' (preserve directory path)
+      // not just 'installation' (filename only)
+      expect(result.slug).toBe('core/installation');
+    });
+
+    it('should include full directory path in slug for non-index file in deeply nested directory', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'docs/api/core/getting-started.mdx');
+
+      // Assert
+      // For docs/api/core/getting-started.mdx, slug should be 'docs/api/core/getting-started'
+      // (full directory path preserved)
+      expect(result.slug).toBe('docs/api/core/getting-started');
+    });
+
+    it('should use just filename as slug for non-index file at root level', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'introduction.mdx');
+
+      // Assert
+      // For root level introduction.mdx, slug should be 'introduction' (no directory prefix)
+      expect(result.slug).toBe('introduction');
+    });
+
+    it('should allow frontmatter slug to override directory-based slug for non-index file', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\nslug: custom-override\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'core/installation.mdx');
+
+      // Assert
+      // Frontmatter slug should take priority over directory-based slug
+      expect(result.slug).toBe('custom-override');
+    });
   });
 });
 

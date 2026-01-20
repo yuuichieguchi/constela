@@ -394,7 +394,9 @@ export async function transformMdx(
       const dir = dirname(file);
       slug = dir === '.' ? 'index' : basename(dir);
     } else {
-      slug = filename;
+      // For non-index files, include directory path
+      const dir = dirname(file);
+      slug = dir === '.' ? filename : `${dir}/${filename}`;
     }
   }
 

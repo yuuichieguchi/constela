@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.3
+
+### Patch Changes
+
+- fix(start): non-index.mdx files now preserve directory path in slug
+
 ## 1.8.2
 
 ### Patch Changes

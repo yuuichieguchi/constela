@@ -119,8 +119,8 @@ describe('transformMdx (new signature)', () => {
       const { transformMdx } = await import('../data/loader.js');
       const result = await transformMdx(content, file);
 
-      // Assert
-      expect(result.slug).toBe('my-post');
+      // Assert - New behavior: non-index files include directory path in slug
+      expect(result.slug).toBe('content/blog/my-post');
     });
 
     it('should handle deeply nested file paths for slug generation', async () => {
@@ -132,8 +132,8 @@ describe('transformMdx (new signature)', () => {
       const { transformMdx } = await import('../data/loader.js');
       const result = await transformMdx(content, file);
 
-      // Assert
-      expect(result.slug).toBe('deep-post');
+      // Assert - New behavior: non-index files include directory path in slug
+      expect(result.slug).toBe('content/blog/2024/01/deep-post');
     });
   });
 
@@ -187,10 +187,10 @@ title: With Components
       const { transformMdx } = await import('../data/loader.js');
       const result = await transformMdx(content, file);
 
-      // Assert
+      // Assert - New behavior: non-index files include directory path in slug
       expect(result.frontmatter).toEqual({});
       expect(result.content).toBeDefined();
-      expect(result.slug).toBe('no-frontmatter');
+      expect(result.slug).toBe('content/no-frontmatter');
     });
 
     it('should preserve raw content in result', async () => {
