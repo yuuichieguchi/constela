@@ -207,6 +207,49 @@ export function extractMdxContentSlot(
   return { 'mdx-content': (item as { content: ViewNode }).content };
 }
 
+/**
+ * Extract MDX content slot and matched item for data binding.
+ *
+ * This function is used in development mode to:
+ * 1. Extract the MDX content for layout slot composition
+ * 2. Return the matched item so it can be bound to the data source for data expression resolution
+ *
+ * @param loadedData - The loaded data from the page
+ * @param dataSourceName - The name of the data source (e.g., 'docs')
+ * @param routeParams - Route parameters containing the slug
+ * @returns Object with slot and matchedItem, or undefined if no match
+ */
+export function extractMdxContentSlotWithData(
+  loadedData: Record<string, unknown>,
+  dataSourceName: string,
+  routeParams: Record<string, string>
+): { slot: Record<string, ViewNode>; matchedItem: unknown } | undefined {
+  const dataSource = loadedData[dataSourceName];
+  if (!Array.isArray(dataSource)) {
+    return undefined;
+  }
+
+  // Default to 'index' for empty slug (e.g., /docs -> index.mdx)
+  const slug = routeParams['slug'] || 'index';
+
+  const item = dataSource.find(
+    (entry: unknown) =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      'slug' in entry &&
+      (entry as { slug: unknown }).slug === slug
+  );
+
+  if (!item || typeof item !== 'object' || !('content' in item)) {
+    return undefined;
+  }
+
+  return {
+    slot: { 'mdx-content': (item as { content: ViewNode }).content },
+    matchedItem: item,
+  };
+}
+
 // ==================== DevServer Implementation ====================
 
 /**
@@ -352,6 +395,9 @@ export async function createDevServer(
 
               // Get widgets from pageInfo
               const widgets: WidgetConfig[] = pageInfo.widgets.map(w => ({ id: w.id, program: w.program }));
+              // Extract MDX content slot and matched item for data binding
+              const mdxResult = extractMdxContentSlotWithData(pageInfo.loadedData, 'docs', match.params);
+
               if (program.route?.layout && layoutResolver) {
                 const layoutProgram = await layoutResolver.getLayout(program.route.layout);
                 if (layoutProgram) {
@@ -361,8 +407,8 @@ export async function createDevServer(
                     // composeLayoutWithPage handles both array and Record formats for actions
                     // Pass layoutParams from page route to resolve param expressions in layout
                     const layoutParams = program.route?.layoutParams;
-                    // Extract MDX content slot - look for 'docs' data source
-                    const slots = extractMdxContentSlot(pageInfo.loadedData, 'docs', match.params);
+                    // Extract MDX content slot from the result
+                    const slots = mdxResult?.slot;
                     composedProgram = composeLayoutWithPage(
                       compiledLayout as unknown as import('@constela/compiler').CompiledProgram,
                       program,
@@ -381,6 +427,16 @@ export async function createDevServer(
                     }
                   }
                 }
+              }
+
+              // Bind matched item to data source for data expressions (works with or without layout)
+              // This enables data expressions like { expr: "data", "name": "docs", "path": "frontmatter.title" }
+              if (mdxResult?.matchedItem) {
+                const existingImportData = (composedProgram as unknown as { importData?: Record<string, unknown> }).importData ?? {};
+                (composedProgram as unknown as { importData: Record<string, unknown> }).importData = {
+                  ...existingImportData,
+                  docs: mdxResult.matchedItem,  // Bind single matched item instead of array
+                };
               }
 
               // Parse cookies from request headers

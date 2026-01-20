@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.5
+
+### Patch Changes
+
+- fix(start): dev server now correctly binds matched MDX item for data expressions
+
 ## 1.8.4
 
 ### Patch Changes
