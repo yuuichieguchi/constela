@@ -10,7 +10,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { basename, dirname, extname, join } from 'node:path';
 import fg from 'fast-glob';
 import type { CompiledNode } from '@constela/compiler';
 import type { DataSource, StaticPathsDefinition, Expression, ComponentsRef } from '@constela/core';
@@ -384,9 +384,19 @@ export async function transformMdx(
 
   // Generate slug (frontmatter priority)
   const fmSlug = frontmatter['slug'];
-  const slug = typeof fmSlug === 'string'
-    ? fmSlug
-    : basename(file, extname(file));
+  let slug: string;
+  if (typeof fmSlug === 'string') {
+    slug = fmSlug;
+  } else {
+    const filename = basename(file, extname(file));
+    if (filename === 'index') {
+      // For index.mdx, use parent directory name
+      const dir = dirname(file);
+      slug = dir === '.' ? 'index' : basename(dir);
+    } else {
+      slug = filename;
+    }
+  }
 
   return {
     file,

@@ -408,6 +408,58 @@ author:
       // Assert
       expect(result.slug).toBe('custom-slug');
     });
+
+    // ==================== Nested index.mdx Slug Generation ====================
+
+    it('should use parent directory name as slug for index.mdx in subdirectory', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'core/index.mdx');
+
+      // Assert
+      // For core/index.mdx, slug should be 'core' (parent directory name)
+      // not 'index' (filename without extension)
+      expect(result.slug).toBe('core');
+    });
+
+    it('should keep slug as index for index.mdx at root level', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'index.mdx');
+
+      // Assert
+      // For root index.mdx, slug should remain 'index' since there's no parent directory
+      expect(result.slug).toBe('index');
+    });
+
+    it('should use immediate parent directory name as slug for deeply nested index.mdx', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'docs/api/core/index.mdx');
+
+      // Assert
+      // For docs/api/core/index.mdx, slug should be 'core' (immediate parent)
+      // not 'index', 'api', or 'docs'
+      expect(result.slug).toBe('core');
+    });
+
+    it('should allow frontmatter slug to override parent directory name for index.mdx', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\nslug: custom-override\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'core/index.mdx');
+
+      // Assert
+      // Frontmatter slug should take priority over parent directory name
+      expect(result.slug).toBe('custom-override');
+    });
   });
 });
 

@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.2
+
+### Patch Changes
+
+- fix(start): nested index.mdx now uses parent directory name as slug
+
 ## 1.8.1
 
 ### Patch Changes
