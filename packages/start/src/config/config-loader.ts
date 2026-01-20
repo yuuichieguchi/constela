@@ -16,6 +16,11 @@ export interface ConstelaConfigFile {
     port?: number;
     host?: string;
   };
+  /** SEO settings */
+  seo?: {
+    /** HTML lang attribute (e.g., 'ja', 'en', 'zh-CN') */
+    lang?: string;
+  };
 }
 
 export interface CLIOptions {

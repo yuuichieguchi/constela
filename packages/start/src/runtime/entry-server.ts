@@ -17,6 +17,8 @@ export interface SSRContext {
 
 export interface WrapHtmlOptions {
   theme?: 'dark' | 'light';
+  /** HTML lang attribute for SEO */
+  lang?: string;
   /** Import map entries for resolving bare module specifiers */
   importMap?: Record<string, string>;
   /** Path to bundled runtime for production builds. When provided, replaces @constela/runtime imports and excludes importmap. */
@@ -278,6 +280,15 @@ export function wrapHtml(
   head?: string,
   options?: WrapHtmlOptions
 ): string {
+  // Build lang attribute with validation
+  let langAttr = '';
+  if (options?.lang) {
+    // Validate lang to prevent injection attacks (BCP 47 language tag format)
+    if (!/^[a-zA-Z]{2,3}(-[a-zA-Z]{4})?(-[a-zA-Z]{2}|-[0-9]{3})?$/.test(options.lang)) {
+      throw new Error(`Invalid lang: ${options.lang}. Expected BCP 47 language tag (e.g., 'en', 'ja', 'en-US', 'zh-Hans-CN').`);
+    }
+    langAttr = ` lang="${options.lang}"`;
+  }
   // Determine html class: use defaultTheme if set, otherwise fall back to theme option
   const htmlClass = options?.defaultTheme === 'dark' || options?.theme === 'dark' ? ' class="dark"' : '';
 
@@ -345,7 +356,7 @@ export function wrapHtml(
   }
 
   return `<!DOCTYPE html>
-<html${htmlClass}>
+<html${langAttr}${htmlClass}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -415,6 +426,41 @@ export function evaluateMetaExpression(
 }
 
 /**
+ * Evaluates a compiled expression for JSON-LD property values.
+ * Unlike evaluateMetaExpression, this preserves the original types
+ * (number, boolean, null) for proper JSON serialization.
+ */
+function evaluateJsonLdExpression(
+  expr: CompiledExpression,
+  ctx: MetaContext
+): unknown {
+  switch (expr.expr) {
+    case 'lit':
+      // Preserve the original type (number, boolean, null, string)
+      return expr.value;
+    case 'route':
+      if (expr.source === 'param') {
+        return ctx.params[expr.name] ?? '';
+      } else if (expr.source === 'query') {
+        return ctx.query[expr.name] ?? '';
+      } else if (expr.source === 'path') {
+        return ctx.path;
+      }
+      return '';
+    case 'bin':
+      if (expr.op === '+') {
+        return String(evaluateJsonLdExpression(expr.left, ctx)) +
+               String(evaluateJsonLdExpression(expr.right, ctx));
+      }
+      return '';
+    case 'concat':
+      return expr.items.map(item => String(evaluateJsonLdExpression(item, ctx))).join('');
+    default:
+      return '';
+  }
+}
+
+/**
  * Generates HTML meta tags from route definition.
  */
 export function generateMetaTags(
@@ -451,6 +497,32 @@ export function generateMetaTags(
         tags.push(`<meta name="${key}" content="${escapedValue}">`);
       }
     }
+  }
+
+  // Generate canonical link tag
+  if (route.canonical) {
+    const canonicalValue = evaluateMetaExpression(route.canonical, ctx);
+    if (canonicalValue) {
+      tags.push(`<link rel="canonical" href="${escapeHtmlForMeta(canonicalValue)}">`);
+    }
+  }
+
+  // Generate JSON-LD script tag
+  if (route.jsonLd) {
+    const jsonLdObject: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': route.jsonLd.type,
+    };
+
+    // Evaluate and add all properties (preserving types for JSON-LD)
+    for (const [key, expr] of Object.entries(route.jsonLd.properties)) {
+      const value = evaluateJsonLdExpression(expr, ctx);
+      jsonLdObject[key] = value;
+    }
+
+    // Serialize to JSON and escape </script> to prevent XSS
+    const jsonString = escapeJsonForScript(JSON.stringify(jsonLdObject));
+    tags.push(`<script type="application/ld+json">${jsonString}</script>`);
   }
 
   return tags.join('\n');

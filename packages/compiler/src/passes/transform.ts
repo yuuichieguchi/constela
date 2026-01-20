@@ -37,6 +37,20 @@ export interface CompiledRouteDefinition {
   layout?: string;
   layoutParams?: Record<string, Expression>;
   meta?: Record<string, CompiledExpression>;
+  /** Canonical URL for SEO */
+  canonical?: CompiledExpression;
+  /** JSON-LD structured data for SEO */
+  jsonLd?: CompiledJsonLdDefinition;
+}
+
+/**
+ * Compiled JSON-LD structured data definition
+ */
+export interface CompiledJsonLdDefinition {
+  /** Schema.org type (e.g., "Article", "WebPage", "Organization") */
+  type: string;
+  /** Compiled properties for the JSON-LD object */
+  properties: Record<string, CompiledExpression>;
 }
 
 export interface CompiledLifecycleHooks {
@@ -1264,7 +1278,7 @@ function extractRouteParams(path: string): string[] {
  * Transforms AST RouteDefinition into CompiledRouteDefinition
  */
 function transformRouteDefinition(
-  route: { path: string; title?: Expression; layout?: string; layoutParams?: Record<string, Expression>; meta?: Record<string, Expression> },
+  route: { path: string; title?: Expression; layout?: string; layoutParams?: Record<string, Expression>; meta?: Record<string, Expression>; canonical?: Expression; jsonLd?: { type: string; properties: Record<string, Expression> } },
   ctx: TransformContext
 ): CompiledRouteDefinition {
   const compiled: CompiledRouteDefinition = {
@@ -1291,6 +1305,21 @@ function transformRouteDefinition(
     for (const [key, value] of Object.entries(route.meta)) {
       compiled.meta[key] = transformExpression(value, ctx);
     }
+  }
+
+  if (route.canonical) {
+    compiled.canonical = transformExpression(route.canonical, ctx);
+  }
+
+  if (route.jsonLd) {
+    const compiledProperties: Record<string, CompiledExpression> = {};
+    for (const [key, value] of Object.entries(route.jsonLd.properties)) {
+      compiledProperties[key] = transformExpression(value, ctx);
+    }
+    compiled.jsonLd = {
+      type: route.jsonLd.type,
+      properties: compiledProperties,
+    };
   }
 
   return compiled;

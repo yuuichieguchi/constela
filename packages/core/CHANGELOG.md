@@ -1,5 +1,16 @@
 # @constela/core
 
+## 0.13.0
+
+### Minor Changes
+
+- feat: add SEO features (lang attribute, canonical URL, JSON-LD)
+
+  - Add `seo.lang` config option to output `<html lang="...">` attribute
+  - Add `canonical` expression to RouteDefinition for `<link rel="canonical">` generation
+  - Add `jsonLd` structured data to RouteDefinition for `<script type="application/ld+json">` generation
+  - Include XSS protection for all SEO features (BCP 47 validation for lang, HTML escaping for canonical and JSON-LD)
+
 ## 0.12.3
 
 ### Patch Changes

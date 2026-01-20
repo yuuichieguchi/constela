@@ -1,5 +1,13 @@
 # @constela/server
 
+## 9.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.13.0
+  - @constela/compiler@0.12.0
+
 ## 8.0.1
 
 ### Patch Changes

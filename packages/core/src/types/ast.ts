@@ -724,6 +724,18 @@ export interface StaticPathsDefinition {
   params: Record<string, Expression>;
 }
 
+// ==================== JSON-LD Definition ====================
+
+/**
+ * JSON-LD structured data definition for SEO
+ */
+export interface JsonLdDefinition {
+  /** Schema.org type (e.g., "Article", "WebPage", "Organization") */
+  type: string;
+  /** Properties to include in the JSON-LD object */
+  properties: Record<string, Expression>;
+}
+
 // ==================== Route Definition ====================
 
 /**
@@ -736,6 +748,10 @@ export interface RouteDefinition {
   layoutParams?: Record<string, Expression>;
   meta?: Record<string, Expression>;
   getStaticPaths?: StaticPathsDefinition;
+  /** Canonical URL for SEO (supports expressions for dynamic routes) */
+  canonical?: Expression;
+  /** JSON-LD structured data for SEO */
+  jsonLd?: JsonLdDefinition;
 }
 
 // ==================== Lifecycle Hooks ====================

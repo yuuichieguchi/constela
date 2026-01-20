@@ -1,5 +1,13 @@
 # @constela/router
 
+## 15.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.12.0
+  - @constela/runtime@0.16.5
+
 ## 14.0.0
 
 ### Patch Changes
