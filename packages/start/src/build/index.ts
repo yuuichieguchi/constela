@@ -742,6 +742,7 @@ async function processLayouts(
 async function renderPageToHtml(
   program: CompiledProgram,
   params: Record<string, string>,
+  routePath: string,
   runtimePath?: string,
   cssPath?: string,
   externalImports?: Record<string, string>,
@@ -755,7 +756,7 @@ async function renderPageToHtml(
   };
 
   const ctx: SSRContext = {
-    url: '/',
+    url: routePath,
     params,
     query: new URLSearchParams(),
   };
@@ -766,14 +767,14 @@ async function renderPageToHtml(
   const routeContext = {
     params,
     query: {} as Record<string, string>,
-    path: '/',
+    path: routePath,
   };
 
   // Generate meta tags from route definition
   const metaTags = generateMetaTags(normalizedProgram.route, {
     params,
     query: {},
-    path: '/',
+    path: routePath,
   });
 
   // Generate CSS link tag if cssPath is provided
@@ -1017,6 +1018,13 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const params = pathEntry.params;
         const outputPath = paramsToOutputPath(route.pattern, params, outDir);
 
+        // Build route path from params (needed for canonical URLs in meta tags)
+        let routePath = route.pattern;
+        for (const [key, value] of Object.entries(params)) {
+          routePath = routePath.replace(`:${key}`, value);
+          routePath = routePath.replace('*', value);
+        }
+
         // Bind current item data to the data source name BEFORE processLayouts
         // This allows extractMdxContentSlot to get the current item's content
         // and { "expr": "data", ... } to resolve to the current item
@@ -1048,7 +1056,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
         const program = await convertToCompiledProgram(processedPageInfo);
 
         // Render to HTML
-        const html = await renderPageToHtml(program, params, runtimePath, cssPath, processedPageInfo.page.externalImports, processedPageInfo.widgets, seoLang);
+        const html = await renderPageToHtml(program, params, routePath, runtimePath, cssPath, processedPageInfo.page.externalImports, processedPageInfo.widgets, seoLang);
 
         // Write file
         await mkdir(dirname(outputPath), { recursive: true });
@@ -1080,12 +1088,6 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
           }
         }
 
-        // Build route path from params
-        let routePath = route.pattern;
-        for (const [key, value] of Object.entries(params)) {
-          routePath = routePath.replace(`:${key}`, value);
-          routePath = routePath.replace('*', value);
-        }
         routes.push(routePath);
       }
     } else {
@@ -1096,11 +1098,11 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       // Load page info
       let pageInfo = await loader.loadPage(relPathFromProjectRoot);
 
-      // Determine output path: use route.path if defined, otherwise use file path
+      // Determine output path and route path for canonical URLs
       let outputPath: string;
+      const routePath = pageInfo.page.route?.path ?? route.pattern;
       if (pageInfo.page.route?.path) {
         // Use route.path to determine output directory
-        const routePath = pageInfo.page.route.path;
         const relativePath = routePath.startsWith('/') ? routePath.slice(1) : routePath;
         if (relativePath === '' || relativePath === '/') {
           outputPath = join(outDir, 'index.html');
@@ -1120,7 +1122,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
       const program = await convertToCompiledProgram(pageInfo);
 
       // Render to HTML
-      const html = await renderPageToHtml(program, {}, runtimePath, cssPath, pageInfo.page.externalImports, pageInfo.widgets, seoLang);
+      const html = await renderPageToHtml(program, {}, routePath, runtimePath, cssPath, pageInfo.page.externalImports, pageInfo.widgets, seoLang);
 
       // Write file
       await mkdir(dirname(outputPath), { recursive: true });

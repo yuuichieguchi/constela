@@ -662,6 +662,95 @@ describe('SEO integration in build process', () => {
       expect(htmlContent).toContain('"@type":"WebPage"');
     });
 
+    it('should output canonical URL with dynamic route path using source: path', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+
+      // Create examples routes directory
+      const examplesRouteDir = join(routesDir, 'examples');
+      await mkdir(examplesRouteDir, { recursive: true });
+
+      // Dynamic page with canonical URL using { expr: 'route', source: 'path' }
+      // This should generate canonical like "https://constela.dev/examples/counter"
+      // NOT "https://constela.dev/" (which is the current bug)
+      //
+      // Bug context:
+      // - build/index.ts renderPageToHtml() passes path: '/' to generateMetaTags
+      // - This causes { expr: 'route', source: 'path' } to always return '/'
+      // - Expected: path should be the resolved route path (e.g., '/examples/counter')
+      const dynamicPageWithPathCanonical = {
+        version: '1.0',
+        route: {
+          path: '/examples/:slug',
+          canonical: {
+            expr: 'bin',
+            op: '+',
+            left: { expr: 'lit', value: 'https://constela.dev' },
+            right: { expr: 'route', source: 'path' },
+          },
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: {},
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Example content' } },
+          ],
+        },
+      };
+
+      await writeFile(
+        join(examplesRouteDir, '[slug].json'),
+        JSON.stringify(dynamicPageWithPathCanonical, null, 2)
+      );
+
+      // Create .paths.ts file with static paths (simpler than data source resolution)
+      // The loadGetStaticPaths function parses this using regex
+      const pathsContent = `
+export const getStaticPaths = () => ({
+  paths: [
+    { params: { slug: 'counter' } },
+    { params: { slug: 'todo' } },
+  ],
+});
+`;
+      await writeFile(join(examplesRouteDir, '[slug].paths.ts'), pathsContent);
+
+      // Act
+      await build({
+        outDir,
+        routesDir,
+        layoutsDir,
+      });
+
+      // Assert - check canonical URL contains the full dynamic path
+      const counterHtml = await readFile(
+        join(outDir, 'examples', 'counter', 'index.html'),
+        'utf-8'
+      );
+      const todoHtml = await readFile(
+        join(outDir, 'examples', 'todo', 'index.html'),
+        'utf-8'
+      );
+
+      // The canonical URL should include the full path "/examples/counter"
+      // Currently FAILING because path is always '/' in MetaContext
+      expect(counterHtml).toContain(
+        '<link rel="canonical" href="https://constela.dev/examples/counter">'
+      );
+      expect(todoHtml).toContain(
+        '<link rel="canonical" href="https://constela.dev/examples/todo">'
+      );
+
+      // Verify they are NOT using the root path (the bug behavior)
+      expect(counterHtml).not.toContain(
+        '<link rel="canonical" href="https://constela.dev/">'
+      );
+      expect(todoHtml).not.toContain(
+        '<link rel="canonical" href="https://constela.dev/">'
+      );
+    });
+
     it('should apply seo.lang with dark theme class together', async () => {
       // Arrange
       const { build } = await import('../../src/build/index.js');

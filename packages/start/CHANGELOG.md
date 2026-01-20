@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.8.1
+
+### Patch Changes
+
+- fix: dynamic route canonical URL now correctly uses resolved path
+
+  - Pass actual route path to generateMetaTags instead of hardcoded '/'
+  - Dynamic routes like /examples/:slug now generate correct canonical URLs
+  - { expr: 'route', source: 'path' } now evaluates to /examples/counter instead of /
+
 ## 1.8.0
 
 ### Minor Changes
