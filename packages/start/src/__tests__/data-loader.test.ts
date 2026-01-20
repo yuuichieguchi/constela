@@ -436,7 +436,7 @@ author:
       expect(result.slug).toBe('index');
     });
 
-    it('should use immediate parent directory name as slug for deeply nested index.mdx', async () => {
+    it('should use full directory path as slug for deeply nested index.mdx without basePath', async () => {
       // Arrange
       const content = '---\ntitle: Test\n---\n# Hello';
 
@@ -444,8 +444,21 @@ author:
       const result = await transformMdx(content, 'docs/api/core/index.mdx');
 
       // Assert
-      // For docs/api/core/index.mdx, slug should be 'core' (immediate parent)
-      // not 'index', 'api', or 'docs'
+      // Without basePath option, the full directory path is used as slug
+      // For docs/api/core/index.mdx -> 'docs/api/core'
+      expect(result.slug).toBe('docs/api/core');
+    });
+
+    it('should use relative directory name as slug for deeply nested index.mdx with basePath', async () => {
+      // Arrange
+      const content = '---\ntitle: Test\n---\n# Hello';
+
+      // Act
+      const result = await transformMdx(content, 'docs/api/core/index.mdx', { basePath: 'docs/api/' });
+
+      // Assert
+      // With basePath 'docs/api/', the relative directory path is used as slug
+      // For docs/api/core/index.mdx -> 'core' (relative to basePath)
       expect(result.slug).toBe('core');
     });
 
@@ -1039,6 +1052,298 @@ describe('Integration: Full SSG workflow', () => {
     expect(paths[0]?.params.slug).toBe('post-1');
     expect(paths[1]?.params.slug).toBe('post-2');
     expect(paths[0]?.data.frontmatter.title).toBe('First Post');
+  });
+});
+
+// ==================== Glob Base Path Extraction ====================
+
+describe('extractGlobBasePath', () => {
+  // This utility function extracts the static base path from a glob pattern
+  // e.g., 'content/reference/**/*.mdx' -> 'content/reference/'
+
+  it('should extract base path from pattern with ** glob', async () => {
+    // Arrange
+    const { extractGlobBasePath } = await import('../data/loader.js');
+    const pattern = 'content/reference/**/*.mdx';
+
+    // Act
+    const basePath = extractGlobBasePath(pattern);
+
+    // Assert
+    // 'content/reference/**/*.mdx' -> 'content/reference/'
+    expect(basePath).toBe('content/reference/');
+  });
+
+  it('should return empty string for pattern starting with **', async () => {
+    // Arrange
+    const { extractGlobBasePath } = await import('../data/loader.js');
+    const pattern = '**/*.mdx';
+
+    // Act
+    const basePath = extractGlobBasePath(pattern);
+
+    // Assert
+    // '**/*.mdx' -> '' (empty, no static prefix)
+    expect(basePath).toBe('');
+  });
+
+  it('should extract base path from single-level glob pattern', async () => {
+    // Arrange
+    const { extractGlobBasePath } = await import('../data/loader.js');
+    const pattern = 'docs/*.mdx';
+
+    // Act
+    const basePath = extractGlobBasePath(pattern);
+
+    // Assert
+    // 'docs/*.mdx' -> 'docs/'
+    expect(basePath).toBe('docs/');
+  });
+
+  it('should handle pattern with no glob characters', async () => {
+    // Arrange
+    const { extractGlobBasePath } = await import('../data/loader.js');
+    const pattern = 'content/reference/';
+
+    // Act
+    const basePath = extractGlobBasePath(pattern);
+
+    // Assert
+    // When there's no wildcard, there's no base path to extract
+    // 'content/reference/' -> '' (no wildcard means no base path)
+    expect(basePath).toBe('');
+  });
+
+  it('should handle pattern with glob at start of filename', async () => {
+    // Arrange
+    const { extractGlobBasePath } = await import('../data/loader.js');
+    const pattern = 'content/blog/*.md';
+
+    // Act
+    const basePath = extractGlobBasePath(pattern);
+
+    // Assert
+    // 'content/blog/*.md' -> 'content/blog/'
+    expect(basePath).toBe('content/blog/');
+  });
+});
+
+describe('slug generation with glob patterns', () => {
+  // These tests verify that when loading files via glob patterns,
+  // the slug is generated relative to the glob's base path, not the full file path
+
+  beforeEach(async () => {
+    const fs = await import('node:fs');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+  });
+
+  describe('non-index file with base path stripping', () => {
+    it('should generate slug relative to glob base path for nested file', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: Installation Guide\n---\n\n# Installation';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/core/installation.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/reference/core/installation.mdx
+      // Base path from pattern: content/reference/
+      // Expected slug: core/installation (base path stripped)
+      // NOT: content/reference/core/installation (full path)
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('core/installation');
+    });
+
+    it('should generate slug relative to glob base path for deeply nested file', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: API Reference\n---\n\n# API';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/runtime/api/client.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/reference/runtime/api/client.mdx
+      // Base path from pattern: content/reference/
+      // Expected slug: runtime/api/client
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('runtime/api/client');
+    });
+
+    it('should generate slug for file directly in base directory', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: Actions\n---\n\n# Actions';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/actions.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/reference/actions.mdx
+      // Base path from pattern: content/reference/
+      // Expected slug: actions (just the filename)
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('actions');
+    });
+  });
+
+  describe('index file with base path stripping', () => {
+    it('should generate slug as parent directory name relative to base path', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: Core Overview\n---\n\n# Core';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/core/index.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/reference/core/index.mdx
+      // Base path from pattern: content/reference/
+      // Expected slug: core (parent directory name relative to base)
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('core');
+    });
+
+    it('should generate slug for deeply nested index file', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: API Overview\n---\n\n# API';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/runtime/api/index.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/reference/runtime/api/index.mdx
+      // Base path from pattern: content/reference/
+      // Expected slug: runtime/api (parent path relative to base)
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('runtime/api');
+    });
+  });
+
+  describe('frontmatter slug override', () => {
+    it('should allow frontmatter slug to override base-path-relative slug', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'content/reference/**/*.mdx';
+      const mdxContent = '---\ntitle: Installation Guide\nslug: getting-started\n---\n\n# Installation';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/reference/core/installation.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // Frontmatter slug should take priority
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('getting-started');
+    });
+  });
+
+  describe('pattern without ** glob', () => {
+    it('should handle single-level glob pattern correctly', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = 'docs/*.mdx';
+      const mdxContent = '---\ntitle: Guide\n---\n\n# Guide';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'docs/installation.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: docs/installation.mdx
+      // Base path from pattern: docs/
+      // Expected slug: installation
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('installation');
+    });
+  });
+
+  describe('pattern starting with **', () => {
+    it('should use full path as slug when pattern starts with **', async () => {
+      // Arrange
+      const baseDir = '/project';
+      const pattern = '**/*.mdx';
+      const mdxContent = '---\ntitle: Guide\n---\n\n# Guide';
+
+      const fg = await import('fast-glob');
+      vi.mocked(fg.default).mockResolvedValue([
+        'content/docs/guide.mdx',
+      ]);
+
+      const fs = await import('node:fs');
+      vi.mocked(fs.readFileSync).mockReturnValue(mdxContent);
+
+      // Act
+      const result = await loadGlob(baseDir, pattern, 'mdx');
+
+      // Assert
+      // File: content/docs/guide.mdx
+      // Base path from pattern: '' (empty)
+      // Expected slug: content/docs/guide (full path preserved)
+      expect(result).toHaveLength(1);
+      expect((result[0] as { slug: string }).slug).toBe('content/docs/guide');
+    });
   });
 });
 

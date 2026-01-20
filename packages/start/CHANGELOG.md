@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.4
+
+### Patch Changes
+
+- fix(start): slug generation now correctly strips glob base path
+
 ## 1.8.3
 
 ### Patch Changes

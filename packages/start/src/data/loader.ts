@@ -354,6 +354,36 @@ export function loadComponentDefinitions(
   }
 }
 
+// ==================== Glob Utilities ====================
+
+/**
+ * Extract the static base path from a glob pattern.
+ * This is the portion of the pattern before the first wildcard.
+ *
+ * Examples:
+ * - 'content/reference/**\/*.mdx' -> 'content/reference/'
+ * - '**\/*.mdx' -> ''
+ * - 'docs/*.mdx' -> 'docs/'
+ * - 'single.mdx' -> '' (no wildcard)
+ */
+export function extractGlobBasePath(pattern: string): string {
+  const starIndex = pattern.indexOf('*');
+  if (starIndex === -1) {
+    return ''; // No wildcard, no base path
+  }
+
+  // Get the part before the first *
+  const beforeStar = pattern.substring(0, starIndex);
+
+  // Find the last / before the star to get the directory base
+  const lastSlash = beforeStar.lastIndexOf('/');
+  if (lastSlash === -1) {
+    return '';
+  }
+
+  return beforeStar.substring(0, lastSlash + 1); // Include trailing /
+}
+
 // ==================== Transform Functions ====================
 
 /**
@@ -362,7 +392,10 @@ export function loadComponentDefinitions(
 export async function transformMdx(
   content: string,
   file: string,
-  options?: { components?: Record<string, ComponentDef> }
+  options?: {
+    components?: Record<string, ComponentDef>;
+    basePath?: string;
+  }
 ): Promise<MdxGlobResult> {
   // Parse frontmatter using existing pattern
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
@@ -388,14 +421,20 @@ export async function transformMdx(
   if (typeof fmSlug === 'string') {
     slug = fmSlug;
   } else {
-    const filename = basename(file, extname(file));
+    // Strip base path from file for slug generation
+    const basePath = options?.basePath ?? '';
+    const relativePath = file.startsWith(basePath)
+      ? file.substring(basePath.length)
+      : file;
+
+    const filename = basename(relativePath, extname(relativePath));
     if (filename === 'index') {
-      // For index.mdx, use parent directory name
-      const dir = dirname(file);
-      slug = dir === '.' ? 'index' : basename(dir);
+      // For index.mdx, use parent directory name (full relative dir path)
+      const dir = dirname(relativePath);
+      slug = dir === '.' ? 'index' : dir;
     } else {
       // For non-index files, include directory path
-      const dir = dirname(file);
+      const dir = dirname(relativePath);
       slug = dir === '.' ? filename : `${dir}/${filename}`;
     }
   }
@@ -509,11 +548,15 @@ export async function loadGlob(
   const files = await fg(pattern, { cwd: baseDir });
 
   if (transform === 'mdx') {
+    const basePath = extractGlobBasePath(pattern);
     const results: MdxGlobResult[] = [];
     for (const file of files) {
       const fullPath = join(baseDir, file);
       const content = readFileSync(fullPath, 'utf-8');
-      const transformed = await transformMdx(content, file, options);
+      const transformed = await transformMdx(content, file, {
+        ...options,
+        basePath,
+      });
       results.push(transformed);
     }
     return results;
