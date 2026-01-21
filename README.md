@@ -43,7 +43,19 @@ This is not an accidental optimization, but a structural difference:
 
 ## Quick Start
 
-### Installation
+### Create a New Project
+
+The fastest way to get started with Constela:
+
+```bash
+npx create-constela my-app
+cd my-app
+npm run dev
+```
+
+Open http://localhost:3000 to see your app.
+
+### Manual Installation
 
 ```bash
 # Recommended: Full-stack development
@@ -1104,6 +1116,7 @@ export default { fetch: adapter.fetch };
 
 | Package | Version | Description |
 |---------|---------|-------------|
+| `create-constela` | 0.2.0 | CLI scaffolding tool (`npx create-constela my-app`) |
 | `@constela/core` | 0.8.0 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
 | `@constela/compiler` | 0.8.0 | 3-pass compiler: validate → analyze → transform, Style analysis |
 | `@constela/runtime` | 0.16.0 | DOM renderer, hydration, reactive signals, Style evaluation |
