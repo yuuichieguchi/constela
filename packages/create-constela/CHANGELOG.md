@@ -1,0 +1,13 @@
+# create-constela
+
+## 0.2.0
+
+### Minor Changes
+
+- feat: add create-constela scaffolding CLI
+
+  - Interactive prompts for project name and package manager
+  - Template-based project scaffolding
+  - Support for --list, --example, --template options
+  - Git initialization and dependency installation
+  - Path traversal security protection
