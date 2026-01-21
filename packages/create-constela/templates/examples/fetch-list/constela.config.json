@@ -1,3 +1,4 @@
 {
-  "routesDir": "src/routes"
+  "routesDir": "src/routes",
+  "css": "src/styles/globals.css"
 }

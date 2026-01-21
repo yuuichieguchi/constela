@@ -39,6 +39,10 @@ function getOutputFilename(filename: string): string {
     return '.gitignore';
   }
 
+  if (filename === 'npmrc') {
+    return '.npmrc';
+  }
+
   if (filename.endsWith('.template')) {
     return filename.slice(0, -'.template'.length);
   }
@@ -94,8 +98,8 @@ async function copyFileWithOptions(
   const destFilePath = join(destPath, outputFilename);
   const srcFilePath = join(srcPath, filename);
 
-  // For template files and gitignore, read content and process
-  if (filename.endsWith('.template') || filename === 'gitignore') {
+  // For template files, gitignore, and npmrc, read content and process
+  if (filename.endsWith('.template') || filename === 'gitignore' || filename === 'npmrc') {
     const content = await readFile(srcFilePath, 'utf-8');
     const processedContent = filename.endsWith('.template')
       ? substituteVariables(content, options)
