@@ -1436,7 +1436,6 @@ To test your Constela application:
 
 - [ ] Visual editor / playground
 - [ ] IDE extensions (VSCode, etc.)
-- [ ] More style system features (compound variants, responsive)
 
 ## License
 
