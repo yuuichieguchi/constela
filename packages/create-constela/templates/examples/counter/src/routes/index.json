@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "state": {
+    "count": { "type": "number", "initial": 0 }
+  },
+  "actions": [
+    {
+      "name": "increment",
+      "steps": [
+        { "do": "update", "target": "count", "operation": "increment" }
+      ]
+    },
+    {
+      "name": "decrement",
+      "steps": [
+        { "do": "update", "target": "count", "operation": "decrement" }
+      ]
+    },
+    {
+      "name": "reset",
+      "steps": [
+        { "do": "set", "target": "count", "value": { "expr": "lit", "value": 0 } }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      {
+        "kind": "element",
+        "tag": "h1",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Constela Counter" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "p",
+        "children": [
+          { "kind": "text", "value": { "expr": "lit", "value": "Count: " } },
+          { "kind": "text", "value": { "expr": "state", "name": "count" } }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "onClick": { "event": "click", "action": "decrement" }
+            },
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "-" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "onClick": { "event": "click", "action": "increment" }
+            },
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "+" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "onClick": { "event": "click", "action": "reset" }
+            },
+            "children": [
+              { "kind": "text", "value": { "expr": "lit", "value": "Reset" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
