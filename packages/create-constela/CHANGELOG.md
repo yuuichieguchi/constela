@@ -1,5 +1,11 @@
 # create-constela
 
+## 0.2.2
+
+### Patch Changes
+
+- fix: add CSS and @constela/start to fix dev server not serving node_modules
+
 ## 0.2.1
 
 ### Patch Changes
