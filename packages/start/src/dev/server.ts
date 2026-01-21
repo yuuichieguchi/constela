@@ -285,7 +285,10 @@ export async function createDevServer(
   if (css) {
     viteServer = await createViteServer({
       root: process.cwd(),
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'custom',
       logLevel: 'silent',
     });

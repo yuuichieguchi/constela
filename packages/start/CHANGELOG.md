@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.7
+
+### Patch Changes
+
+- fix(dev): disable Vite HMR to prevent WebSocket connection errors
+
 ## 1.8.6
 
 ### Patch Changes
