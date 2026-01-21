@@ -491,6 +491,9 @@ function hydrateChildren(
           hydrate(childNode, firstDomChild, ctx);
           domIndex += itemCount;
         }
+      } else {
+        // Empty array: still need to set up effect for future updates
+        hydrateEachEmpty(childNode as CompiledEachNode, parent, domChildren[domIndex] || null, ctx);
       }
     } else {
       // markdown, code, etc.
@@ -833,6 +836,215 @@ function hydrateIfWithoutDom(
   // Cleanup branch effects when the if node is destroyed
   ctx.cleanups.push(() => {
     for (const cleanup of branchCleanups) {
+      cleanup();
+    }
+  });
+}
+
+/**
+ * Hydrates an each node when initial items array is empty.
+ * Creates anchor and effect to render items when they are added.
+ */
+function hydrateEachEmpty(
+  node: CompiledEachNode,
+  parent: HTMLElement,
+  insertBefore: Node | null,
+  ctx: HydrateContext
+): void {
+  // Create an anchor comment for the each node
+  const anchor = document.createComment('each');
+  if (insertBefore) {
+    parent.insertBefore(anchor, insertBefore);
+  } else {
+    parent.appendChild(anchor);
+  }
+
+  const hasKey = !!node.key;
+
+  // For keyed rendering
+  let itemStateMap = new Map<unknown, HydrateItemState>();
+
+  // For non-keyed rendering
+  let currentNodes: Node[] = [];
+  let itemCleanups: (() => void)[] = [];
+
+  const effectCleanup = createEffect(() => {
+    // Read state to track dependencies
+    const items = evaluate(node.items, {
+      state: ctx.state,
+      locals: ctx.locals,
+      ...(ctx.imports && { imports: ctx.imports }),
+      ...(ctx.route && { route: ctx.route }),
+    }) as unknown[];
+
+    if (!hasKey || !node.key) {
+      // Non-keyed: re-render all
+      // Cleanup previous item effects
+      for (const cleanup of itemCleanups) {
+        cleanup();
+      }
+      itemCleanups = [];
+
+      // Remove old nodes
+      for (const oldNode of currentNodes) {
+        if (oldNode.parentNode) {
+          oldNode.parentNode.removeChild(oldNode);
+        }
+      }
+      currentNodes = [];
+
+      // Render new items
+      if (Array.isArray(items)) {
+        items.forEach((item, index) => {
+          const itemLocals: Record<string, unknown> = {
+            ...ctx.locals,
+            [node.as]: item,
+          };
+          if (node.index) {
+            itemLocals[node.index] = index;
+          }
+
+          const localCleanups: (() => void)[] = [];
+          const itemCtx: RenderContext = {
+            state: ctx.state,
+            actions: ctx.actions,
+            locals: itemLocals,
+            cleanups: localCleanups,
+            ...(ctx.imports && { imports: ctx.imports }),
+          };
+
+          const itemNode = render(node.body, itemCtx);
+          currentNodes.push(itemNode);
+          itemCleanups.push(...localCleanups);
+
+          // Insert after anchor or last item
+          if (anchor.parentNode) {
+            let refNode: Node | null = anchor.nextSibling;
+            if (currentNodes.length > 1) {
+              const lastExisting = currentNodes[currentNodes.length - 2];
+              if (lastExisting) {
+                refNode = lastExisting.nextSibling;
+              }
+            }
+            anchor.parentNode.insertBefore(itemNode, refNode);
+          }
+        });
+      }
+      return;
+    }
+
+    // Key-based diffing
+    const newItemStateMap = new Map<unknown, HydrateItemState>();
+    const newNodes: Node[] = [];
+    const seenKeys = new Set<unknown>();
+
+    if (Array.isArray(items)) {
+      items.forEach((item, index) => {
+        // Evaluate key for this item
+        const tempLocals: Record<string, unknown> = {
+          ...ctx.locals,
+          [node.as]: item,
+          ...(node.index ? { [node.index]: index } : {}),
+        };
+        const keyValue = evaluate(node.key!, {
+          state: ctx.state,
+          locals: tempLocals,
+          ...(ctx.imports && { imports: ctx.imports }),
+          ...(ctx.route && { route: ctx.route }),
+        });
+
+        // Duplicate key warning
+        if (seenKeys.has(keyValue)) {
+          if (typeof process !== 'undefined' && process.env?.['NODE_ENV'] !== 'production') {
+            console.warn(`Duplicate key "${keyValue}" in each loop. Keys should be unique.`);
+          }
+        }
+        seenKeys.add(keyValue);
+
+        // Check if we have existing state for this key
+        const existingState = itemStateMap.get(keyValue);
+
+        if (existingState) {
+          // Reuse existing node
+          existingState.itemSignal.set(item);
+          existingState.indexSignal.set(index);
+          newItemStateMap.set(keyValue, existingState);
+          newNodes.push(existingState.node);
+        } else {
+          // Create new item with signals
+          const itemSignal = createSignal<unknown>(item);
+          const indexSignal = createSignal<number>(index);
+
+          const reactiveLocals = createReactiveLocals(
+            ctx.locals,
+            itemSignal,
+            indexSignal,
+            node.as,
+            node.index
+          );
+
+          const localCleanups: (() => void)[] = [];
+          const itemCtx: RenderContext = {
+            state: ctx.state,
+            actions: ctx.actions,
+            locals: reactiveLocals,
+            cleanups: localCleanups,
+            ...(ctx.imports && { imports: ctx.imports }),
+          };
+
+          const itemNode = render(node.body, itemCtx);
+          const newState: HydrateItemState = {
+            key: keyValue,
+            node: itemNode,
+            cleanups: localCleanups,
+            itemSignal,
+            indexSignal,
+          };
+          newItemStateMap.set(keyValue, newState);
+          newNodes.push(itemNode);
+        }
+      });
+    }
+
+    // Cleanup removed items
+    for (const [key, state] of itemStateMap) {
+      if (!newItemStateMap.has(key)) {
+        for (const cleanup of state.cleanups) {
+          cleanup();
+        }
+        if (state.node.parentNode) {
+          state.node.parentNode.removeChild(state.node);
+        }
+      }
+    }
+
+    // Reorder/insert nodes
+    if (anchor.parentNode) {
+      let refNode: Node = anchor;
+      for (const itemNode of newNodes) {
+        const nextSibling = refNode.nextSibling;
+        if (nextSibling !== itemNode) {
+          anchor.parentNode.insertBefore(itemNode, refNode.nextSibling);
+        }
+        refNode = itemNode;
+      }
+    }
+
+    // Update state
+    itemStateMap = newItemStateMap;
+    currentNodes = newNodes;
+
+    // Collect cleanups
+    itemCleanups = [];
+    for (const state of itemStateMap.values()) {
+      itemCleanups.push(...state.cleanups);
+    }
+  });
+  ctx.cleanups.push(effectCleanup);
+
+  // Cleanup item effects when destroyed
+  ctx.cleanups.push(() => {
+    for (const cleanup of itemCleanups) {
       cleanup();
     }
   });

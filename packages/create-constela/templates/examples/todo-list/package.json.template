@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@constela/cli": "^0.5.0",
+    "@constela/compiler": "^0.12.0",
+    "@constela/core": "^0.13.0",
     "@constela/runtime": "^0.16.0",
     "@constela/start": "^1.8.0"
   }

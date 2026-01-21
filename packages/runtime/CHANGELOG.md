@@ -1,5 +1,11 @@
 # @constela/runtime
 
+## 0.16.6
+
+### Patch Changes
+
+- fix(hydrate): handle empty array in each loop during hydration
+
 ## 0.16.5
 
 ### Patch Changes
