@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.8
+
+### Patch Changes
+
+- revert: remove hmr: false from Vite config
+
 ## 1.8.7
 
 ### Patch Changes
