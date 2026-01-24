@@ -60,7 +60,7 @@ String state can use a cookie expression to read initial value from cookies (SSR
 
 ## Expression Types
 
-15 expression types for constrained computation:
+17 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -79,6 +79,8 @@ String state can use a cookie expression to read initial value from cookies (SSR
 | `style` | `{ "expr": "style", "name": "button", "variants": {...} }` | Style reference |
 | `concat` | `{ "expr": "concat", "items": [...] }` | String concatenation |
 | `cookie` | `{ "expr": "cookie", "key": "theme", "default": "dark" }` | Cookie value (SSR-safe) |
+| `call` | `{ "expr": "call", "target": ..., "method": "filter", "args": [...] }` | Method call |
+| `lambda` | `{ "expr": "lambda", "param": "item", "body": ... }` | Anonymous function |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 

@@ -90,6 +90,23 @@ Features:
 - CSS custom properties for theme switching
 - Preloaded languages: javascript, typescript, json, html, css, python, rust, go, java, bash, markdown
 
+### Call/Lambda Expressions
+
+Full support for call and lambda expressions during SSR:
+
+```json
+{
+  "expr": "call",
+  "target": { "expr": "data", "name": "posts" },
+  "method": "filter",
+  "args": [{
+    "expr": "lambda",
+    "param": "post",
+    "body": { "expr": "get", "base": { "expr": "var", "name": "post" }, "path": "published" }
+  }]
+}
+```
+
 ### Route Context
 
 Pass route parameters for dynamic pages:

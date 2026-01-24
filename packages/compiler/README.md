@@ -52,6 +52,7 @@ The compiler transforms JSON programs through three passes:
 - **WebSocket connections** - Compiles connection definitions and send/close actions
 - **concat expression** - Compiles string concatenation expressions
 - **Object payloads** - Supports object-shaped event handler payloads with expression fields
+- **call/lambda expressions** - Compiles method calls and anonymous functions for array/string/Math/Date operations
 
 ## CompiledProgram Structure
 

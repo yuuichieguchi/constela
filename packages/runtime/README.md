@@ -163,6 +163,41 @@ Close connection:
 { "do": "close", "connection": "chat" }
 ```
 
+### Call/Lambda Expressions
+
+Call methods on arrays, strings, Math, and Date:
+
+```json
+// Filter completed todos
+{
+  "expr": "call",
+  "target": { "expr": "state", "name": "todos" },
+  "method": "filter",
+  "args": [{
+    "expr": "lambda",
+    "param": "todo",
+    "body": { "expr": "get", "base": { "expr": "var", "name": "todo" }, "path": "completed" }
+  }]
+}
+
+// Get array length
+{ "expr": "call", "target": { "expr": "state", "name": "items" }, "method": "length" }
+
+// Math.max
+{
+  "expr": "call",
+  "target": { "expr": "var", "name": "Math" },
+  "method": "max",
+  "args": [{ "expr": "lit", "value": 10 }, { "expr": "state", "name": "count" }]
+}
+```
+
+**Supported methods:**
+- Array: length, at, includes, slice, indexOf, join, filter, map, find, findIndex, some, every
+- String: length, charAt, substring, slice, split, trim, toUpperCase, toLowerCase, replace, includes, startsWith, endsWith, indexOf
+- Math: min, max, round, floor, ceil, abs, sqrt, pow, random, sin, cos, tan
+- Date: now, parse, toISOString, getTime, getFullYear, getMonth, getDate, getHours, getMinutes, getSeconds, getMilliseconds
+
 ### Markdown Rendering
 
 ```json
