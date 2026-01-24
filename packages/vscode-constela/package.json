@@ -1,5 +1,6 @@
 {
   "name": "vscode-constela",
+  "private": true,
   "displayName": "Constela",
   "description": "Language support for Constela DSL - syntax highlighting, auto-completion, and error checking",
   "version": "0.1.3",

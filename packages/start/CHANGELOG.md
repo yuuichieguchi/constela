@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.8.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/server@10.0.1
+  - @constela/runtime@0.17.0
+
 ## 1.8.10
 
 ### Patch Changes

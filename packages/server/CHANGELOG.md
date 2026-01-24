@@ -1,5 +1,16 @@
 # @constela/server
 
+## 10.0.1
+
+### Patch Changes
+
+- feat: add call/lambda expression support for SSR
+
+  - Support array methods: length, at, includes, slice, indexOf, join, filter, map, find, findIndex, some, every
+  - Support string methods: length, charAt, substring, slice, split, trim, toUpperCase, toLowerCase, replace, includes, startsWith, endsWith, indexOf
+  - Support Math methods: min, max, round, floor, ceil, abs, sqrt, pow, random, sin, cos, tan
+  - Support Date methods: now, parse, toISOString, getTime, getFullYear, etc.
+
 ## 10.0.0
 
 ### Patch Changes
