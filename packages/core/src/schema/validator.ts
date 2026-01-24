@@ -444,9 +444,6 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
         const pathError = validateExpression(step['path'], path + '/path');
         if (pathError) return pathError;
       }
-      if (!('field' in step) || typeof step['field'] !== 'string') {
-        return { path: path + '/field', message: 'field is required' };
-      }
       if (!('value' in step)) {
         return { path: path + '/value', message: 'value is required' };
       }

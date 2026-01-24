@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.15.2
+
+### Patch Changes
+
+- fix: remove incorrect field validation from setPath (field is not part of SetPathStep AST)
+
 ## 0.15.1
 
 ### Patch Changes
