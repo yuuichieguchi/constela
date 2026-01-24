@@ -1,5 +1,13 @@
 # @constela/start
 
+## 1.8.17
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@0.18.3
+  - @constela/router@17.0.0
+
 ## 1.8.16
 
 ### Patch Changes

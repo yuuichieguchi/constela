@@ -90,14 +90,17 @@ function setValueAtPath(
   // Safe to assert: path.length > 0 is guaranteed by the guard above
   const head = path[0] as string | number;
   const rest = path.slice(1);
-  const isArrayIndex = typeof head === 'number';
 
-  // Clone the current level appropriately
+  // Clone the current level appropriately based on the actual object type
   let clone: unknown;
-  if (isArrayIndex) {
-    clone = Array.isArray(obj) ? [...obj] : [];
+  if (Array.isArray(obj)) {
+    clone = [...obj];
+  } else if (obj != null && typeof obj === 'object') {
+    clone = { ...(obj as object) };
   } else {
-    clone = obj != null && typeof obj === 'object' ? { ...(obj as object) } : {};
+    // If obj is null/undefined, determine type from head
+    const isArrayIndex = typeof head === 'number' || (typeof head === 'string' && /^\d+$/.test(head));
+    clone = isArrayIndex ? [] : {};
   }
 
   // Recursively set the nested value

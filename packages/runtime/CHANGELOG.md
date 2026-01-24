@@ -1,5 +1,13 @@
 # @constela/runtime
 
+## 0.18.3
+
+### Patch Changes
+
+- fix: preserve array type in setValueAtPath when index is string
+
+  Fixed bug where setValueAtPath would convert arrays to objects when the path index was a string (e.g., "0" instead of 0). Now determines clone type based on actual object type rather than head type.
+
 ## 0.18.2
 
 ### Patch Changes
