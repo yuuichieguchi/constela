@@ -1,5 +1,25 @@
 # @constela/runtime
 
+## 0.17.0
+
+### Minor Changes
+
+- feat: add call/lambda expressions with array, string, and Math methods
+
+  - Add CallExpr and LambdaExpr types to support method calls on arrays, strings, Math, and Date
+  - Array methods: length, at, includes, slice, indexOf, join, filter, map, find, findIndex, some, every
+  - String methods: length, charAt, substring, slice, split, trim, toUpperCase, toLowerCase, replace, includes, startsWith, endsWith, indexOf
+  - Math methods: min, max, round, floor, ceil, abs, sqrt, pow, random, sin, cos, tan
+  - Date methods: now, parse, toISOString, getTime, getFullYear, etc.
+  - Lambda expressions support param and optional index for array iteration methods
+  - Security: whitelist-based method filtering and prototype pollution prevention
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.14.0
+  - @constela/compiler@0.13.0
+
 ## 0.16.6
 
 ### Patch Changes

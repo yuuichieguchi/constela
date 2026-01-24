@@ -36,6 +36,9 @@ export type {
   StyleExpr,
   ConcatExpr,
   ValidityExpr,
+  IndexExpr,
+  CallExpr,
+  LambdaExpr,
   // State Fields
   StateField,
   NumberField,

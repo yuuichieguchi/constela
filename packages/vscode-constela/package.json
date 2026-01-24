@@ -35,8 +35,13 @@
     "languages": [
       {
         "id": "constela",
-        "aliases": ["Constela", "constela"],
-        "extensions": [".constela.json"],
+        "aliases": [
+          "Constela",
+          "constela"
+        ],
+        "extensions": [
+          ".constela.json"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./icons/constela-light.svg",
@@ -57,7 +62,11 @@
       "properties": {
         "constela.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Traces the communication between VS Code and the Constela language server."
         },

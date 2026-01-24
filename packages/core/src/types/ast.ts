@@ -235,7 +235,27 @@ export interface ValidityExpr {
   property?: ValidityProperty;
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr;
+/**
+ * Call expression - calls a method on a target
+ */
+export interface CallExpr {
+  expr: 'call';
+  target: Expression;      // 対象 (配列、文字列、Math等)
+  method: string;          // メソッド名
+  args?: Expression[];     // 引数リスト
+}
+
+/**
+ * Lambda expression - anonymous function for array methods
+ */
+export interface LambdaExpr {
+  expr: 'lambda';
+  param: string;           // パラメータ名 (e.g., "item")
+  index?: string;          // インデックス名 (optional)
+  body: Expression;        // 本体式
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr;
 
 // ==================== State Fields ====================
 

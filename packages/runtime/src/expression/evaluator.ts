@@ -12,7 +12,7 @@
  */
 
 import type { StateStore } from '../state/store.js';
-import type { CompiledExpression } from '@constela/compiler';
+import type { CompiledExpression, CompiledCallExpr, CompiledLambdaExpr } from '@constela/compiler';
 
 /**
  * Style preset definition - matches @constela/core StylePreset
@@ -22,6 +22,340 @@ export interface StylePreset {
   variants?: Record<string, Record<string, string>>;
   defaultVariants?: Record<string, string>;
   compoundVariants?: Array<Record<string, string> & { class: string }>;
+}
+
+/**
+ * Whitelist of safe array methods that can be called via call expressions
+ */
+const SAFE_ARRAY_METHODS = new Set([
+  'length', 'at', 'includes', 'slice', 'indexOf', 'join',
+  'filter', 'map', 'find', 'findIndex', 'some', 'every',
+]);
+
+/**
+ * Whitelist of safe string methods that can be called via call expressions
+ */
+const SAFE_STRING_METHODS = new Set([
+  'length', 'charAt', 'substring', 'slice', 'split',
+  'trim', 'toUpperCase', 'toLowerCase', 'replace',
+  'includes', 'startsWith', 'endsWith', 'indexOf',
+]);
+
+/**
+ * Whitelist of safe Math static methods
+ */
+const SAFE_MATH_METHODS = new Set([
+  'min', 'max', 'round', 'floor', 'ceil', 'abs',
+  'sqrt', 'pow', 'random', 'sin', 'cos', 'tan',
+]);
+
+/**
+ * Whitelist of safe Date static methods
+ */
+const SAFE_DATE_STATIC_METHODS = new Set([
+  'now', 'parse',
+]);
+
+/**
+ * Whitelist of safe Date instance methods
+ */
+const SAFE_DATE_INSTANCE_METHODS = new Set([
+  'toISOString', 'toDateString', 'toTimeString',
+  'getTime', 'getFullYear', 'getMonth', 'getDate',
+  'getHours', 'getMinutes', 'getSeconds', 'getMilliseconds',
+]);
+
+/**
+ * Creates a JavaScript function from a lambda expression
+ */
+function createLambdaFunction(
+  lambda: CompiledLambdaExpr,
+  ctx: EvaluationContext
+): (item: unknown, index: number) => unknown {
+  return (item: unknown, index: number): unknown => {
+    const lambdaLocals: Record<string, unknown> = {
+      ...ctx.locals,
+      [lambda.param]: item,
+    };
+    if (lambda.index !== undefined) {
+      lambdaLocals[lambda.index] = index;
+    }
+    return evaluate(lambda.body, { ...ctx, locals: lambdaLocals });
+  };
+}
+
+/**
+ * Safely calls an array method
+ */
+function callArrayMethod(
+  target: unknown[],
+  method: string,
+  args: unknown[],
+  ctx: EvaluationContext,
+  rawArgs?: CompiledExpression[]
+): unknown {
+  if (!SAFE_ARRAY_METHODS.has(method)) {
+    return undefined;
+  }
+
+  switch (method) {
+    case 'length':
+      return target.length;
+    case 'at': {
+      const index = typeof args[0] === 'number' ? args[0] : 0;
+      return target.at(index);
+    }
+    case 'includes': {
+      const searchElement = args[0];
+      const fromIndex = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.includes(searchElement, fromIndex);
+    }
+    case 'slice': {
+      const start = typeof args[0] === 'number' ? args[0] : undefined;
+      const end = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.slice(start, end);
+    }
+    case 'indexOf': {
+      const searchElement = args[0];
+      const fromIndex = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.indexOf(searchElement, fromIndex);
+    }
+    case 'join': {
+      const separator = typeof args[0] === 'string' ? args[0] : ',';
+      return target.join(separator);
+    }
+    case 'filter': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.filter((item, index) => !!fn(item, index));
+    }
+    case 'map': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.map((item, index) => fn(item, index));
+    }
+    case 'find': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.find((item, index) => !!fn(item, index));
+    }
+    case 'findIndex': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.findIndex((item, index) => !!fn(item, index));
+    }
+    case 'some': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.some((item, index) => !!fn(item, index));
+    }
+    case 'every': {
+      const lambdaExpr = rawArgs?.[0];
+      if (!lambdaExpr || lambdaExpr.expr !== 'lambda') return undefined;
+      const fn = createLambdaFunction(lambdaExpr as CompiledLambdaExpr, ctx);
+      return target.every((item, index) => !!fn(item, index));
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Safely calls a string method
+ */
+function callStringMethod(
+  target: string,
+  method: string,
+  args: unknown[]
+): unknown {
+  if (!SAFE_STRING_METHODS.has(method)) {
+    return undefined;
+  }
+
+  switch (method) {
+    case 'length':
+      return target.length;
+    case 'charAt': {
+      const index = typeof args[0] === 'number' ? args[0] : 0;
+      return target.charAt(index);
+    }
+    case 'substring': {
+      const start = typeof args[0] === 'number' ? args[0] : 0;
+      const end = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.substring(start, end);
+    }
+    case 'slice': {
+      const start = typeof args[0] === 'number' ? args[0] : undefined;
+      const end = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.slice(start, end);
+    }
+    case 'split': {
+      const separator = typeof args[0] === 'string' ? args[0] : undefined;
+      return target.split(separator);
+    }
+    case 'trim':
+      return target.trim();
+    case 'toUpperCase':
+      return target.toUpperCase();
+    case 'toLowerCase':
+      return target.toLowerCase();
+    case 'replace': {
+      const search = typeof args[0] === 'string' ? args[0] : '';
+      const replace = typeof args[1] === 'string' ? args[1] : '';
+      return target.replace(search, replace);
+    }
+    case 'includes': {
+      const search = typeof args[0] === 'string' ? args[0] : '';
+      const position = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.includes(search, position);
+    }
+    case 'startsWith': {
+      const search = typeof args[0] === 'string' ? args[0] : '';
+      const position = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.startsWith(search, position);
+    }
+    case 'endsWith': {
+      const search = typeof args[0] === 'string' ? args[0] : '';
+      const length = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.endsWith(search, length);
+    }
+    case 'indexOf': {
+      const search = typeof args[0] === 'string' ? args[0] : '';
+      const position = typeof args[1] === 'number' ? args[1] : undefined;
+      return target.indexOf(search, position);
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Safely calls a Math static method
+ */
+function callMathMethod(
+  method: string,
+  args: unknown[]
+): unknown {
+  if (!SAFE_MATH_METHODS.has(method)) {
+    return undefined;
+  }
+
+  const numbers = args.filter((a): a is number => typeof a === 'number');
+
+  switch (method) {
+    case 'min':
+      return Math.min(...numbers);
+    case 'max':
+      return Math.max(...numbers);
+    case 'round': {
+      const num = numbers[0];
+      return num !== undefined ? Math.round(num) : undefined;
+    }
+    case 'floor': {
+      const num = numbers[0];
+      return num !== undefined ? Math.floor(num) : undefined;
+    }
+    case 'ceil': {
+      const num = numbers[0];
+      return num !== undefined ? Math.ceil(num) : undefined;
+    }
+    case 'abs': {
+      const num = numbers[0];
+      return num !== undefined ? Math.abs(num) : undefined;
+    }
+    case 'sqrt': {
+      const num = numbers[0];
+      return num !== undefined ? Math.sqrt(num) : undefined;
+    }
+    case 'pow': {
+      const base = numbers[0];
+      const exponent = numbers[1];
+      return base !== undefined && exponent !== undefined ? Math.pow(base, exponent) : undefined;
+    }
+    case 'random':
+      return Math.random();
+    case 'sin': {
+      const num = numbers[0];
+      return num !== undefined ? Math.sin(num) : undefined;
+    }
+    case 'cos': {
+      const num = numbers[0];
+      return num !== undefined ? Math.cos(num) : undefined;
+    }
+    case 'tan': {
+      const num = numbers[0];
+      return num !== undefined ? Math.tan(num) : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Safely calls a Date static method
+ */
+function callDateStaticMethod(
+  method: string,
+  args: unknown[]
+): unknown {
+  if (!SAFE_DATE_STATIC_METHODS.has(method)) {
+    return undefined;
+  }
+
+  switch (method) {
+    case 'now':
+      return Date.now();
+    case 'parse': {
+      const dateString = args[0];
+      return typeof dateString === 'string' ? Date.parse(dateString) : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Safely calls a Date instance method
+ */
+function callDateInstanceMethod(
+  target: Date,
+  method: string
+): unknown {
+  if (!SAFE_DATE_INSTANCE_METHODS.has(method)) {
+    return undefined;
+  }
+
+  switch (method) {
+    case 'toISOString':
+      return target.toISOString();
+    case 'toDateString':
+      return target.toDateString();
+    case 'toTimeString':
+      return target.toTimeString();
+    case 'getTime':
+      return target.getTime();
+    case 'getFullYear':
+      return target.getFullYear();
+    case 'getMonth':
+      return target.getMonth();
+    case 'getDate':
+      return target.getDate();
+    case 'getHours':
+      return target.getHours();
+    case 'getMinutes':
+      return target.getMinutes();
+    case 'getSeconds':
+      return target.getSeconds();
+    case 'getMilliseconds':
+      return target.getMilliseconds();
+    default:
+      return undefined;
+  }
 }
 
 export interface EvaluationContext {
@@ -222,6 +556,50 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
 
       return validity[property as keyof ValidityState] ?? null;
     }
+
+    case 'call': {
+      const callExpr = expr as CompiledCallExpr;
+      const target = evaluate(callExpr.target, ctx);
+      if (target == null) return undefined;
+
+      const args = callExpr.args?.map(arg => {
+        // lambda expressions are not directly evaluated; they are passed to array methods
+        if (arg.expr === 'lambda') return arg;
+        return evaluate(arg, ctx);
+      }) ?? [];
+
+      // Array methods
+      if (Array.isArray(target)) {
+        return callArrayMethod(target, callExpr.method, args, ctx, callExpr.args);
+      }
+
+      // String methods
+      if (typeof target === 'string') {
+        return callStringMethod(target, callExpr.method, args);
+      }
+
+      // Math static methods
+      if (target === Math) {
+        return callMathMethod(callExpr.method, args);
+      }
+
+      // Date static methods
+      if (target === Date) {
+        return callDateStaticMethod(callExpr.method, args);
+      }
+
+      // Date instance methods
+      if (target instanceof Date) {
+        return callDateInstanceMethod(target, callExpr.method);
+      }
+
+      return undefined;
+    }
+
+    case 'lambda':
+      // Lambda expressions are not directly evaluated
+      // They are passed to array methods and converted to functions there
+      return undefined;
 
     default: {
       const _exhaustiveCheck: never = expr;

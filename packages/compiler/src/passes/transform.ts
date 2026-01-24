@@ -16,6 +16,8 @@ import type {
   ComponentDef,
   LifecycleHooks,
   LocalActionDefinition,
+  CallExpr,
+  LambdaExpr,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -380,7 +382,9 @@ export type CompiledExpression =
   | CompiledParamExpr
   | CompiledStyleExpr
   | CompiledConcatExpr
-  | CompiledValidityExpr;
+  | CompiledValidityExpr
+  | CompiledCallExpr
+  | CompiledLambdaExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -469,6 +473,20 @@ export interface CompiledValidityExpr {
   expr: 'validity';
   ref: string;
   property?: string;
+}
+
+export interface CompiledCallExpr {
+  expr: 'call';
+  target: CompiledExpression;
+  method: string;
+  args?: CompiledExpression[];
+}
+
+export interface CompiledLambdaExpr {
+  expr: 'lambda';
+  param: string;
+  index?: string;
+  body: CompiledExpression;
 }
 
 // ==================== Compiled Event Handler ====================
@@ -668,6 +686,32 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         validityExpr.property = expr.property;
       }
       return validityExpr;
+    }
+
+    case 'call': {
+      const callExpr = expr as CallExpr;
+      const result: CompiledCallExpr = {
+        expr: 'call',
+        target: transformExpression(callExpr.target, ctx),
+        method: callExpr.method,
+      };
+      if (callExpr.args && callExpr.args.length > 0) {
+        result.args = callExpr.args.map(arg => transformExpression(arg, ctx));
+      }
+      return result;
+    }
+
+    case 'lambda': {
+      const lambdaExpr = expr as LambdaExpr;
+      const result: CompiledLambdaExpr = {
+        expr: 'lambda',
+        param: lambdaExpr.param,
+        body: transformExpression(lambdaExpr.body, ctx),
+      };
+      if (lambdaExpr.index) {
+        result.index = lambdaExpr.index;
+      }
+      return result;
     }
   }
 }

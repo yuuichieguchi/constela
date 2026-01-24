@@ -21,6 +21,8 @@ import type {
   StaticPathsDefinition,
   LifecycleHooks,
   LocalActionDefinition,
+  CallExpr,
+  LambdaExpr,
 } from '@constela/core';
 import {
   createUndefinedStateError,
@@ -365,6 +367,37 @@ function validateExpression(
     case 'style':
       errors.push(...validateStyleExpression(expr, path, context, scope, paramScope));
       break;
+
+    case 'index':
+      errors.push(...validateExpression(expr.base, buildPath(path, 'base'), context, scope, paramScope));
+      errors.push(...validateExpression(expr.key, buildPath(path, 'key'), context, scope, paramScope));
+      break;
+
+    case 'call': {
+      const callExpr = expr as CallExpr;
+      errors.push(...validateExpression(callExpr.target, buildPath(path, 'target'), context, scope, paramScope));
+      if (callExpr.args) {
+        for (let i = 0; i < callExpr.args.length; i++) {
+          const arg = callExpr.args[i];
+          if (arg) {
+            errors.push(...validateExpression(arg, buildPath(path, 'args', i), context, scope, paramScope));
+          }
+        }
+      }
+      break;
+    }
+
+    case 'lambda': {
+      const lambdaExpr = expr as LambdaExpr;
+      // lambda の param と index をスコープに追加
+      const lambdaScope = new Set(scope);
+      lambdaScope.add(lambdaExpr.param);
+      if (lambdaExpr.index) {
+        lambdaScope.add(lambdaExpr.index);
+      }
+      errors.push(...validateExpression(lambdaExpr.body, buildPath(path, 'body'), context, lambdaScope, paramScope));
+      break;
+    }
   }
 
   return errors;
@@ -801,6 +834,32 @@ function validateExpressionStateOnly(
     case 'style':
       errors.push(...validateStyleExpressionStateOnly(expr, path, context));
       break;
+
+    case 'index':
+      errors.push(...validateExpressionStateOnly(expr.base, buildPath(path, 'base'), context));
+      errors.push(...validateExpressionStateOnly(expr.key, buildPath(path, 'key'), context));
+      break;
+
+    case 'call': {
+      const callExpr = expr as CallExpr;
+      errors.push(...validateExpressionStateOnly(callExpr.target, buildPath(path, 'target'), context));
+      if (callExpr.args) {
+        for (let i = 0; i < callExpr.args.length; i++) {
+          const arg = callExpr.args[i];
+          if (arg) {
+            errors.push(...validateExpressionStateOnly(arg, buildPath(path, 'args', i), context));
+          }
+        }
+      }
+      break;
+    }
+
+    case 'lambda': {
+      const lambdaExpr = expr as LambdaExpr;
+      // lambda 内の body を検証 (var はスキップされるので、スコープ追加は不要)
+      errors.push(...validateExpressionStateOnly(lambdaExpr.body, buildPath(path, 'body'), context));
+      break;
+    }
   }
 
   return errors;
@@ -966,6 +1025,37 @@ function validateExpressionInEventPayload(
     case 'style':
       errors.push(...validateStyleExpressionInEventPayload(expr, path, context, scope));
       break;
+
+    case 'index':
+      errors.push(...validateExpressionInEventPayload(expr.base, buildPath(path, 'base'), context, scope));
+      errors.push(...validateExpressionInEventPayload(expr.key, buildPath(path, 'key'), context, scope));
+      break;
+
+    case 'call': {
+      const callExpr = expr as CallExpr;
+      errors.push(...validateExpressionInEventPayload(callExpr.target, buildPath(path, 'target'), context, scope));
+      if (callExpr.args) {
+        for (let i = 0; i < callExpr.args.length; i++) {
+          const arg = callExpr.args[i];
+          if (arg) {
+            errors.push(...validateExpressionInEventPayload(arg, buildPath(path, 'args', i), context, scope));
+          }
+        }
+      }
+      break;
+    }
+
+    case 'lambda': {
+      const lambdaExpr = expr as LambdaExpr;
+      // lambda の param と index をスコープに追加
+      const lambdaScope = new Set(scope);
+      lambdaScope.add(lambdaExpr.param);
+      if (lambdaExpr.index) {
+        lambdaScope.add(lambdaExpr.index);
+      }
+      errors.push(...validateExpressionInEventPayload(lambdaExpr.body, buildPath(path, 'body'), context, lambdaScope));
+      break;
+    }
   }
 
   return errors;

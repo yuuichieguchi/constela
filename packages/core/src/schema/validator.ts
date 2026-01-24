@@ -40,7 +40,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -215,7 +215,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style, validity, index' };
+    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style, validity, index, call, lambda' };
   }
 
   switch (exprType) {
@@ -332,6 +332,45 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         if (baseError) return baseError;
         const keyError = validateExpression(expr['key'], path + '/key');
         if (keyError) return keyError;
+      }
+      break;
+
+    case 'call':
+      if (!('target' in expr)) {
+        return { path: path + '/target', message: 'target is required' };
+      }
+      if (typeof expr['method'] !== 'string') {
+        return { path: path + '/method', message: 'method is required' };
+      }
+      {
+        const targetError = validateExpression(expr['target'], path + '/target');
+        if (targetError) return targetError;
+        if ('args' in expr && expr['args'] !== undefined) {
+          if (!Array.isArray(expr['args'])) {
+            return { path: path + '/args', message: 'args must be an array' };
+          }
+          for (let i = 0; i < expr['args'].length; i++) {
+            const argError = validateExpression(expr['args'][i], path + '/args/' + i);
+            if (argError) return argError;
+          }
+        }
+      }
+      break;
+
+    case 'lambda':
+      if (typeof expr['param'] !== 'string') {
+        return { path: path + '/param', message: 'param is required' };
+      }
+      // index is optional, but if present must be a string
+      if ('index' in expr && typeof expr['index'] !== 'string') {
+        return { path: path + '/index', message: 'index must be a string' };
+      }
+      if (!('body' in expr)) {
+        return { path: path + '/body', message: 'body is required' };
+      }
+      {
+        const bodyError = validateExpression(expr['body'], path + '/body');
+        if (bodyError) return bodyError;
       }
       break;
   }
