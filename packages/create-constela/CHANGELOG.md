@@ -1,5 +1,15 @@
 # create-constela
 
+## 0.2.3
+
+### Patch Changes
+
+- Unify DSL file extension to `.constela.json`
+
+  - Rename template files from `.json` to `.constela.json`
+  - Update file-router.ts and build/index.ts to support `.constela.json` extension
+  - Maintain backward compatibility with `.json` files
+
 ## 0.2.2
 
 ### Patch Changes
