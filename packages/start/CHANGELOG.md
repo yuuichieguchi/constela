@@ -1,5 +1,28 @@
 # @constela/start
 
+## 1.8.14
+
+### Patch Changes
+
+- fix: add ArrayExpr support for SSR
+
+  Added `case 'array'` handling to server-side expression evaluation to support the new ArrayExpr type.
+
+- Updated dependencies
+  - @constela/server@11.0.1
+  - @constela/runtime@0.18.0
+
+## 1.8.13
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.15.0
+  - @constela/compiler@0.14.0
+  - @constela/runtime@0.18.0
+  - @constela/server@11.0.0
+  - @constela/router@17.0.0
+
 ## 1.8.12
 
 ### Patch Changes

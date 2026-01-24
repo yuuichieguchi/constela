@@ -63,6 +63,7 @@ import {
   type StyleExpr,
   type ConcatExpr,
   type ValidityExpr,
+  type ArrayExpr,
   type StorageOperation,
   type StorageType,
   type ClipboardOperation,
@@ -294,6 +295,18 @@ export function isConcatExpr(value: unknown): value is ConcatExpr {
 }
 
 /**
+ * Checks if value is an array expression
+ */
+export function isArrayExpr(value: unknown): value is ArrayExpr {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as ArrayExpr).expr === 'array' &&
+    Array.isArray((value as ArrayExpr).elements)
+  );
+}
+
+/**
  * Checks if value is a validity expression
  */
 export function isValidityExpr(value: unknown): value is ValidityExpr {
@@ -387,7 +400,8 @@ export function isExpression(value: unknown): value is Expression {
     isIndexExpr(value) ||
     isStyleExpr(value) ||
     isConcatExpr(value) ||
-    isValidityExpr(value)
+    isValidityExpr(value) ||
+    isArrayExpr(value)
   );
 }
 

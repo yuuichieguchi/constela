@@ -18,6 +18,7 @@ import type {
   LocalActionDefinition,
   CallExpr,
   LambdaExpr,
+  ArrayExpr,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -384,7 +385,8 @@ export type CompiledExpression =
   | CompiledConcatExpr
   | CompiledValidityExpr
   | CompiledCallExpr
-  | CompiledLambdaExpr;
+  | CompiledLambdaExpr
+  | CompiledArrayExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -487,6 +489,11 @@ export interface CompiledLambdaExpr {
   param: string;
   index?: string;
   body: CompiledExpression;
+}
+
+export interface CompiledArrayExpr {
+  expr: 'array';
+  elements: CompiledExpression[];
 }
 
 // ==================== Compiled Event Handler ====================
@@ -712,6 +719,14 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         result.index = lambdaExpr.index;
       }
       return result;
+    }
+
+    case 'array': {
+      const arrayExpr = expr as ArrayExpr;
+      return {
+        expr: 'array',
+        elements: arrayExpr.elements.map(elem => transformExpression(elem, ctx)),
+      };
     }
   }
 }

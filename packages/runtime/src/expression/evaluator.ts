@@ -601,6 +601,11 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       // They are passed to array methods and converted to functions there
       return undefined;
 
+    case 'array': {
+      const arrayExpr = expr as { expr: 'array'; elements: CompiledExpression[] };
+      return arrayExpr.elements.map(elem => evaluate(elem, ctx));
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

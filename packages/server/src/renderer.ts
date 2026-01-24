@@ -572,6 +572,11 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return undefined;
     }
 
+    case 'array': {
+      const arrayExpr = expr as { expr: 'array'; elements: CompiledExpression[] };
+      return arrayExpr.elements.map(elem => evaluate(elem, ctx));
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);

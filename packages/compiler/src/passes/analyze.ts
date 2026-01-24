@@ -23,6 +23,7 @@ import type {
   LocalActionDefinition,
   CallExpr,
   LambdaExpr,
+  ArrayExpr,
 } from '@constela/core';
 import {
   createUndefinedStateError,
@@ -396,6 +397,17 @@ function validateExpression(
         lambdaScope.add(lambdaExpr.index);
       }
       errors.push(...validateExpression(lambdaExpr.body, buildPath(path, 'body'), context, lambdaScope, paramScope));
+      break;
+    }
+
+    case 'array': {
+      const arrayExpr = expr as ArrayExpr;
+      for (let i = 0; i < arrayExpr.elements.length; i++) {
+        const elem = arrayExpr.elements[i];
+        if (elem) {
+          errors.push(...validateExpression(elem, buildPath(path, 'elements', i), context, scope, paramScope));
+        }
+      }
       break;
     }
   }
@@ -860,6 +872,17 @@ function validateExpressionStateOnly(
       errors.push(...validateExpressionStateOnly(lambdaExpr.body, buildPath(path, 'body'), context));
       break;
     }
+
+    case 'array': {
+      const arrayExpr = expr as ArrayExpr;
+      for (let i = 0; i < arrayExpr.elements.length; i++) {
+        const elem = arrayExpr.elements[i];
+        if (elem) {
+          errors.push(...validateExpressionStateOnly(elem, buildPath(path, 'elements', i), context));
+        }
+      }
+      break;
+    }
   }
 
   return errors;
@@ -1054,6 +1077,17 @@ function validateExpressionInEventPayload(
         lambdaScope.add(lambdaExpr.index);
       }
       errors.push(...validateExpressionInEventPayload(lambdaExpr.body, buildPath(path, 'body'), context, lambdaScope));
+      break;
+    }
+
+    case 'array': {
+      const arrayExpr = expr as ArrayExpr;
+      for (let i = 0; i < arrayExpr.elements.length; i++) {
+        const elem = arrayExpr.elements[i];
+        if (elem) {
+          errors.push(...validateExpressionInEventPayload(elem, buildPath(path, 'elements', i), context, scope));
+        }
+      }
       break;
     }
   }

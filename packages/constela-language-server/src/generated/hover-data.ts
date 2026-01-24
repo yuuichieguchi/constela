@@ -73,6 +73,10 @@ export const EXPR_DOCS: Record<string, { signature: string; description: string 
     signature: '{ "expr": "lambda", "param": string, "index"?: string, "body": Expression }',
     description: 'Lambda expression - anonymous function for array methods',
   },
+  array: {
+    signature: '{ "expr": "array", "elements": Expression[] }',
+    description: 'Array expression - constructs an array from expressions',
+  },
 };
 
 export const ACTION_DOCS: Record<string, { signature: string; description: string }> = {

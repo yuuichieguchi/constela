@@ -1,5 +1,36 @@
 # @constela/compiler
 
+## 0.14.0
+
+### Minor Changes
+
+- feat: add ArrayExpr for dynamic array construction
+
+  Added `expr: 'array'` expression type to Constela DSL for dynamically constructing arrays from expressions.
+
+  Example:
+
+  ```json
+  {
+    "expr": "array",
+    "elements": [
+      { "expr": "var", "name": "basicSetup" },
+      {
+        "expr": "call",
+        "target": { "expr": "var", "name": "json" },
+        "args": []
+      }
+    ]
+  }
+  ```
+
+  This enables patterns like CodeMirror extensions: `[basicSetup, json()]`
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.15.0
+
 ## 0.13.0
 
 ### Minor Changes

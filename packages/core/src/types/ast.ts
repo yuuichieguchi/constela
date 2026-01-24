@@ -255,7 +255,15 @@ export interface LambdaExpr {
   body: Expression;        // 本体式
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr;
+/**
+ * Array expression - constructs an array from expressions
+ */
+export interface ArrayExpr {
+  expr: 'array';
+  elements: Expression[];
+}
+
+export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr | ArrayExpr;
 
 // ==================== State Fields ====================
 

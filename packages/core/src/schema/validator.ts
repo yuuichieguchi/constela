@@ -40,7 +40,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -371,6 +371,19 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
       {
         const bodyError = validateExpression(expr['body'], path + '/body');
         if (bodyError) return bodyError;
+      }
+      break;
+
+    case 'array':
+      if (!('elements' in expr)) {
+        return { path: path + '/elements', message: 'elements is required' };
+      }
+      if (!Array.isArray(expr['elements'])) {
+        return { path: path + '/elements', message: 'elements must be an array' };
+      }
+      for (let i = 0; i < expr['elements'].length; i++) {
+        const elemError = validateExpression(expr['elements'][i], path + '/elements/' + i);
+        if (elemError) return elemError;
       }
       break;
   }

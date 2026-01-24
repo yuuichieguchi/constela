@@ -482,7 +482,12 @@ function evaluateJsonLdExpression(
       return obj;
     }
     case 'array':
-      return expr.items.map(item => evaluateJsonLdExpression(item, ctx));
+      // JsonLdArrayExpr has 'items', CompiledArrayExpr has 'elements'
+      if ('items' in expr) {
+        return (expr as JsonLdArrayExpr).items.map(item => evaluateJsonLdExpression(item, ctx));
+      }
+      // CompiledArrayExpr - evaluate elements
+      return (expr as { elements: JsonLdExpression[] }).elements.map(elem => evaluateJsonLdExpression(elem, ctx));
     default:
       return '';
   }

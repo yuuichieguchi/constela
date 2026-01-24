@@ -39,6 +39,7 @@ export type {
   IndexExpr,
   CallExpr,
   LambdaExpr,
+  ArrayExpr,
   // State Fields
   StateField,
   NumberField,
@@ -142,6 +143,7 @@ export {
   isStyleExpr,
   isConcatExpr,
   isValidityExpr,
+  isArrayExpr,
   isExpression,
   // Route Definition type guard
   isRouteDefinition,

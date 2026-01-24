@@ -77,6 +77,7 @@ export type {
   CompiledValidityExpr,
   CompiledCallExpr,
   CompiledLambdaExpr,
+  CompiledArrayExpr,
 } from './passes/transform.js';
 
 // Layout passes
