@@ -19,6 +19,7 @@
     "bin"
   ],
   "scripts": {
+    "prebuild": "pnpm --filter @constela/codegen generate",
     "build": "tsup src/index.ts --format esm --dts --clean",
     "type-check": "tsc --noEmit",
     "test": "vitest run",

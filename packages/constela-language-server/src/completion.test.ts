@@ -199,7 +199,7 @@ describe('provideCompletion', () => {
       // Assert
       const litCompletion = completions.find((c) => c.label === 'lit');
       expect(litCompletion).toBeDefined();
-      expect(litCompletion?.detail).toBe('Literal value');
+      expect(litCompletion?.detail).toBe('Literal expression - represents a constant value');
       expect(litCompletion?.kind).toBe(CompletionItemKind.Value);
     });
 
@@ -260,8 +260,8 @@ describe('provideCompletion', () => {
       // Assert
       const setCompletion = completions.find((c) => c.label === 'set');
       expect(setCompletion).toBeDefined();
-      expect(setCompletion?.detail).toBe('Set state value');
-      expect(setCompletion?.kind).toBe(CompletionItemKind.Method);
+      expect(setCompletion?.detail).toBe('Set step - sets a state field to a new value');
+      expect(setCompletion?.kind).toBe(CompletionItemKind.Function);
     });
 
     it('should include all documented action step types', () => {
@@ -323,7 +323,7 @@ describe('provideCompletion', () => {
       // Assert
       const elementCompletion = completions.find((c) => c.label === 'element');
       expect(elementCompletion).toBeDefined();
-      expect(elementCompletion?.detail).toBe('HTML element');
+      expect(elementCompletion?.detail).toBe('Element node - represents an HTML element');
       expect(elementCompletion?.kind).toBe(CompletionItemKind.Class);
     });
 

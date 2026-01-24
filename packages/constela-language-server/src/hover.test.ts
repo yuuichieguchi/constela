@@ -250,7 +250,7 @@ describe('provideHover', () => {
       expect(hover).not.toBeNull();
       expect(hover?.contents).toHaveProperty('kind', MarkupKind.Markdown);
       expect((hover?.contents as { value: string }).value).toContain('**lit** expression');
-      expect((hover?.contents as { value: string }).value).toContain('literal value');
+      expect((hover?.contents as { value: string }).value).toContain('represents a constant value');
     });
 
     it('should return hover info for state expression', () => {
@@ -312,7 +312,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('**set** action');
-      expect((hover?.contents as { value: string }).value).toContain('Set a state field');
+      expect((hover?.contents as { value: string }).value).toContain('sets a state field');
     });
 
     it('should return hover info for fetch action', () => {
@@ -340,7 +340,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('**navigate** action');
-      expect((hover?.contents as { value: string }).value).toContain('Navigate to a route');
+      expect((hover?.contents as { value: string }).value).toContain('page navigation');
     });
 
     it('should include signature in hover for actions', () => {
@@ -386,7 +386,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('**text** node');
-      expect((hover?.contents as { value: string }).value).toContain('text node');
+      expect((hover?.contents as { value: string }).value).toContain('represents text content');
     });
 
     it('should return hover info for if node', () => {
@@ -415,7 +415,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('**each** node');
-      expect((hover?.contents as { value: string }).value).toContain('Loop rendering');
+      expect((hover?.contents as { value: string }).value).toContain('list rendering');
     });
 
     it('should return hover info for component node', () => {
@@ -429,7 +429,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('**component** node');
-      expect((hover?.contents as { value: string }).value).toContain('component instance');
+      expect((hover?.contents as { value: string }).value).toContain('invokes a defined component');
     });
 
     it('should include signature in hover for view nodes', () => {
@@ -443,7 +443,7 @@ describe('provideHover', () => {
       // Assert
       expect(hover).not.toBeNull();
       expect((hover?.contents as { value: string }).value).toContain('```json');
-      expect((hover?.contents as { value: string }).value).toContain('"node": "element"');
+      expect((hover?.contents as { value: string }).value).toContain('"kind": "element"');
     });
   });
 

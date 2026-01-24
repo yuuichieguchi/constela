@@ -75,6 +75,8 @@ export type {
   CompiledClearTimerStep,
   CompiledFocusStep,
   CompiledValidityExpr,
+  CompiledCallExpr,
+  CompiledLambdaExpr,
 } from './passes/transform.js';
 
 // Layout passes

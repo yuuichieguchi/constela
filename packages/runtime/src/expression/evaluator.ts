@@ -195,7 +195,7 @@ function callStringMethod(
       return target.slice(start, end);
     }
     case 'split': {
-      const separator = typeof args[0] === 'string' ? args[0] : undefined;
+      const separator = typeof args[0] === 'string' ? args[0] : '';
       return target.split(separator);
     }
     case 'trim':

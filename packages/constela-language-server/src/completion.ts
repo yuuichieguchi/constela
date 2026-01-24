@@ -3,59 +3,7 @@ import { CompletionItemKind } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { parse, getLocation } from 'jsonc-parser';
 import type { Program } from '@constela/core';
-
-const EXPR_TYPES = [
-  { label: 'lit', detail: 'Literal value', kind: CompletionItemKind.Value },
-  { label: 'state', detail: 'State reference', kind: CompletionItemKind.Variable },
-  { label: 'var', detail: 'Local variable', kind: CompletionItemKind.Variable },
-  { label: 'bin', detail: 'Binary expression', kind: CompletionItemKind.Operator },
-  { label: 'not', detail: 'Logical NOT', kind: CompletionItemKind.Operator },
-  { label: 'cond', detail: 'Conditional expression', kind: CompletionItemKind.Keyword },
-  { label: 'get', detail: 'Property access', kind: CompletionItemKind.Property },
-  { label: 'concat', detail: 'String concatenation', kind: CompletionItemKind.Function },
-  { label: 'route', detail: 'Route parameter', kind: CompletionItemKind.Variable },
-  { label: 'import', detail: 'Import reference', kind: CompletionItemKind.Module },
-  { label: 'data', detail: 'Data source reference', kind: CompletionItemKind.Reference },
-  { label: 'ref', detail: 'Element reference', kind: CompletionItemKind.Reference },
-  { label: 'index', detail: 'Loop index', kind: CompletionItemKind.Variable },
-  { label: 'style', detail: 'Style reference', kind: CompletionItemKind.Color },
-  { label: 'validity', detail: 'Form validity', kind: CompletionItemKind.Property },
-  { label: 'param', detail: 'Component parameter', kind: CompletionItemKind.Variable },
-];
-
-const ACTION_STEPS = [
-  { label: 'set', detail: 'Set state value', kind: CompletionItemKind.Method },
-  { label: 'update', detail: 'Update state with function', kind: CompletionItemKind.Method },
-  { label: 'setPath', detail: 'Set nested state path', kind: CompletionItemKind.Method },
-  { label: 'fetch', detail: 'HTTP fetch', kind: CompletionItemKind.Method },
-  { label: 'navigate', detail: 'Navigate to route', kind: CompletionItemKind.Method },
-  { label: 'storage', detail: 'LocalStorage operation', kind: CompletionItemKind.Method },
-  { label: 'clipboard', detail: 'Clipboard operation', kind: CompletionItemKind.Method },
-  { label: 'delay', detail: 'Delay execution', kind: CompletionItemKind.Method },
-  { label: 'interval', detail: 'Set interval', kind: CompletionItemKind.Method },
-  { label: 'clearTimer', detail: 'Clear timer', kind: CompletionItemKind.Method },
-  { label: 'focus', detail: 'Focus element', kind: CompletionItemKind.Method },
-  { label: 'dom', detail: 'DOM manipulation', kind: CompletionItemKind.Method },
-  { label: 'if', detail: 'Conditional step', kind: CompletionItemKind.Keyword },
-  { label: 'call', detail: 'Call external function', kind: CompletionItemKind.Method },
-  { label: 'import', detail: 'Dynamic import', kind: CompletionItemKind.Module },
-  { label: 'subscribe', detail: 'Subscribe to observable', kind: CompletionItemKind.Method },
-  { label: 'dispose', detail: 'Dispose subscription', kind: CompletionItemKind.Method },
-  { label: 'send', detail: 'Send WebSocket message', kind: CompletionItemKind.Method },
-  { label: 'close', detail: 'Close WebSocket', kind: CompletionItemKind.Method },
-];
-
-const VIEW_NODES = [
-  { label: 'element', detail: 'HTML element', kind: CompletionItemKind.Class },
-  { label: 'text', detail: 'Text node', kind: CompletionItemKind.Text },
-  { label: 'if', detail: 'Conditional rendering', kind: CompletionItemKind.Keyword },
-  { label: 'each', detail: 'Loop rendering', kind: CompletionItemKind.Keyword },
-  { label: 'component', detail: 'Component instance', kind: CompletionItemKind.Class },
-  { label: 'slot', detail: 'Slot placeholder', kind: CompletionItemKind.Class },
-  { label: 'markdown', detail: 'Markdown content', kind: CompletionItemKind.Text },
-  { label: 'code', detail: 'Code block', kind: CompletionItemKind.Snippet },
-  { label: 'portal', detail: 'Portal to target', kind: CompletionItemKind.Class },
-];
+import { EXPR_TYPES, ACTION_STEPS, VIEW_NODES } from './generated/completion-data.js';
 
 export function provideCompletion(
   document: TextDocument,

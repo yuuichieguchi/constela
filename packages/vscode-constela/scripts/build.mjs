@@ -3,8 +3,9 @@
  * Build script for vscode-constela extension
  *
  * This script:
- * 1. Bundles the language server with all dependencies
- * 2. Bundles the extension client with all dependencies
+ * 1. Runs codegen to generate completion/hover data from AST types
+ * 2. Bundles the language server with all dependencies
+ * 3. Bundles the extension client with all dependencies
  *
  * All code is bundled into self-contained files so the .vsix works standalone.
  */
@@ -13,9 +14,11 @@ import * as esbuild from 'esbuild';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
+const packagesDir = join(rootDir, '..');
 const distDir = join(rootDir, 'dist');
 
 // Paths to language server source
@@ -24,15 +27,22 @@ const languageServerEntry = join(languageServerDir, 'src', 'index.ts');
 
 console.log('🔨 Building Constela VSCode Extension...\n');
 
-// Step 1: Clean dist directory
-console.log('1. Cleaning dist directory...');
+// Step 1: Run codegen to generate completion/hover data
+console.log('1. Running codegen...');
+execSync('pnpm --filter @constela/codegen generate', {
+  cwd: packagesDir,
+  stdio: 'inherit',
+});
+
+// Step 2: Clean dist directory
+console.log('2. Cleaning dist directory...');
 if (existsSync(distDir)) {
   rmSync(distDir, { recursive: true });
 }
 mkdirSync(distDir, { recursive: true });
 
-// Step 2: Bundle the language server with all dependencies
-console.log('2. Bundling language server...');
+// Step 3: Bundle the language server with all dependencies
+console.log('3. Bundling language server...');
 await esbuild.build({
   entryPoints: [languageServerEntry],
   bundle: true,
@@ -47,8 +57,8 @@ await esbuild.build({
   packages: 'bundle',
 });
 
-// Step 3: Bundle the extension client
-console.log('3. Bundling extension client...');
+// Step 4: Bundle the extension client
+console.log('4. Bundling extension client...');
 await esbuild.build({
   entryPoints: [join(rootDir, 'src', 'extension.ts')],
   bundle: true,
