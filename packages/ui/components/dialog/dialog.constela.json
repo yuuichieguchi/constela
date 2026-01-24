@@ -1,0 +1,19 @@
+{
+  "params": {
+    "open": { "type": "boolean", "required": false },
+    "title": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "role": { "expr": "lit", "value": "dialog" },
+      "aria-modal": { "expr": "lit", "value": "true" },
+      "className": {
+        "expr": "style",
+        "preset": "dialogStyles"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

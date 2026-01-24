@@ -1,0 +1,15 @@
+{
+  "avatarStyles": {
+    "base": "relative flex shrink-0 overflow-hidden rounded-full",
+    "variants": {
+      "size": {
+        "default": "h-10 w-10",
+        "sm": "h-8 w-8",
+        "lg": "h-14 w-14"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  }
+}

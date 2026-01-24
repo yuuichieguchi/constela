@@ -1,0 +1,22 @@
+{
+  "params": {
+    "variant": { "type": "string", "required": false },
+    "title": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "role": { "expr": "lit", "value": "alert" },
+      "aria-live": { "expr": "lit", "value": "assertive" },
+      "className": {
+        "expr": "style",
+        "preset": "alertStyles",
+        "props": {
+          "variant": { "expr": "param", "name": "variant" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

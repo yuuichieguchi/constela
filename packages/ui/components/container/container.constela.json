@@ -1,0 +1,21 @@
+{
+  "params": {
+    "maxWidth": { "type": "string", "required": false },
+    "className": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "containerStyles",
+        "props": {
+          "maxWidth": { "expr": "param", "name": "maxWidth" },
+          "className": { "expr": "param", "name": "className" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

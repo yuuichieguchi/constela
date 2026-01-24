@@ -1,0 +1,19 @@
+{
+  "params": {
+    "variant": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "badgeStyles",
+        "props": {
+          "variant": { "expr": "param", "name": "variant" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

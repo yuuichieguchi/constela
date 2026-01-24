@@ -1,0 +1,15 @@
+{
+  "paginationStyles": {
+    "base": "mx-auto flex w-full justify-center",
+    "variants": {
+      "size": {
+        "default": "",
+        "sm": "text-sm",
+        "lg": "text-lg"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  }
+}

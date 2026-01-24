@@ -1,0 +1,21 @@
+{
+  "params": {
+    "variant": { "type": "string", "required": false },
+    "className": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "cardStyles",
+        "props": {
+          "variant": { "expr": "param", "name": "variant" },
+          "className": { "expr": "param", "name": "className" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

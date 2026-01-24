@@ -1,0 +1,15 @@
+{
+  "radioStyles": {
+    "base": "aspect-square rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "variants": {
+      "size": {
+        "default": "h-4 w-4",
+        "sm": "h-3 w-3",
+        "lg": "h-5 w-5"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  }
+}

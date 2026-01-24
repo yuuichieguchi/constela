@@ -1,0 +1,24 @@
+{
+  "params": {
+    "width": { "type": "string", "required": false },
+    "height": { "type": "string", "required": false },
+    "className": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "skeletonStyles",
+        "props": {
+          "className": { "expr": "param", "name": "className" }
+        }
+      },
+      "style": {
+        "width": { "expr": "param", "name": "width" },
+        "height": { "expr": "param", "name": "height" }
+      }
+    }
+  }
+}

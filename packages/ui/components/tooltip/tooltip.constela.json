@@ -1,0 +1,21 @@
+{
+  "params": {
+    "content": { "type": "string", "required": false },
+    "position": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "role": { "expr": "lit", "value": "tooltip" },
+      "className": {
+        "expr": "style",
+        "preset": "tooltipStyles",
+        "props": {
+          "position": { "expr": "param", "name": "position" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "params": {
+    "currentPage": { "type": "number", "required": false },
+    "totalPages": { "type": "number", "required": false },
+    "size": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "nav",
+    "props": {
+      "aria-label": { "expr": "lit", "value": "Pagination" },
+      "className": {
+        "expr": "style",
+        "preset": "paginationStyles",
+        "props": {
+          "size": { "expr": "param", "name": "size" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

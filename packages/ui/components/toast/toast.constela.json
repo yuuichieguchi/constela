@@ -1,0 +1,23 @@
+{
+  "params": {
+    "variant": { "type": "string", "required": false },
+    "title": { "type": "string", "required": false },
+    "description": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "role": { "expr": "lit", "value": "alert" },
+      "aria-live": { "expr": "lit", "value": "polite" },
+      "className": {
+        "expr": "style",
+        "preset": "toastStyles",
+        "props": {
+          "variant": { "expr": "param", "name": "variant" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

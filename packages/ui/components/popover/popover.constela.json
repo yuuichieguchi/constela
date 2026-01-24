@@ -1,0 +1,20 @@
+{
+  "params": {
+    "open": { "type": "boolean", "required": false },
+    "position": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "popoverStyles",
+        "props": {
+          "position": { "expr": "param", "name": "position" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

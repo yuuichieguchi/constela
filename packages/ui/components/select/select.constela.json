@@ -1,0 +1,32 @@
+{
+  "params": {
+    "value": { "type": "string", "required": false },
+    "disabled": { "type": "boolean", "required": false },
+    "required": { "type": "boolean", "required": false },
+    "placeholder": { "type": "string", "required": false },
+    "name": { "type": "string", "required": false },
+    "id": { "type": "string", "required": false },
+    "ariaLabel": { "type": "string", "required": false },
+    "size": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "select",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "selectStyles",
+        "props": {
+          "size": { "expr": "param", "name": "size" }
+        }
+      },
+      "value": { "expr": "param", "name": "value" },
+      "disabled": { "expr": "param", "name": "disabled" },
+      "required": { "expr": "param", "name": "required" },
+      "name": { "expr": "param", "name": "name" },
+      "id": { "expr": "param", "name": "id" },
+      "aria-label": { "expr": "param", "name": "ariaLabel" }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

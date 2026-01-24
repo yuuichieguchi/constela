@@ -1,0 +1,15 @@
+{
+  "checkboxStyles": {
+    "base": "peer shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 checked:bg-primary checked:text-primary-foreground",
+    "variants": {
+      "size": {
+        "default": "h-4 w-4",
+        "sm": "h-3 w-3",
+        "lg": "h-5 w-5"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  }
+}
