@@ -23,7 +23,7 @@ const distDir = join(rootDir, 'dist');
 
 // Paths to language server source
 const languageServerDir = join(rootDir, '..', 'constela-language-server');
-const languageServerEntry = join(languageServerDir, 'src', 'index.ts');
+const languageServerEntry = join(languageServerDir, 'src', 'main.ts');
 
 console.log('🔨 Building Constela VSCode Extension...\n');
 
@@ -55,6 +55,8 @@ await esbuild.build({
   external: [],
   // Ensure all workspace dependencies are bundled
   packages: 'bundle',
+  // Prefer ESM over UMD to avoid dynamic require issues
+  mainFields: ['module', 'main'],
 });
 
 // Step 4: Bundle the extension client

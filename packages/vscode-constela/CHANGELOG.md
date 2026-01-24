@@ -5,6 +5,19 @@ All notable changes to the Constela extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-01-24
+
+### Fixed
+
+- Language Server crash on startup (`Cannot find module './impl/format'`)
+- Hover and Go to Definition not working
+- Centered language icon in file explorer
+
+### Technical
+
+- Added `mainFields: ['module', 'main']` to esbuild config to prefer ESM over UMD
+- Created dedicated entry point (`main.ts`) that calls `startServer()`
+
 ## [0.1.4] - 2026-01-24
 
 ### Added
