@@ -602,9 +602,9 @@ describe('evaluate with Math and Date methods', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should handle Math.min with no arguments (returns Infinity)', () => {
+    it('should handle Math.min with no arguments (returns undefined)', () => {
       // Arrange
-      // DSL: Math.min() -> Infinity
+      // DSL: Math.min() -> undefined (empty array guard)
       const expr = {
         expr: 'call',
         target: { expr: 'var', name: 'Math' },
@@ -616,12 +616,12 @@ describe('evaluate with Math and Date methods', () => {
       const result = evaluate(expr, ctx);
 
       // Assert
-      expect(result).toBe(Infinity);
+      expect(result).toBeUndefined();
     });
 
-    it('should handle Math.max with no arguments (returns -Infinity)', () => {
+    it('should handle Math.max with no arguments (returns undefined)', () => {
       // Arrange
-      // DSL: Math.max() -> -Infinity
+      // DSL: Math.max() -> undefined (empty array guard)
       const expr = {
         expr: 'call',
         target: { expr: 'var', name: 'Math' },
@@ -633,7 +633,7 @@ describe('evaluate with Math and Date methods', () => {
       const result = evaluate(expr, ctx);
 
       // Assert
-      expect(result).toBe(-Infinity);
+      expect(result).toBeUndefined();
     });
   });
 

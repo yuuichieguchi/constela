@@ -249,9 +249,9 @@ function callMathMethod(
 
   switch (method) {
     case 'min':
-      return Math.min(...numbers);
+      return numbers.length > 0 ? Math.min(...numbers) : undefined;
     case 'max':
-      return Math.max(...numbers);
+      return numbers.length > 0 ? Math.max(...numbers) : undefined;
     case 'round': {
       const num = numbers[0];
       return num !== undefined ? Math.round(num) : undefined;
