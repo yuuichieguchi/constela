@@ -42,7 +42,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
-const VALID_ACTION_TYPES = ['set', 'update', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
+const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
@@ -215,7 +215,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_EXPR_TYPES.includes(exprType)) {
-    return { path: path + '/expr', message: 'must be one of: lit, state, var, bin, not, param, cond, get, style, validity, index, call, lambda' };
+    return { path: path + '/expr', message: `must be one of: ${VALID_EXPR_TYPES.join(', ')}` };
   }
 
   switch (exprType) {
@@ -405,7 +405,7 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
   }
 
   if (!VALID_ACTION_TYPES.includes(doType)) {
-    return { path: path + '/do', message: 'must be one of: set, update, fetch, delay, interval, clearTimer, focus, if' };
+    return { path: path + '/do', message: `must be one of: ${VALID_ACTION_TYPES.join(', ')}` };
   }
 
   switch (doType) {
@@ -432,6 +432,25 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
         return validateExpression(step['value'], path + '/value');
       }
       break;
+
+    case 'setPath':
+      if (typeof step['target'] !== 'string') {
+        return { path: path + '/target', message: 'target is required' };
+      }
+      if (!('path' in step)) {
+        return { path: path + '/path', message: 'path is required' };
+      }
+      {
+        const pathError = validateExpression(step['path'], path + '/path');
+        if (pathError) return pathError;
+      }
+      if (!('field' in step) || typeof step['field'] !== 'string') {
+        return { path: path + '/field', message: 'field is required' };
+      }
+      if (!('value' in step)) {
+        return { path: path + '/value', message: 'value is required' };
+      }
+      return validateExpression(step['value'], path + '/value');
 
     case 'fetch':
       if (!('url' in step)) {

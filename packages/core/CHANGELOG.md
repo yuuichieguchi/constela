@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.15.1
+
+### Patch Changes
+
+- fix: add setPath to VALID_ACTION_TYPES and use dynamic error messages in validator
+
 ## 0.15.0
 
 ### Minor Changes

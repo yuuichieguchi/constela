@@ -198,6 +198,25 @@ Call methods on arrays, strings, Math, and Date:
 - Math: min, max, round, floor, ceil, abs, sqrt, pow, random, sin, cos, tan
 - Date: now, parse, toISOString, getTime, getFullYear, getMonth, getDate, getHours, getMinutes, getSeconds, getMilliseconds
 
+### Array Expression
+
+Construct arrays dynamically from expressions:
+
+```json
+{
+  "expr": "array",
+  "elements": [
+    { "expr": "var", "name": "basicSetup" },
+    { "expr": "call", "target": { "expr": "var", "name": "json" }, "method": "apply", "args": [] }
+  ]
+}
+```
+
+Use cases:
+- CodeMirror extensions: `[basicSetup, json()]`
+- Dynamic configuration arrays
+- Combining variables, literals, and call results in a single array
+
 ### Markdown Rendering
 
 ```json

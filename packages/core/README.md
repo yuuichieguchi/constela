@@ -60,7 +60,7 @@ String state can use a cookie expression to read initial value from cookies (SSR
 
 ## Expression Types
 
-17 expression types for constrained computation:
+18 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -81,6 +81,7 @@ String state can use a cookie expression to read initial value from cookies (SSR
 | `cookie` | `{ "expr": "cookie", "key": "theme", "default": "dark" }` | Cookie value (SSR-safe) |
 | `call` | `{ "expr": "call", "target": ..., "method": "filter", "args": [...] }` | Method call |
 | `lambda` | `{ "expr": "lambda", "param": "item", "body": ... }` | Anonymous function |
+| `array` | `{ "expr": "array", "elements": [...] }` | Array construction |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
@@ -102,6 +103,25 @@ Concatenate multiple expressions into a single string:
 - Evaluates each item and joins them as strings
 - `null`/`undefined` values become empty strings
 - Numbers and booleans are converted to strings
+
+**Array Expression:**
+
+Construct arrays dynamically from expressions:
+
+```json
+{
+  "expr": "array",
+  "elements": [
+    { "expr": "var", "name": "basicSetup" },
+    { "expr": "call", "target": { "expr": "var", "name": "json" }, "method": "apply", "args": [] },
+    { "expr": "state", "name": "config" }
+  ]
+}
+```
+
+- Each element can be any expression type
+- Elements are evaluated and collected into an array
+- Useful for dynamic configurations (e.g., CodeMirror extensions: `[basicSetup, json()]`)
 
 ## View Node Types
 
