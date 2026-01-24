@@ -87,7 +87,7 @@ function isDynamicRoute(pattern: string): boolean {
  */
 function getOutputPath(filePath: string, outDir: string): string {
   // Remove extension
-  const withoutExt = filePath.replace(/\.(json|ts|tsx|js|jsx)$/, '');
+  const withoutExt = filePath.replace(/\.(constela\.json|json|ts|tsx|js|jsx)$/, '');
 
   // Handle index files
   if (withoutExt === 'index' || withoutExt.endsWith('/index')) {
@@ -134,7 +134,9 @@ async function loadGetStaticPaths(
 ): Promise<GetStaticPathsResult | null> {
   // Determine the .paths.ts file path
   const dir = dirname(pageFile);
-  const baseName = basename(pageFile, '.json');
+  const baseName = pageFile.endsWith('.constela.json')
+    ? basename(pageFile, '.constela.json')
+    : basename(pageFile, '.json');
   const pathsFile = join(dir, `${baseName}.paths.ts`);
 
   if (!existsSync(pathsFile)) {
@@ -924,7 +926,7 @@ export async function build(options?: BuildOptions): Promise<BuildResult> {
 
   // Filter to only JSON page files for HTML generation
   const jsonPages = scannedRoutes.filter(
-    (route) => route.type === 'page' && route.file.endsWith('.json')
+    (route) => route.type === 'page' && (route.file.endsWith('.json') || route.file.endsWith('.constela.json'))
   );
 
   // Skip bundling if no pages to generate

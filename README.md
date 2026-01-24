@@ -76,7 +76,7 @@ npm install @constela/start
 mkdir -p src/routes
 ```
 
-2. Create a page (`src/routes/index.json`):
+2. Create a page (`src/routes/index.constela.json`):
 
 ```json
 {
@@ -1138,30 +1138,30 @@ See each package's README for detailed API documentation.
 
 ```bash
 # Compile a Constela program
-constela compile app.json
+constela compile app.constela.json
 
 # With custom output path
-constela compile app.json --out dist/app.compiled.json
+constela compile app.constela.json --out dist/app.compiled.json
 
 # Pretty-print output
-constela compile app.json --pretty
+constela compile app.constela.json --pretty
 
 # JSON output for AI tools
-constela compile app.json --json
+constela compile app.constela.json --json
 
 # Watch mode - recompile on file changes
-constela compile app.json --watch
+constela compile app.constela.json --watch
 
 # Verbose output with timing
-constela compile app.json --verbose
+constela compile app.constela.json --verbose
 
 # Fast validation without compilation
-constela validate app.json
+constela validate app.constela.json
 constela validate --all src/routes/
 
 # Inspect program structure
-constela inspect app.json
-constela inspect app.json --state --json
+constela inspect app.constela.json
+constela inspect app.constela.json --state --json
 ```
 
 ### Error Messages with Suggestions
@@ -1183,7 +1183,7 @@ import { compile } from '@constela/compiler';
 import { createApp } from '@constela/runtime';
 
 // Load and compile
-const ast = JSON.parse(await fs.readFile('app.json', 'utf-8'));
+const ast = JSON.parse(await fs.readFile('app.constela.json', 'utf-8'));
 const result = compile(ast);
 
 if (!result.ok) {

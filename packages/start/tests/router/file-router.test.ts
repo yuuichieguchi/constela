@@ -286,6 +286,70 @@ describe('filePathToPattern', () => {
     });
   });
 
+  // ==================== Constela JSON Extension ====================
+
+  describe('.constela.json extension handling', () => {
+    it('should remove .constela.json extension', () => {
+      // Arrange
+      const filePath = 'app.constela.json';
+      const routesDir = '/routes';
+
+      // Act
+      const result = filePathToPattern(filePath, routesDir);
+
+      // Assert
+      expect(result).toBe('/app');
+    });
+
+    it('should convert index.constela.json to root path "/"', () => {
+      // Arrange
+      const filePath = 'index.constela.json';
+      const routesDir = '/routes';
+
+      // Act
+      const result = filePathToPattern(filePath, routesDir);
+
+      // Assert
+      expect(result).toBe('/');
+    });
+
+    it('should handle nested .constela.json files', () => {
+      // Arrange
+      const filePath = 'docs/getting-started.constela.json';
+      const routesDir = '/routes';
+
+      // Act
+      const result = filePathToPattern(filePath, routesDir);
+
+      // Assert
+      expect(result).toBe('/docs/getting-started');
+    });
+
+    it('should handle dynamic route with .constela.json extension', () => {
+      // Arrange
+      const filePath = 'users/[id].constela.json';
+      const routesDir = '/routes';
+
+      // Act
+      const result = filePathToPattern(filePath, routesDir);
+
+      // Assert
+      expect(result).toBe('/users/:id');
+    });
+
+    it('should handle catch-all route with .constela.json extension', () => {
+      // Arrange
+      const filePath = 'docs/[...slug].constela.json';
+      const routesDir = '/routes';
+
+      // Act
+      const result = filePathToPattern(filePath, routesDir);
+
+      // Assert
+      expect(result).toBe('/docs/*');
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {
@@ -626,6 +690,49 @@ describe('scanRoutes', () => {
       expect(routes).toHaveLength(2);
       expect(routes.map((r) => r.pattern)).toContain('/');
       expect(routes.map((r) => r.pattern)).toContain('/data');
+    });
+
+    it('should include .constela.json files in route scanning', async () => {
+      // Arrange
+      await writeFile(join(tempDir, 'app.constela.json'), '{ "version": "1.0", "view": {} }');
+      await writeFile(join(tempDir, 'about.constela.json'), '{ "version": "1.0", "view": {} }');
+
+      // Act
+      const routes = await scanRoutes(tempDir);
+
+      // Assert - .constela.json files should be included as route files
+      expect(routes).toHaveLength(2);
+      expect(routes.map((r) => r.pattern)).toContain('/app');
+      expect(routes.map((r) => r.pattern)).toContain('/about');
+    });
+
+    it('should include nested .constela.json files in route scanning', async () => {
+      // Arrange
+      await mkdir(join(tempDir, 'docs'), { recursive: true });
+      await writeFile(join(tempDir, 'docs/intro.constela.json'), '{ "version": "1.0", "view": {} }');
+
+      // Act
+      const routes = await scanRoutes(tempDir);
+
+      // Assert
+      expect(routes).toHaveLength(1);
+      expect(routes[0]?.pattern).toBe('/docs/intro');
+    });
+
+    it('should handle both .json and .constela.json files together', async () => {
+      // Arrange
+      await writeFile(join(tempDir, 'page.json'), '{ "version": "1.0", "view": {} }');
+      await writeFile(join(tempDir, 'app.constela.json'), '{ "version": "1.0", "view": {} }');
+      await createRouteFile(tempDir, 'index.ts');
+
+      // Act
+      const routes = await scanRoutes(tempDir);
+
+      // Assert
+      expect(routes).toHaveLength(3);
+      expect(routes.map((r) => r.pattern)).toContain('/page');
+      expect(routes.map((r) => r.pattern)).toContain('/app');
+      expect(routes.map((r) => r.pattern)).toContain('/');
     });
 
     it('should ignore files starting with _ (except _middleware)', async () => {

@@ -11,7 +11,7 @@ npm install @constela/compiler
 ## Usage
 
 ```bash
-constela compile app.json --out dist/app.compiled.json
+constela compile app.constela.json --out dist/app.compiled.json
 ```
 
 ## JSON Input

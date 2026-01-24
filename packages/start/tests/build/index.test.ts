@@ -233,6 +233,164 @@ describe('build', () => {
   });
 });
 
+// ==================== .constela.json Extension Support Tests ====================
+
+describe('.constela.json extension support', () => {
+  let tempDir: string;
+  let outDir: string;
+  let routesDir: string;
+
+  beforeEach(async () => {
+    tempDir = await createTempDir();
+    outDir = join(tempDir, 'dist');
+    routesDir = join(tempDir, 'src/routes');
+    await mkdir(routesDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  describe('route discovery', () => {
+    it('should discover .constela.json files as routes', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await writeFile(
+        join(routesDir, 'app.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      expect(result.routes).toContain('/app');
+    });
+
+    it('should discover nested .constela.json files', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await mkdir(join(routesDir, 'docs'), { recursive: true });
+      await writeFile(
+        join(routesDir, 'docs/intro.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      expect(result.routes).toContain('/docs/intro');
+    });
+  });
+
+  describe('output path generation', () => {
+    it('should strip .constela.json extension when generating output path', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await writeFile(
+        join(routesDir, 'about.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      // Output file should be at about/index.html, not about.constela/index.html
+      expect(result.generatedFiles.some((f) => f.includes('about/index.html') || f.includes('about.html'))).toBe(true);
+      // Verify .constela.json extension is stripped (but _constela/ runtime dir is allowed)
+      expect(result.generatedFiles.some((f) => f.includes('.constela.json') || f.includes('.constela/'))).toBe(false);
+    });
+
+    it('should handle index.constela.json as root route', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await writeFile(
+        join(routesDir, 'index.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      expect(result.routes).toContain('/');
+      expect(result.generatedFiles.some((f) => f.endsWith('index.html'))).toBe(true);
+    });
+  });
+
+  describe('HTML generation', () => {
+    it('should generate valid HTML from .constela.json page', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await writeFile(
+        join(routesDir, 'hello.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: {
+            kind: 'element',
+            tag: 'h1',
+            props: {},
+            children: [{ kind: 'text', value: { expr: 'lit', value: 'Hello Constela' } }],
+          },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      expect(result.generatedFiles).toHaveLength(1);
+      const htmlContent = await readFile(result.generatedFiles[0]!, 'utf-8');
+      expect(htmlContent).toContain('Hello Constela');
+      expect(htmlContent).toContain('<!DOCTYPE html>');
+    });
+  });
+
+  describe('coexistence with .json files', () => {
+    it('should handle both .json and .constela.json files in the same directory', async () => {
+      // Arrange
+      const { build } = await import('../../src/build/index.js');
+      await writeFile(
+        join(routesDir, 'page1.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+      await writeFile(
+        join(routesDir, 'page2.constela.json'),
+        JSON.stringify({
+          version: '1.0',
+          view: { kind: 'element', tag: 'div', props: {}, children: [] },
+        })
+      );
+
+      // Act
+      const result = await build({ routesDir, outDir });
+
+      // Assert
+      expect(result.routes).toContain('/page1');
+      expect(result.routes).toContain('/page2');
+      expect(result.generatedFiles).toHaveLength(2);
+    });
+  });
+});
+
 // ==================== generateStaticPages Tests ====================
 
 describe('generateStaticPages', () => {

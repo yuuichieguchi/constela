@@ -229,13 +229,13 @@ Validate JSON files before running:
 
 ```bash
 # Validate a single file
-constela validate app.json
+constela validate app.constela.json
 
 # Validate all files in a directory
 constela validate --all src/routes/
 
 # Output as JSON (for tools)
-constela validate app.json --json
+constela validate app.constela.json --json
 ```
 
 ### Using `constela inspect`
@@ -244,16 +244,16 @@ Inspect the structure of a compiled program:
 
 ```bash
 # Show full program structure
-constela inspect app.json
+constela inspect app.constela.json
 
 # Show only state
-constela inspect app.json --state
+constela inspect app.constela.json --state
 
 # Show only actions
-constela inspect app.json --actions
+constela inspect app.constela.json --actions
 
 # JSON output
-constela inspect app.json --json
+constela inspect app.constela.json --json
 ```
 
 ### Using `--verbose` Flag
@@ -261,7 +261,7 @@ constela inspect app.json --json
 Get detailed output during compilation:
 
 ```bash
-constela compile app.json --verbose
+constela compile app.constela.json --verbose
 ```
 
 This shows:

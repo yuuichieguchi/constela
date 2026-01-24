@@ -17,7 +17,7 @@
         "kind": "element",
         "tag": "p",
         "children": [
-          { "kind": "text", "value": { "expr": "lit", "value": "Edit src/routes/index.json to get started." } }
+          { "kind": "text", "value": { "expr": "lit", "value": "Edit src/routes/index.constela.json to get started." } }
         ]
       }
     ]

@@ -20,8 +20,8 @@ export function filePathToPattern(filePath: string, _routesDir?: string): string
   // Normalize path separators to forward slashes
   let normalized = filePath.replace(/\\/g, '/');
 
-  // Remove file extension (.ts, .tsx, .js, .jsx, .json)
-  normalized = normalized.replace(/\.(ts|tsx|js|jsx|json)$/, '');
+  // Remove file extension (.ts, .tsx, .js, .jsx, .json, .constela.json)
+  normalized = normalized.replace(/\.(constela\.json|ts|tsx|js|jsx|json)$/, '');
 
   // Split into segments
   const segments = normalized.split('/');
@@ -145,7 +145,7 @@ export async function scanRoutes(routesDir: string): Promise<ScannedRoute[]> {
   }
 
   // Use fast-glob to find all route files
-  const files = await fg('**/*.{ts,tsx,js,jsx,json}', {
+  const files = await fg('**/*.{ts,tsx,js,jsx,json,constela.json}', {
     cwd: routesDir,
     ignore: ['node_modules/**', '**/*.d.ts'],
     onlyFiles: true,

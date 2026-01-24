@@ -19,7 +19,7 @@ npm install @constela/start
 mkdir -p src/routes
 ```
 
-2. Create a page (`src/routes/index.json`):
+2. Create a page (`src/routes/index.constela.json`):
 
 ```json
 {
@@ -68,11 +68,11 @@ npx constela start --port 3000
 ```
 project/
   src/
-    routes/           # Page files (.json)
-      index.json      # / route
-      about.json      # /about route
+    routes/           # Page files (.constela.json)
+      index.constela.json      # / route
+      about.constela.json      # /about route
       users/
-        [id].json     # /users/:id route
+        [id].constela.json     # /users/:id route
     layouts/          # Layout files
       main.json
       docs.json
@@ -92,10 +92,10 @@ project/
 
 | File | Route |
 |------|-------|
-| `index.json` | `/` |
-| `about.json` | `/about` |
-| `users/[id].json` | `/users/:id` |
-| `docs/[...slug].json` | `/docs/*` |
+| `index.constela.json` | `/` |
+| `about.constela.json` | `/about` |
+| `users/[id].constela.json` | `/users/:id` |
+| `docs/[...slug].constela.json` | `/docs/*` |
 
 ## Data Sources
 

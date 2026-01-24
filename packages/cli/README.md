@@ -39,22 +39,22 @@ constela compile <input> [options]
 
 ```bash
 # Compile to stdout
-constela compile app.json
+constela compile app.constela.json
 
 # Compile to file
-constela compile app.json --out dist/app.compiled.json
+constela compile app.constela.json --out dist/app.compiled.json
 
 # Pretty-print output
-constela compile app.json --pretty
+constela compile app.constela.json --pretty
 
 # JSON output for AI tools
-constela compile app.json --json
+constela compile app.constela.json --json
 
 # Watch mode for development
-constela compile app.json --watch
+constela compile app.constela.json --watch
 
 # Verbose output with timing
-constela compile app.json --verbose
+constela compile app.constela.json --verbose
 # Output:
 # [1/3] Validating schema... OK (2ms)
 # [2/3] Analyzing semantics... OK (1ms)
@@ -62,9 +62,9 @@ constela compile app.json --verbose
 # Compilation successful (5ms total)
 
 # Debug information
-constela compile app.json --debug
+constela compile app.constela.json --debug
 # Output:
-# [DEBUG] Input file: app.json (1234 bytes)
+# [DEBUG] Input file: app.constela.json (1234 bytes)
 # [DEBUG] Parse time: 1ms
 # [DEBUG] Validate pass: 15 nodes validated (2ms)
 # ...
@@ -89,13 +89,13 @@ constela validate [input] [options]
 
 ```bash
 # Validate single file
-constela validate app.json
+constela validate app.constela.json
 
 # Validate all JSON files in directory
 constela validate --all src/routes/
 
 # JSON output for tooling
-constela validate app.json --json
+constela validate app.constela.json --json
 ```
 
 **Error Output with Suggestions:**
@@ -130,13 +130,13 @@ constela inspect <input> [options]
 
 ```bash
 # Show all program structure
-constela inspect app.json
+constela inspect app.constela.json
 
 # Show only state
-constela inspect app.json --state
+constela inspect app.constela.json --state
 
 # JSON output
-constela inspect app.json --json
+constela inspect app.constela.json --json
 ```
 
 **Output:**
@@ -237,11 +237,11 @@ The CLI expects the following project structure:
 ```
 project/
   src/
-    pages/           # Page files (.json, .ts)
-      index.json     # / route
-      about.json     # /about route
+    pages/           # Page files (.constela.json, .ts)
+      index.constela.json     # / route
+      about.constela.json     # /about route
       users/
-        [id].json    # /users/:id route
+        [id].constela.json    # /users/:id route
     layouts/         # Layout files (optional)
       default.json
       docs.json
@@ -275,7 +275,7 @@ export default {
 Add `--debug` to any compile command to see internal processing:
 
 ```bash
-constela compile app.json --debug
+constela compile app.constela.json --debug
 ```
 
 **Debug output includes:**
@@ -320,13 +320,13 @@ Use `inspect` to understand your program without compilation:
 
 ```bash
 # See state structure
-constela inspect app.json --state
+constela inspect app.constela.json --state
 
 # See view tree
-constela inspect app.json --view
+constela inspect app.constela.json --view
 
 # Get JSON for tooling
-constela inspect app.json --json | jq '.state'
+constela inspect app.constela.json --json | jq '.state'
 ```
 
 ### Browser DevTools

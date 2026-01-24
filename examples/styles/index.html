@@ -12,7 +12,7 @@
     import { compile } from '@constela/compiler';
     import { createApp } from '@constela/runtime';
 
-    const response = await fetch('./app.json');
+    const response = await fetch('./app.constela.json');
     const ast = await response.json();
     const result = compile(ast);
 
