@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://constela.dev/schemas/program.schema.json",
+  "title": "Constela Program",
+  "description": "Schema for Constela DSL programs",
+  "type": "object",
+  "required": ["version", "view"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Constela version"
+    },
+    "state": {
+      "type": "object",
+      "description": "State fields",
+      "additionalProperties": {
+        "$ref": "#/definitions/stateField"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "description": "Action definitions",
+      "items": {
+        "$ref": "#/definitions/actionDef"
+      }
+    },
+    "view": {
+      "$ref": "#/definitions/viewNode",
+      "description": "Root view node"
+    },
+    "components": {
+      "type": "object",
+      "description": "Component definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/componentDef"
+      }
+    },
+    "route": {
+      "$ref": "#/definitions/routeDef",
+      "description": "Route definition"
+    },
+    "imports": {
+      "type": "object",
+      "description": "External module imports",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "data": {
+      "type": "object",
+      "description": "Build-time data sources",
+      "additionalProperties": {
+        "$ref": "#/definitions/dataSource"
+      }
+    },
+    "styles": {
+      "type": "object",
+      "description": "Style presets",
+      "additionalProperties": {
+        "$ref": "#/definitions/stylePreset"
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "description": "Lifecycle hooks",
+      "properties": {
+        "onMount": { "type": "string" },
+        "onUnmount": { "type": "string" },
+        "onRouteEnter": { "type": "string" },
+        "onRouteLeave": { "type": "string" }
+      }
+    }
+  },
+  "definitions": {
+    "stateField": {
+      "oneOf": [
+        { "type": "object", "properties": { "type": { "const": "number" }, "initial": { "type": "number" } }, "required": ["type"] },
+        { "type": "object", "properties": { "type": { "const": "string" }, "initial": { "type": "string" } }, "required": ["type"] },
+        { "type": "object", "properties": { "type": { "const": "boolean" }, "initial": { "type": "boolean" } }, "required": ["type"] },
+        { "type": "object", "properties": { "type": { "const": "list" }, "initial": { "type": "array" } }, "required": ["type"] },
+        { "type": "object", "properties": { "type": { "const": "object" }, "initial": { "type": "object" } }, "required": ["type"] }
+      ]
+    },
+    "actionDef": {
+      "type": "object",
+      "required": ["name", "steps"],
+      "properties": {
+        "name": { "type": "string" },
+        "params": { "type": "array", "items": { "type": "string" } },
+        "steps": { "type": "array", "items": { "$ref": "#/definitions/actionStep" } }
+      }
+    },
+    "actionStep": {
+      "type": "object",
+      "required": ["do"],
+      "properties": {
+        "do": {
+          "type": "string",
+          "enum": ["set", "update", "setPath", "fetch", "navigate", "storage", "clipboard", "delay", "interval", "clearTimer", "focus", "dom", "if", "call", "import", "subscribe", "dispose", "send", "close"]
+        }
+      }
+    },
+    "viewNode": {
+      "type": "object",
+      "required": ["node"],
+      "properties": {
+        "node": {
+          "type": "string",
+          "enum": ["element", "text", "if", "each", "component", "slot", "markdown", "code", "portal"]
+        }
+      }
+    },
+    "componentDef": {
+      "type": "object",
+      "required": ["view"],
+      "properties": {
+        "params": { "type": "array", "items": { "type": "string" } },
+        "state": { "type": "object" },
+        "actions": { "type": "array" },
+        "view": { "$ref": "#/definitions/viewNode" }
+      }
+    },
+    "routeDef": {
+      "type": "object",
+      "properties": {
+        "pattern": { "type": "string" },
+        "params": { "type": "array", "items": { "type": "string" } },
+        "layout": { "type": "string" },
+        "title": { "type": "string" }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["glob", "file", "api", "mdx", "yaml", "csv"]
+        }
+      }
+    },
+    "stylePreset": {
+      "type": "object",
+      "properties": {
+        "base": { "type": "object" },
+        "variants": { "type": "object" }
+      }
+    },
+    "expr": {
+      "type": "object",
+      "required": ["expr"],
+      "properties": {
+        "expr": {
+          "type": "string",
+          "enum": ["lit", "state", "var", "bin", "not", "cond", "get", "concat", "route", "import", "data", "ref", "index", "style", "param", "validity"]
+        }
+      }
+    }
+  }
+}

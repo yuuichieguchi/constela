@@ -1,0 +1,21 @@
+# Source files (bundled into dist/)
+src/
+scripts/
+*.ts
+tsconfig.json
+
+# Development files
+node_modules/
+.gitignore
+*.map
+
+# Test files
+**/*.test.ts
+**/__tests__/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Build artifacts not needed
+*.tsbuildinfo

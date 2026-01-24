@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Constela",
+  "scopeName": "source.constela",
+  "patterns": [
+    { "include": "#value" }
+  ],
+  "repository": {
+    "value": {
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#number" },
+        { "include": "#constant" },
+        { "include": "#object" },
+        { "include": "#array" }
+      ]
+    },
+    "object": {
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "punctuation.definition.object.begin.constela" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.object.end.constela" } },
+      "patterns": [
+        { "include": "#object-member" },
+        { "include": "#value" }
+      ]
+    },
+    "object-member": {
+      "patterns": [
+        { "include": "#version-key" },
+        { "include": "#expr-key" },
+        { "include": "#do-key" },
+        { "include": "#node-key" },
+        { "include": "#state-key" },
+        { "include": "#actions-key" },
+        { "include": "#view-key" },
+        { "include": "#components-key" },
+        { "include": "#route-key" },
+        { "include": "#imports-key" },
+        { "include": "#data-key" },
+        { "include": "#styles-key" },
+        { "include": "#lifecycle-key" },
+        { "include": "#property-key" }
+      ]
+    },
+    "version-key": {
+      "match": "\"(version)\"\\s*:",
+      "captures": {
+        "1": { "name": "keyword.control.constela" }
+      }
+    },
+    "expr-key": {
+      "match": "\"(expr)\"\\s*:\\s*\"(lit|state|var|bin|not|cond|get|concat|route|import|data|ref|index|style|param|validity)\"",
+      "captures": {
+        "1": { "name": "keyword.control.constela" },
+        "2": { "name": "entity.name.type.constela" }
+      }
+    },
+    "do-key": {
+      "match": "\"(do)\"\\s*:\\s*\"(set|update|setPath|fetch|navigate|storage|clipboard|delay|interval|clearTimer|focus|dom|if|call|import|subscribe|dispose|send|close)\"",
+      "captures": {
+        "1": { "name": "keyword.control.constela" },
+        "2": { "name": "entity.name.function.constela" }
+      }
+    },
+    "node-key": {
+      "match": "\"(node)\"\\s*:\\s*\"(element|text|if|each|component|slot|markdown|code|portal)\"",
+      "captures": {
+        "1": { "name": "keyword.control.constela" },
+        "2": { "name": "entity.name.tag.constela" }
+      }
+    },
+    "state-key": {
+      "match": "\"(state)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "actions-key": {
+      "match": "\"(actions)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "view-key": {
+      "match": "\"(view)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "components-key": {
+      "match": "\"(components)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "route-key": {
+      "match": "\"(route)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "imports-key": {
+      "match": "\"(imports)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "data-key": {
+      "match": "\"(data)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "styles-key": {
+      "match": "\"(styles)\"\\s*:",
+      "captures": {
+        "1": { "name": "storage.type.constela" }
+      }
+    },
+    "lifecycle-key": {
+      "match": "\"(lifecycle|onMount|onUnmount|onRouteEnter|onRouteLeave)\"\\s*:",
+      "captures": {
+        "1": { "name": "support.function.constela" }
+      }
+    },
+    "property-key": {
+      "patterns": [
+        {
+          "match": "\"(name|value|op|left|right|if|then|else|cond|base|path|parts|part|items|as|template|tag|props|children|on|ref|content|language|target|method|url|body|headers|result|onSuccess|onError|action|key|steps|ms|timerId|subscriptionId|connectionId|from|with|args|params|pattern|layout|title)\"\\s*:",
+          "captures": {
+            "1": { "name": "variable.other.property.constela" }
+          }
+        },
+        {
+          "match": "\"([a-zA-Z_][a-zA-Z0-9_]*)\"\\s*:",
+          "captures": {
+            "1": { "name": "variable.other.member.constela" }
+          }
+        }
+      ]
+    },
+    "array": {
+      "begin": "\\[",
+      "end": "\\]",
+      "beginCaptures": { "0": { "name": "punctuation.definition.array.begin.constela" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.array.end.constela" } },
+      "patterns": [
+        { "include": "#value" }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.constela",
+          "begin": "\"",
+          "end": "\"",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.constela" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.constela" } },
+          "patterns": [
+            {
+              "name": "constant.character.escape.constela",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "number": {
+      "name": "constant.numeric.constela",
+      "match": "-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
+    },
+    "constant": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.true.constela",
+          "match": "\\btrue\\b"
+        },
+        {
+          "name": "constant.language.boolean.false.constela",
+          "match": "\\bfalse\\b"
+        },
+        {
+          "name": "constant.language.null.constela",
+          "match": "\\bnull\\b"
+        }
+      ]
+    }
+  }
+}
