@@ -1,5 +1,13 @@
 # @constela/runtime
 
+## 0.17.1
+
+### Patch Changes
+
+- fix: return undefined for Math.min/max with no arguments
+
+  Align behavior with @constela/server for consistency
+
 ## 0.17.0
 
 ### Minor Changes
