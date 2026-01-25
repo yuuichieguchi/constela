@@ -178,24 +178,37 @@ export interface HydrationRouteContext {
  * - Serializes the program data
  * - Calls hydrateApp with the program and container element
  * - Optionally mounts widgets using createApp
+ * - When hmrUrl is provided, sets up HMR client, handler, and error overlay
  *
  * @param program - The compiled program to hydrate
  * @param widgets - Optional array of widget configurations to mount after hydration
  * @param route - Optional route context for dynamic routes
+ * @param hmrUrl - Optional WebSocket URL for HMR connection (development mode)
  * @returns JavaScript module code as string
  */
 export function generateHydrationScript(
   program: CompiledProgram,
   widgets?: WidgetConfig[],
-  route?: HydrationRouteContext
+  route?: HydrationRouteContext,
+  hmrUrl?: string
 ): string {
   const serializedProgram = escapeJsonForScript(serializeProgram(program));
   const hasWidgets = widgets && widgets.length > 0;
+  const enableHmr = hmrUrl && hmrUrl.length > 0;
 
   // Build import statement
-  const imports = hasWidgets
-    ? `import { hydrateApp, createApp } from '@constela/runtime';`
-    : `import { hydrateApp } from '@constela/runtime';`;
+  let imports: string;
+  if (enableHmr) {
+    const baseImports = ['hydrateApp', 'createHMRClient', 'createHMRHandler', 'createErrorOverlay'];
+    if (hasWidgets) {
+      baseImports.push('createApp');
+    }
+    imports = `import { ${baseImports.join(', ')} } from '@constela/runtime';`;
+  } else {
+    imports = hasWidgets
+      ? `import { hydrateApp, createApp } from '@constela/runtime';`
+      : `import { hydrateApp } from '@constela/runtime';`;
+  }
 
   // Build widget program declarations
   const widgetDeclarations = hasWidgets
@@ -248,11 +261,39 @@ if (container_${jsId}) {
   container: document.getElementById('app')
 }`;
 
+  // Build HMR setup code if enabled
+  let hmrSetup = '';
+  if (enableHmr) {
+    const escapedHmrUrl = escapeJsString(hmrUrl);
+    const handlerOptions = route
+      ? `{
+  container: document.getElementById('app'),
+  program,
+  route
+}`
+      : `{
+  container: document.getElementById('app'),
+  program
+}`;
+
+    hmrSetup = `
+
+const overlay = createErrorOverlay();
+const handler = createHMRHandler(${handlerOptions});
+const client = createHMRClient({
+  url: '${escapedHmrUrl}',
+  onUpdate: (file, newProgram) => { handler.handleUpdate(newProgram); },
+  onError: (file, errors) => { overlay.show(errors); },
+  onConnect: () => { console.log('[HMR] Connected'); }
+});
+client.connect();`;
+  }
+
   return `${imports}
 
 const program = ${serializedProgram};
 ${routeDeclaration ? '\n' + routeDeclaration : ''}${widgetDeclarations ? '\n' + widgetDeclarations : ''}
-hydrateApp(${hydrateOptions});${widgetMounting}`;
+hydrateApp(${hydrateOptions});${hmrSetup}${widgetMounting}`;
 }
 
 // ==================== HTML Document Wrapper ====================
