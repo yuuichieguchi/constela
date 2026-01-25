@@ -12,7 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { CompiledProgram, CompiledNode, CompiledAction } from '@constela/compiler';
-import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition, ComponentDef, ComponentNode, ElementNode, IfNode, EachNode } from '@constela/core';
+import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition, ComponentDef, ComponentNode, ElementNode, IfNode, EachNode, StateField, LocalActionDefinition, ActionStep } from '@constela/core';
 import { DataLoader } from './data/loader.js';
 import { resolveImports } from './utils/import-resolver.js';
 
@@ -643,7 +643,8 @@ function substituteParamsInNode(
 
     case 'component': {
       const componentNode = node as ComponentNode;
-      // Substitute props first, then expand the component
+      // Substitute props but keep as component node
+      // so that convertViewNode can properly wrap it with localState
       const substitutedProps = componentNode.props
         ? Object.fromEntries(
             Object.entries(componentNode.props).map(([key, value]) => [
@@ -652,10 +653,10 @@ function substituteParamsInNode(
             ])
           )
         : {};
-      return expandComponent(
-        { ...componentNode, props: substitutedProps },
-        components
-      );
+      return {
+        ...componentNode,
+        props: substitutedProps,
+      };
     }
 
     case 'markdown':
@@ -706,9 +707,22 @@ function convertViewNode(
 ): CompiledNode {
   switch (node.kind) {
     case 'component': {
-      // Expand component and then convert the result
-      const expanded = expandComponent(node as ComponentNode, components);
-      return convertViewNode(expanded, components);
+      const componentNode = node as ComponentNode;
+      const componentDef = components[componentNode.name];
+      const expanded = expandComponent(componentNode, components);
+      const expandedView = convertViewNode(expanded, components);
+
+      // Wrap with localState if present
+      if (componentDef?.localState && Object.keys(componentDef.localState).length > 0) {
+        return {
+          kind: 'localState',
+          state: convertLocalState(componentDef.localState),
+          actions: convertLocalActions(componentDef.localActions ?? []),
+          child: expandedView,
+        };
+      }
+
+      return expandedView;
     }
 
     case 'element': {
@@ -802,6 +816,68 @@ function convertState(state: Record<string, unknown> | undefined): Record<string
     result[name] = {
       type: stateField.type,
       initial: stateField.initial,
+    };
+  }
+  return result;
+}
+
+/**
+ * Convert local state to compiled format
+ */
+function convertLocalState(
+  localState: Record<string, StateField>
+): Record<string, { type: string; initial: unknown }> {
+  const result: Record<string, { type: string; initial: unknown }> = {};
+  for (const [name, field] of Object.entries(localState)) {
+    result[name] = { type: field.type, initial: field.initial };
+  }
+  return result;
+}
+
+/**
+ * Convert action step to compiled format (for local actions)
+ */
+function convertActionStep(step: ActionStep): CompiledAction['steps'][number] {
+  switch (step.do) {
+    case 'set':
+      return {
+        do: 'set',
+        target: step.target,
+        value: step.value,
+      };
+    case 'update':
+      return {
+        do: 'update',
+        target: step.target,
+        operation: step.operation,
+        ...(step.value && { value: step.value }),
+        ...(step.index && { index: step.index }),
+        ...(step.deleteCount && { deleteCount: step.deleteCount }),
+      };
+    case 'setPath':
+      return {
+        do: 'setPath',
+        target: step.target,
+        path: step.path,
+        value: step.value,
+      };
+    default:
+      // For other step types, return as-is
+      return step as CompiledAction['steps'][number];
+  }
+}
+
+/**
+ * Convert local actions to compiled format
+ */
+function convertLocalActions(
+  localActions: LocalActionDefinition[]
+): Record<string, { name: string; steps: CompiledAction['steps'] }> {
+  const result: Record<string, { name: string; steps: CompiledAction['steps'] }> = {};
+  for (const action of localActions) {
+    result[action.name] = {
+      name: action.name,
+      steps: action.steps.map(convertActionStep),
     };
   }
   return result;

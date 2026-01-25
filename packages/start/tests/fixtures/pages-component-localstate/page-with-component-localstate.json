@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/component-with-localstate"
+  },
+  "state": {},
+  "actions": [],
+  "components": {
+    "Counter": {
+      "params": {},
+      "localState": {
+        "count": { "type": "number", "initial": 0 }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "count" } }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "component",
+    "name": "Counter",
+    "props": {}
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/multiple-component-instances"
+  },
+  "state": {},
+  "actions": [],
+  "components": {
+    "Counter": {
+      "params": {
+        "label": { "type": "string" }
+      },
+      "localState": {
+        "count": { "type": "number", "initial": 0 }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          { "kind": "text", "value": { "expr": "param", "name": "label" } },
+          { "kind": "text", "value": { "expr": "lit", "value": ": " } },
+          { "kind": "text", "value": { "expr": "state", "name": "count" } }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      { "kind": "component", "name": "Counter", "props": { "label": { "expr": "lit", "value": "Counter A" } } },
+      { "kind": "component", "name": "Counter", "props": { "label": { "expr": "lit", "value": "Counter B" } } },
+      { "kind": "component", "name": "Counter", "props": { "label": { "expr": "lit", "value": "Counter C" } } }
+    ]
+  }
+}

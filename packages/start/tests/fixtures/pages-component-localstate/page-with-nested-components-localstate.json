@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/nested-components-with-localstate"
+  },
+  "state": {},
+  "actions": [],
+  "components": {
+    "InnerCounter": {
+      "params": {},
+      "localState": {
+        "innerCount": { "type": "number", "initial": 10 }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "span",
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "innerCount" } }
+        ]
+      }
+    },
+    "OuterContainer": {
+      "params": {},
+      "localState": {
+        "outerCount": { "type": "number", "initial": 100 }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "outerCount" } },
+          { "kind": "component", "name": "InnerCounter", "props": {} }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "component",
+    "name": "OuterContainer",
+    "props": {}
+  }
+}

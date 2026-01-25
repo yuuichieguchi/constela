@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/component-no-localstate"
+  },
+  "state": {},
+  "actions": [],
+  "components": {
+    "SimpleButton": {
+      "params": {
+        "label": { "type": "string" }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "button",
+        "children": [
+          { "kind": "text", "value": { "expr": "param", "name": "label" } }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "component",
+    "name": "SimpleButton",
+    "props": {
+      "label": { "expr": "lit", "value": "Click me" }
+    }
+  }
+}
