@@ -146,73 +146,78 @@ function transformExpression(expr: Expression, ctx?: TransformContext): Compiled
       return dataExpr;
     }
     case 'param': {
-      // Check if param is in currentParams (component-level param)
-      const paramValue = ctx?.currentParams?.[expr.name];
-      if (paramValue !== undefined) {
-        // Substitute with the prop value
-        if (expr.path) {
-          // Handle var expressions - combine paths
-          if (paramValue.expr === 'var') {
-            const varExpr = paramValue as CompiledVarExpr;
-            const existingPath = varExpr.path;
-            const resultPath = existingPath
-              ? `${existingPath}.${expr.path}`
-              : expr.path;
+      // Check if we're inside a component expansion (currentParams is defined)
+      if (ctx?.currentParams !== undefined) {
+        // We're inside a component - param must be a component param
+        const paramValue = ctx.currentParams[expr.name];
+        if (paramValue !== undefined) {
+          // Substitute with the prop value
+          if (expr.path) {
+            // Handle var expressions - combine paths
+            if (paramValue.expr === 'var') {
+              const varExpr = paramValue as CompiledVarExpr;
+              const existingPath = varExpr.path;
+              const resultPath = existingPath
+                ? `${existingPath}.${expr.path}`
+                : expr.path;
+              return {
+                expr: 'var',
+                name: varExpr.name,
+                path: resultPath,
+              };
+            }
+            // Handle state expressions
+            if (paramValue.expr === 'state') {
+              const stateExpr = paramValue as CompiledStateExpr;
+              const existingPath = stateExpr.path;
+              const resultPath = existingPath
+                ? `${existingPath}.${expr.path}`
+                : expr.path;
+              return {
+                expr: 'state',
+                name: stateExpr.name,
+                path: resultPath,
+              };
+            }
+            // Handle import expressions
+            if (paramValue.expr === 'import') {
+              const importExpr = paramValue as CompiledImportExpr;
+              const existingPath = importExpr.path;
+              const resultPath = existingPath
+                ? `${existingPath}.${expr.path}`
+                : expr.path;
+              return {
+                expr: 'import',
+                name: importExpr.name,
+                path: resultPath,
+              };
+            }
+            // Handle data expressions
+            if (paramValue.expr === 'data') {
+              const dataExpr = paramValue as { expr: 'data'; name: string; path?: string };
+              const existingPath = dataExpr.path;
+              const resultPath = existingPath
+                ? `${existingPath}.${expr.path}`
+                : expr.path;
+              return {
+                expr: 'data',
+                name: dataExpr.name,
+                path: resultPath,
+              } as CompiledExpression;
+            }
+            // For literal or other expressions, wrap with get expression
             return {
-              expr: 'var',
-              name: varExpr.name,
-              path: resultPath,
-            };
-          }
-          // Handle state expressions
-          if (paramValue.expr === 'state') {
-            const stateExpr = paramValue as CompiledStateExpr;
-            const existingPath = stateExpr.path;
-            const resultPath = existingPath
-              ? `${existingPath}.${expr.path}`
-              : expr.path;
-            return {
-              expr: 'state',
-              name: stateExpr.name,
-              path: resultPath,
-            };
-          }
-          // Handle import expressions
-          if (paramValue.expr === 'import') {
-            const importExpr = paramValue as CompiledImportExpr;
-            const existingPath = importExpr.path;
-            const resultPath = existingPath
-              ? `${existingPath}.${expr.path}`
-              : expr.path;
-            return {
-              expr: 'import',
-              name: importExpr.name,
-              path: resultPath,
-            };
-          }
-          // Handle data expressions
-          if (paramValue.expr === 'data') {
-            const dataExpr = paramValue as { expr: 'data'; name: string; path?: string };
-            const existingPath = dataExpr.path;
-            const resultPath = existingPath
-              ? `${existingPath}.${expr.path}`
-              : expr.path;
-            return {
-              expr: 'data',
-              name: dataExpr.name,
-              path: resultPath,
+              expr: 'get',
+              base: paramValue,
+              path: expr.path,
             } as CompiledExpression;
           }
-          // For literal or other expressions, wrap with get expression
-          return {
-            expr: 'get',
-            base: paramValue,
-            path: expr.path,
-          } as CompiledExpression;
+          return paramValue;
         }
-        return paramValue;
+        // Param was not provided - return null literal (as per transform.ts behavior)
+        return { expr: 'lit', value: null };
       }
-      // Preserve for layout-level param resolution
+      // Not inside a component - preserve for layout-level param resolution
       const paramExpr: CompiledExpression = { expr: 'param', name: expr.name };
       if (expr.path) {
         (paramExpr as { path?: string }).path = expr.path;
@@ -508,8 +513,8 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
               action: value.action,
             };
           } else {
-            // Expression - pass through
-            (result as { props: Record<string, unknown> }).props[key] = value;
+            // Expression - transform to handle params
+            (result as { props: Record<string, unknown> }).props[key] = transformExpression(value as Expression, ctx);
           }
         }
       }
@@ -524,13 +529,13 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
     case 'text':
       return {
         kind: 'text',
-        value: node.value as CompiledNode['value' & keyof CompiledNode],
+        value: transformExpression(node.value as Expression, ctx),
       } as CompiledNode;
 
     case 'if': {
       const result: CompiledNode = {
         kind: 'if',
-        condition: node.condition as CompiledNode['condition' & keyof CompiledNode],
+        condition: transformExpression(node.condition as Expression, ctx),
         then: transformViewNode(node.then, ctx),
       } as CompiledNode;
       if (node.else) {
@@ -542,7 +547,7 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
     case 'each':
       return {
         kind: 'each',
-        items: node.items,
+        items: transformExpression(node.items as Expression, ctx),
         as: node.as,
         body: transformViewNode(node.body, ctx),
       } as CompiledNode;
