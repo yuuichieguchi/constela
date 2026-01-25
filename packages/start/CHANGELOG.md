@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.8.19
+
+### Patch Changes
+
+- Fix localState/localActions being ignored when expanding components in json-page-loader
+
 ## 1.8.18
 
 ### Patch Changes
