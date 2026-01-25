@@ -16,6 +16,8 @@ import {
   NAVIGATE_TARGETS,
   FOCUS_OPERATIONS,
   VALIDITY_PROPERTIES,
+  AI_PROVIDER_TYPES,
+  AI_OUTPUT_TYPES,
   type Expression,
   type LitExpr,
   type StateExpr,
@@ -29,6 +31,9 @@ import {
   type ImportExpr,
   type DataExpr,
   type DataSource,
+  type AiProviderType,
+  type AiOutputType,
+  type AiDataSource,
   type StaticPathsDefinition,
   type RouteDefinition,
   type LifecycleHooks,
@@ -58,6 +63,7 @@ import {
   type IntervalStep,
   type ClearTimerStep,
   type FocusStep,
+  type GenerateStep,
   type RefExpr,
   type IndexExpr,
   type StyleExpr,
@@ -355,8 +361,35 @@ export function isDataSource(value: unknown): value is DataSource {
       // API requires url
       if (typeof value['url'] !== 'string') return false;
       break;
+    case 'ai':
+      return isAiDataSource(value);
   }
 
+  return true;
+}
+
+/**
+ * Checks if value is an AI data source
+ */
+export function isAiDataSource(value: unknown): value is AiDataSource {
+  if (!isObject(value)) return false;
+  if (value['type'] !== 'ai') return false;
+  if (!AI_PROVIDER_TYPES.includes(value['provider'] as AiProviderType)) return false;
+  if (typeof value['prompt'] !== 'string') return false;
+  if (!AI_OUTPUT_TYPES.includes(value['output'] as AiOutputType)) return false;
+  return true;
+}
+
+/**
+ * Checks if value is a GenerateStep
+ */
+export function isGenerateStep(value: unknown): value is GenerateStep {
+  if (!isObject(value)) return false;
+  if (value['do'] !== 'generate') return false;
+  if (!AI_PROVIDER_TYPES.includes(value['provider'] as AiProviderType)) return false;
+  if (!('prompt' in value)) return false;
+  if (!AI_OUTPUT_TYPES.includes(value['output'] as AiOutputType)) return false;
+  if (typeof value['result'] !== 'string') return false;
   return true;
 }
 
@@ -727,7 +760,8 @@ export function isActionStep(value: unknown): value is ActionStep {
     isDelayStep(value) ||
     isIntervalStep(value) ||
     isClearTimerStep(value) ||
-    isFocusStep(value)
+    isFocusStep(value) ||
+    isGenerateStep(value)
   );
 }
 

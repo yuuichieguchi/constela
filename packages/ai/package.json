@@ -1,13 +1,10 @@
 {
-  "name": "@constela/cli",
-  "version": "0.5.44",
-  "description": "CLI tools for Constela UI framework",
+  "name": "@constela/ai",
+  "version": "0.1.0",
+  "description": "AI provider abstraction layer for Constela DSL",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "constela": "./dist/index.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -26,17 +23,17 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@constela/ai": "workspace:*",
-    "@constela/core": "workspace:*",
-    "@constela/compiler": "workspace:*",
-    "@constela/start": "workspace:*",
-    "commander": "^12.0.0"
+    "@anthropic-ai/sdk": "^0.39.0",
+    "openai": "^4.96.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@constela/core": "workspace:*"
   },
   "engines": {
     "node": ">=20.0.0"

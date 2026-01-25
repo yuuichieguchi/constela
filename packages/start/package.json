@@ -38,6 +38,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "@constela/ai": "workspace:*",
     "@constela/compiler": "workspace:*",
     "@constela/core": "workspace:*",
     "@constela/router": "workspace:*",

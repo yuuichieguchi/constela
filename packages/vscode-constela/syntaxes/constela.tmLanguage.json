@@ -115,7 +115,7 @@
       }
     },
     "do-key": {
-      "match": "\"(do)\"\\s*:\\s*\"(call|clearTimer|clipboard|close|delay|dispose|dom|fetch|focus|if|import|interval|navigate|send|set|setPath|storage|subscribe|update)\"",
+      "match": "\"(do)\"\\s*:\\s*\"(call|clearTimer|clipboard|close|delay|dispose|dom|fetch|focus|generate|if|import|interval|navigate|send|set|setPath|storage|subscribe|update)\"",
       "captures": {
         "1": {
           "name": "keyword.control.constela"

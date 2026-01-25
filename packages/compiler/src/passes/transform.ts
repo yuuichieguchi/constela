@@ -97,7 +97,8 @@ export type CompiledActionStep =
   | CompiledDelayStep
   | CompiledIntervalStep
   | CompiledClearTimerStep
-  | CompiledFocusStep;
+  | CompiledFocusStep
+  | CompiledGenerateStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -277,6 +278,20 @@ export interface CompiledFocusStep {
   do: 'focus';
   target: CompiledExpression;
   operation: 'focus' | 'blur' | 'select';
+  onSuccess?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+/**
+ * Compiled generate step for AI generation
+ */
+export interface CompiledGenerateStep {
+  do: 'generate';
+  provider: 'anthropic' | 'openai';
+  prompt: CompiledExpression;
+  output: 'component' | 'view';
+  result: string;
+  model?: string;
   onSuccess?: CompiledActionStep[];
   onError?: CompiledActionStep[];
 }
@@ -1050,6 +1065,27 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         compiledIfStep.else = ifStep.else.map(transformActionStep);
       }
       return compiledIfStep;
+    }
+
+    case 'generate': {
+      const generateStep = step as import('@constela/core').GenerateStep;
+      const compiledGenerateStep: CompiledGenerateStep = {
+        do: 'generate',
+        provider: generateStep.provider,
+        prompt: transformExpression(generateStep.prompt, emptyContext),
+        output: generateStep.output,
+        result: generateStep.result,
+      };
+      if (generateStep.model) {
+        compiledGenerateStep.model = generateStep.model;
+      }
+      if (generateStep.onSuccess) {
+        compiledGenerateStep.onSuccess = generateStep.onSuccess.map(transformActionStep);
+      }
+      if (generateStep.onError) {
+        compiledGenerateStep.onError = generateStep.onError.map(transformActionStep);
+      }
+      return compiledGenerateStep;
     }
   }
 }

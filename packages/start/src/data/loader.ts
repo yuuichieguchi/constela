@@ -13,7 +13,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, extname, join } from 'node:path';
 import fg from 'fast-glob';
 import type { CompiledNode } from '@constela/compiler';
-import type { DataSource, StaticPathsDefinition, Expression, ComponentsRef } from '@constela/core';
+import type { DataSource, StaticPathsDefinition, Expression, ComponentsRef, AiDataSource } from '@constela/core';
+import { isAiDataSource } from '@constela/core';
+import { createDslGenerator, type DslGenerator } from '@constela/ai';
 import { mdxContentToNode as mdxContentToNodeImpl } from '../build/mdx.js';
 
 // ==================== Types ====================
@@ -617,6 +619,32 @@ export async function loadApi(url: string, transform?: string): Promise<unknown>
   }
 }
 
+/**
+ * Load AI-generated content using AI provider
+ */
+export async function loadAi(
+  dataSource: AiDataSource,
+  generator?: DslGenerator
+): Promise<unknown> {
+  // Create or use provided generator
+  const gen = generator ?? createDslGenerator({
+    provider: dataSource.provider,
+  });
+
+  // Generate DSL
+  const result = await gen.generate({
+    prompt: dataSource.prompt,
+    output: dataSource.output,
+  });
+
+  // Check validation errors
+  if (!result.validated && result.errors && result.errors.length > 0) {
+    throw new Error(`AI generated DSL validation failed: ${result.errors.join(', ')}`);
+  }
+
+  return result.dsl;
+}
+
 // ==================== Static Paths Generation ====================
 
 /**
@@ -778,6 +806,13 @@ export class DataLoader {
           throw new Error(`API data source '${name}' requires url`);
         }
         data = await loadApi(dataSource.url, dataSource.transform);
+        break;
+
+      case 'ai':
+        if (!isAiDataSource(dataSource)) {
+          throw new Error(`Invalid AI data source '${name}'`);
+        }
+        data = await loadAi(dataSource);
         break;
 
       default:

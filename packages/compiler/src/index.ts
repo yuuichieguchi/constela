@@ -74,6 +74,7 @@ export type {
   CompiledIntervalStep,
   CompiledClearTimerStep,
   CompiledFocusStep,
+  CompiledGenerateStep,
   CompiledValidityExpr,
   CompiledCallExpr,
   CompiledLambdaExpr,

@@ -43,6 +43,7 @@ export const ACTION_STEPS = [
   { label: 'clearTimer', detail: 'ClearTimer step - clears a timer (clearTimeout/clearInterval equivalent)', kind: CompletionItemKind.Function },
   { label: 'focus', detail: 'Focus step - manages form element focus', kind: CompletionItemKind.Function },
   { label: 'if', detail: 'If step - conditional action execution', kind: CompletionItemKind.Function },
+  { label: 'generate', detail: 'Generate step - generates DSL using AI at runtime', kind: CompletionItemKind.Function },
 ];
 
 export const VIEW_NODES = [

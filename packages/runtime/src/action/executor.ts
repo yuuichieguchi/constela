@@ -31,6 +31,7 @@ import type {
   CompiledIntervalStep,
   CompiledClearTimerStep,
   CompiledFocusStep,
+  CompiledGenerateStep,
 } from '@constela/compiler';
 import type { ConnectionManager } from '../connection/websocket.js';
 import { evaluate } from '../expression/evaluator.js';
@@ -536,6 +537,10 @@ async function executeStep(
 
     case 'focus':
       await executeFocusStep(step, ctx);
+      break;
+
+    case 'generate':
+      await executeGenerateStep(step, ctx);
       break;
   }
 }
@@ -1262,6 +1267,77 @@ async function executeFocusStep(
       message: err instanceof Error ? err.message : String(err),
       name: err instanceof Error ? err.name : 'Error',
     };
+    if (step.onError) {
+      for (const errorStep of step.onError) {
+        await executeStep(errorStep, ctx);
+      }
+    }
+  }
+}
+
+/**
+ * Execute a generate step - generates DSL using AI
+ */
+async function executeGenerateStep(
+  step: {
+    do: 'generate';
+    provider: 'anthropic' | 'openai';
+    prompt: CompiledExpression;
+    output: 'component' | 'view';
+    result: string;
+    model?: string;
+    onSuccess?: CompiledActionStep[];
+    onError?: CompiledActionStep[];
+  },
+  ctx: ActionContext
+): Promise<void> {
+  // Dynamic import to avoid bundling AI package in client when not used
+  const { createDslGenerator } = await import('@constela/ai');
+
+  const evalCtx = createEvalContext(ctx);
+  const promptValue = evaluate(step.prompt, evalCtx) as string;
+
+  try {
+    const generator = createDslGenerator({
+      provider: step.provider,
+    });
+
+    const result = await generator.generate({
+      prompt: promptValue,
+      output: step.output,
+    });
+
+    // Store result in locals
+    ctx.locals[step.result] = result.dsl;
+
+    // Check for validation errors
+    if (!result.validated && result.errors && result.errors.length > 0) {
+      ctx.locals['error'] = {
+        message: `AI generated DSL validation failed: ${result.errors.join(', ')}`,
+        name: 'ValidationError',
+      };
+      // Execute onError steps
+      if (step.onError) {
+        for (const errorStep of step.onError) {
+          await executeStep(errorStep, ctx);
+        }
+      }
+      return;
+    }
+
+    // Execute onSuccess steps
+    if (step.onSuccess) {
+      for (const successStep of step.onSuccess) {
+        await executeStep(successStep, ctx);
+      }
+    }
+  } catch (err) {
+    // Inject error variable
+    ctx.locals['error'] = {
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : 'Error',
+    };
+    // Execute onError steps
     if (step.onError) {
       for (const errorStep of step.onError) {
         await executeStep(errorStep, ctx);

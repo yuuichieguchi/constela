@@ -156,6 +156,10 @@ export const ACTION_DOCS: Record<string, { signature: string; description: strin
     signature: '{ "do": "if", "condition": Expression, "then": ActionStep[], "else"?: ActionStep[] }',
     description: 'If step - conditional action execution',
   },
+  generate: {
+    signature: '{ "do": "generate", "provider": AiProviderType, "prompt": Expression, "output": AiOutputType, "result": string, "model"?: string, "onSuccess"?: ActionStep[], "onError"?: ActionStep[] }',
+    description: 'Generate step - generates DSL using AI at runtime',
+  },
 };
 
 export const VIEW_DOCS: Record<string, { signature: string; description: string }> = {

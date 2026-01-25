@@ -98,6 +98,11 @@ export type {
   DataSource,
   ComponentsRef,
   StaticPathsDefinition,
+  // AI Types
+  AiProviderType,
+  AiOutputType,
+  AiDataSource,
+  GenerateStep,
   // Route Definition
   RouteDefinition,
   // Lifecycle Hooks
@@ -123,6 +128,8 @@ export {
   NAVIGATE_TARGETS,
   FOCUS_OPERATIONS,
   VALIDITY_PROPERTIES,
+  AI_PROVIDER_TYPES,
+  AI_OUTPUT_TYPES,
 } from './types/ast.js';
 
 // ==================== Type Guards ====================
@@ -150,6 +157,9 @@ export {
   // Data source type guards
   isDataSource,
   isStaticPathsDefinition,
+  // AI type guards
+  isAiDataSource,
+  isGenerateStep,
   // ViewNode type guards
   isElementNode,
   isTextNode,

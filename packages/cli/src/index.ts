@@ -18,6 +18,7 @@ import { inspectCommand } from './commands/inspect.js';
 import { devCommand } from './commands/dev.js';
 import { buildCommand } from './commands/build.js';
 import { startCommand } from './commands/start.js';
+import { suggestCommand } from './commands/suggest.js';
 
 const program = new Command();
 
@@ -78,6 +79,14 @@ program
   .description('Start production server')
   .option('-p, --port <number>', 'Port number (default: 3000)')
   .action(startCommand);
+
+program
+  .command('suggest <input>')
+  .description('Get AI-powered suggestions for Constela DSL')
+  .option('--aspect <type>', 'Aspect to analyze: accessibility, performance, security, ux')
+  .option('--provider <name>', 'AI provider: anthropic, openai (default: anthropic)')
+  .option('--json', 'Output results as JSON')
+  .action(suggestCommand);
 
 // Show help if no arguments provided
 if (process.argv.length <= 2) {

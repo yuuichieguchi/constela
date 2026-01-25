@@ -544,7 +544,21 @@ export interface IfStep {
   else?: ActionStep[];
 }
 
-export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep | IfStep;
+/**
+ * Generate step - generates DSL using AI at runtime
+ */
+export interface GenerateStep {
+  do: 'generate';
+  provider: AiProviderType;
+  prompt: Expression;
+  output: AiOutputType;
+  result: string;
+  model?: string;
+  onSuccess?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep | IfStep | GenerateStep;
 
 // LocalActionStep - only set, update, setPath allowed for local actions
 export type LocalActionStep = SetStep | UpdateStep | SetPathStep;
@@ -721,7 +735,7 @@ export type DataTransform = (typeof DATA_TRANSFORMS)[number];
 /**
  * Data source types
  */
-export const DATA_SOURCE_TYPES = ['glob', 'file', 'api'] as const;
+export const DATA_SOURCE_TYPES = ['glob', 'file', 'api', 'ai'] as const;
 export type DataSourceType = (typeof DATA_SOURCE_TYPES)[number];
 
 /**
@@ -742,6 +756,29 @@ export interface DataSource {
   url?: string;        // For api: "https://api.example.com/posts"
   transform?: DataTransform;
   components?: string | ComponentsRef;  // For MDX: component mapping
+}
+
+/**
+ * AI provider types for AI data source
+ */
+export const AI_PROVIDER_TYPES = ['anthropic', 'openai'] as const;
+export type AiProviderType = (typeof AI_PROVIDER_TYPES)[number];
+
+/**
+ * AI output types for AI data source
+ */
+export const AI_OUTPUT_TYPES = ['component', 'view'] as const;
+export type AiOutputType = (typeof AI_OUTPUT_TYPES)[number];
+
+/**
+ * AI data source for AI-generated content at build time
+ */
+export interface AiDataSource {
+  type: 'ai';
+  provider: AiProviderType;
+  prompt: string;
+  output: AiOutputType;
+  model?: string;
 }
 
 /**
