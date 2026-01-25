@@ -459,7 +459,9 @@ export async function createDevServer(
                 query: Object.fromEntries(url.searchParams.entries()),
                 path: pathname,
               };
-              const hydrationScript = generateHydrationScript(composedProgram, widgets, routeContext);
+              // Build HMR URL if HMR server is running
+              const hmrUrl = hmrServer ? `ws://${host}:${hmrServer.port}` : undefined;
+              const hydrationScript = generateHydrationScript(composedProgram, widgets, routeContext, hmrUrl);
 
               // Generate meta tags from route definition
               const metaTags = generateMetaTags(composedProgram.route, {
@@ -475,13 +477,8 @@ export async function createDevServer(
                     .join('\n')
                 : '';
 
-              // Generate HMR script to inject WebSocket URL for client
-              const hmrScript = hmrServer
-                ? `<script>window.__CONSTELA_HMR_URL__ = "ws://${host}:${hmrServer.port}";</script>`
-                : '';
-
-              // Combine meta tags with CSS head and HMR script
-              const head = [metaTags, cssHead, hmrScript].filter(Boolean).join('\n');
+              // Combine meta tags with CSS head
+              const head = [metaTags, cssHead].filter(Boolean).join('\n');
 
               // Get initial theme from composed program state (handle both string and cookie expression)
               const themeState = composedProgram.state?.['theme'];
