@@ -35,6 +35,9 @@ import type {
   CompiledDomStep,
   CompiledLocalAction,
   CompiledLocalStateNode,
+  CompiledVarExpr,
+  CompiledStateExpr,
+  CompiledImportExpr,
 } from './transform.js';
 import type { LayoutAnalysisContext } from './analyze-layout.js';
 
@@ -79,12 +82,17 @@ function transformState(
 /**
  * Transforms an AST Expression into a CompiledExpression
  */
-function transformExpression(expr: Expression): CompiledExpression {
+function transformExpression(expr: Expression, ctx?: TransformContext): CompiledExpression {
   switch (expr.expr) {
     case 'lit':
       return { expr: 'lit', value: expr.value };
-    case 'state':
-      return { expr: 'state', name: expr.name };
+    case 'state': {
+      const stateExpr: CompiledExpression = { expr: 'state', name: expr.name };
+      if (expr.path) {
+        (stateExpr as { path?: string }).path = expr.path;
+      }
+      return stateExpr;
+    }
     case 'var': {
       const varExpr: CompiledExpression = { expr: 'var', name: expr.name };
       if (expr.path) {
@@ -96,25 +104,25 @@ function transformExpression(expr: Expression): CompiledExpression {
       return {
         expr: 'bin',
         op: expr.op,
-        left: transformExpression(expr.left),
-        right: transformExpression(expr.right),
+        left: transformExpression(expr.left, ctx),
+        right: transformExpression(expr.right, ctx),
       };
     case 'not':
       return {
         expr: 'not',
-        operand: transformExpression(expr.operand),
+        operand: transformExpression(expr.operand, ctx),
       };
     case 'cond':
       return {
         expr: 'cond',
-        if: transformExpression(expr.if),
-        then: transformExpression(expr.then),
-        else: transformExpression(expr.else),
+        if: transformExpression(expr.if, ctx),
+        then: transformExpression(expr.then, ctx),
+        else: transformExpression(expr.else, ctx),
       };
     case 'get':
       return {
         expr: 'get',
-        base: transformExpression(expr.base),
+        base: transformExpression(expr.base, ctx),
         path: expr.path,
       };
     case 'route':
@@ -138,7 +146,73 @@ function transformExpression(expr: Expression): CompiledExpression {
       return dataExpr;
     }
     case 'param': {
-      // Param expressions are preserved and resolved during composition by resolveParamExpressions
+      // Check if param is in currentParams (component-level param)
+      const paramValue = ctx?.currentParams?.[expr.name];
+      if (paramValue !== undefined) {
+        // Substitute with the prop value
+        if (expr.path) {
+          // Handle var expressions - combine paths
+          if (paramValue.expr === 'var') {
+            const varExpr = paramValue as CompiledVarExpr;
+            const existingPath = varExpr.path;
+            const resultPath = existingPath
+              ? `${existingPath}.${expr.path}`
+              : expr.path;
+            return {
+              expr: 'var',
+              name: varExpr.name,
+              path: resultPath,
+            };
+          }
+          // Handle state expressions
+          if (paramValue.expr === 'state') {
+            const stateExpr = paramValue as CompiledStateExpr;
+            const existingPath = stateExpr.path;
+            const resultPath = existingPath
+              ? `${existingPath}.${expr.path}`
+              : expr.path;
+            return {
+              expr: 'state',
+              name: stateExpr.name,
+              path: resultPath,
+            };
+          }
+          // Handle import expressions
+          if (paramValue.expr === 'import') {
+            const importExpr = paramValue as CompiledImportExpr;
+            const existingPath = importExpr.path;
+            const resultPath = existingPath
+              ? `${existingPath}.${expr.path}`
+              : expr.path;
+            return {
+              expr: 'import',
+              name: importExpr.name,
+              path: resultPath,
+            };
+          }
+          // Handle data expressions
+          if (paramValue.expr === 'data') {
+            const dataExpr = paramValue as { expr: 'data'; name: string; path?: string };
+            const existingPath = dataExpr.path;
+            const resultPath = existingPath
+              ? `${existingPath}.${expr.path}`
+              : expr.path;
+            return {
+              expr: 'data',
+              name: dataExpr.name,
+              path: resultPath,
+            } as CompiledExpression;
+          }
+          // For literal or other expressions, wrap with get expression
+          return {
+            expr: 'get',
+            base: paramValue,
+            path: expr.path,
+          } as CompiledExpression;
+        }
+        return paramValue;
+      }
+      // Preserve for layout-level param resolution
       const paramExpr: CompiledExpression = { expr: 'param', name: expr.name };
       if (expr.path) {
         (paramExpr as { path?: string }).path = expr.path;
@@ -147,6 +221,37 @@ function transformExpression(expr: Expression): CompiledExpression {
     }
     case 'ref':
       return { expr: 'ref', name: expr.name };
+    case 'call': {
+      const callExpr = expr as { expr: 'call'; target: Expression; method: string; args?: Expression[] };
+      const result: CompiledExpression = {
+        expr: 'call',
+        target: transformExpression(callExpr.target, ctx),
+        method: callExpr.method,
+      } as CompiledExpression;
+      if (callExpr.args && callExpr.args.length > 0) {
+        (result as { args?: CompiledExpression[] }).args = callExpr.args.map(arg => transformExpression(arg, ctx));
+      }
+      return result;
+    }
+    case 'lambda': {
+      const lambdaExpr = expr as { expr: 'lambda'; param: string; index?: string; body: Expression };
+      const result: CompiledExpression = {
+        expr: 'lambda',
+        param: lambdaExpr.param,
+        body: transformExpression(lambdaExpr.body, ctx),
+      } as CompiledExpression;
+      if (lambdaExpr.index) {
+        (result as { index?: string }).index = lambdaExpr.index;
+      }
+      return result;
+    }
+    case 'array': {
+      const arrayExpr = expr as { expr: 'array'; elements: Expression[] };
+      return {
+        expr: 'array',
+        elements: arrayExpr.elements.map(elem => transformExpression(elem, ctx)),
+      } as CompiledExpression;
+    }
     default:
       return { expr: 'lit', value: null };
   }
@@ -157,13 +262,13 @@ function transformExpression(expr: Expression): CompiledExpression {
 /**
  * Transforms an AST ActionStep into a CompiledActionStep
  */
-function transformActionStep(step: ActionStep): CompiledActionStep {
+function transformActionStep(step: ActionStep, ctx?: TransformContext): CompiledActionStep {
   switch (step.do) {
     case 'set':
       return {
         do: 'set',
         target: step.target,
-        value: transformExpression(step.value),
+        value: transformExpression(step.value, ctx),
       } as CompiledSetStep;
 
     case 'update': {
@@ -173,13 +278,13 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         operation: step.operation,
       };
       if (step.value) {
-        updateStep.value = transformExpression(step.value);
+        updateStep.value = transformExpression(step.value, ctx);
       }
       if (step.index) {
-        updateStep.index = transformExpression(step.index);
+        updateStep.index = transformExpression(step.index, ctx);
       }
       if (step.deleteCount) {
-        updateStep.deleteCount = transformExpression(step.deleteCount);
+        updateStep.deleteCount = transformExpression(step.deleteCount, ctx);
       }
       return updateStep;
     }
@@ -187,22 +292,22 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
     case 'fetch': {
       const fetchStep: CompiledFetchStep = {
         do: 'fetch',
-        url: transformExpression(step.url),
+        url: transformExpression(step.url, ctx),
       };
       if (step.method) {
         fetchStep.method = step.method;
       }
       if (step.body) {
-        fetchStep.body = transformExpression(step.body);
+        fetchStep.body = transformExpression(step.body, ctx);
       }
       if (step.result) {
         fetchStep.result = step.result;
       }
       if (step.onSuccess) {
-        fetchStep.onSuccess = step.onSuccess.map(transformActionStep);
+        fetchStep.onSuccess = step.onSuccess.map(s => transformActionStep(s, ctx));
       }
       if (step.onError) {
-        fetchStep.onError = step.onError.map(transformActionStep);
+        fetchStep.onError = step.onError.map(s => transformActionStep(s, ctx));
       }
       return fetchStep;
     }
@@ -212,20 +317,20 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       const compiledStorageStep: CompiledStorageStep = {
         do: 'storage',
         operation: storageStep.operation,
-        key: transformExpression(storageStep.key),
+        key: transformExpression(storageStep.key, ctx),
         storage: storageStep.storage,
       };
       if (storageStep.value) {
-        compiledStorageStep.value = transformExpression(storageStep.value);
+        compiledStorageStep.value = transformExpression(storageStep.value, ctx);
       }
       if (storageStep.result) {
         compiledStorageStep.result = storageStep.result;
       }
       if (storageStep.onSuccess) {
-        compiledStorageStep.onSuccess = storageStep.onSuccess.map(transformActionStep);
+        compiledStorageStep.onSuccess = storageStep.onSuccess.map(s => transformActionStep(s, ctx));
       }
       if (storageStep.onError) {
-        compiledStorageStep.onError = storageStep.onError.map(transformActionStep);
+        compiledStorageStep.onError = storageStep.onError.map(s => transformActionStep(s, ctx));
       }
       return compiledStorageStep;
     }
@@ -237,16 +342,16 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         operation: clipboardStep.operation,
       };
       if (clipboardStep.value) {
-        compiledClipboardStep.value = transformExpression(clipboardStep.value);
+        compiledClipboardStep.value = transformExpression(clipboardStep.value, ctx);
       }
       if (clipboardStep.result) {
         compiledClipboardStep.result = clipboardStep.result;
       }
       if (clipboardStep.onSuccess) {
-        compiledClipboardStep.onSuccess = clipboardStep.onSuccess.map(transformActionStep);
+        compiledClipboardStep.onSuccess = clipboardStep.onSuccess.map(s => transformActionStep(s, ctx));
       }
       if (clipboardStep.onError) {
-        compiledClipboardStep.onError = clipboardStep.onError.map(transformActionStep);
+        compiledClipboardStep.onError = clipboardStep.onError.map(s => transformActionStep(s, ctx));
       }
       return compiledClipboardStep;
     }
@@ -255,7 +360,7 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       const navigateStep = step as import('@constela/core').NavigateStep;
       const compiledNavigateStep: CompiledNavigateStep = {
         do: 'navigate',
-        url: transformExpression(navigateStep.url),
+        url: transformExpression(navigateStep.url, ctx),
       };
       if (navigateStep.target) {
         compiledNavigateStep.target = navigateStep.target;
@@ -274,10 +379,10 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         result: importStep.result,
       };
       if (importStep.onSuccess) {
-        compiledImportStep.onSuccess = importStep.onSuccess.map(transformActionStep);
+        compiledImportStep.onSuccess = importStep.onSuccess.map(s => transformActionStep(s, ctx));
       }
       if (importStep.onError) {
-        compiledImportStep.onError = importStep.onError.map(transformActionStep);
+        compiledImportStep.onError = importStep.onError.map(s => transformActionStep(s, ctx));
       }
       return compiledImportStep;
     }
@@ -286,19 +391,19 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       const callStep = step as import('@constela/core').CallStep;
       const compiledCallStep: CompiledCallStep = {
         do: 'call',
-        target: transformExpression(callStep.target),
+        target: transformExpression(callStep.target, ctx),
       };
       if (callStep.args) {
-        compiledCallStep.args = callStep.args.map(arg => transformExpression(arg));
+        compiledCallStep.args = callStep.args.map(arg => transformExpression(arg, ctx));
       }
       if (callStep.result) {
         compiledCallStep.result = callStep.result;
       }
       if (callStep.onSuccess) {
-        compiledCallStep.onSuccess = callStep.onSuccess.map(transformActionStep);
+        compiledCallStep.onSuccess = callStep.onSuccess.map(s => transformActionStep(s, ctx));
       }
       if (callStep.onError) {
-        compiledCallStep.onError = callStep.onError.map(transformActionStep);
+        compiledCallStep.onError = callStep.onError.map(s => transformActionStep(s, ctx));
       }
       return compiledCallStep;
     }
@@ -307,7 +412,7 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       const subscribeStep = step as import('@constela/core').SubscribeStep;
       return {
         do: 'subscribe',
-        target: transformExpression(subscribeStep.target),
+        target: transformExpression(subscribeStep.target, ctx),
         event: subscribeStep.event,
         action: subscribeStep.action,
       } as CompiledSubscribeStep;
@@ -317,7 +422,7 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       const disposeStep = step as import('@constela/core').DisposeStep;
       return {
         do: 'dispose',
-        target: transformExpression(disposeStep.target),
+        target: transformExpression(disposeStep.target, ctx),
       } as CompiledDisposeStep;
     }
 
@@ -326,8 +431,8 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
       return {
         do: 'dom',
         operation: domStep.operation,
-        selector: transformExpression(domStep.selector),
-        ...(domStep.value && { value: transformExpression(domStep.value) }),
+        selector: transformExpression(domStep.selector, ctx),
+        ...(domStep.value && { value: transformExpression(domStep.value, ctx) }),
         ...(domStep.attribute && { attribute: domStep.attribute }),
       } as CompiledDomStep;
     }
@@ -361,13 +466,14 @@ function transformLocalState(
  * Transforms local actions for components
  */
 function transformLocalActions(
-  localActions: LocalActionDefinition[]
+  localActions: LocalActionDefinition[],
+  ctx?: TransformContext
 ): Record<string, CompiledLocalAction> {
   const result: Record<string, CompiledLocalAction> = {};
   for (const action of localActions) {
     result[action.name] = {
       name: action.name,
-      steps: action.steps.map(transformActionStep),
+      steps: action.steps.map(s => transformActionStep(s, ctx)),
     };
   }
   return result;
@@ -379,7 +485,7 @@ function transformActions(actions?: ActionDefinition[]): CompiledAction[] {
   if (!actions) return [];
   return actions.map(action => ({
     name: action.name,
-    steps: action.steps.map(transformActionStep),
+    steps: action.steps.map(s => transformActionStep(s)),
   }));
 }
 
@@ -461,7 +567,7 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       const params: Record<string, CompiledExpression> = {};
       if (componentNode.props) {
         for (const [name, expr] of Object.entries(componentNode.props)) {
-          params[name] = transformExpression(expr);
+          params[name] = transformExpression(expr, ctx);
         }
       }
 
@@ -488,7 +594,7 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         return {
           kind: 'localState',
           state: transformLocalState(def.localState),
-          actions: transformLocalActions(def.localActions ?? []),
+          actions: transformLocalActions(def.localActions ?? [], newCtx),
           child: expandedView,
         } as CompiledLocalStateNode;
       }
@@ -803,7 +909,8 @@ function expandComponentNode(
   node: CompiledNode,
   components: Record<string, ComponentDef>,
   defaultContent: CompiledNode,
-  namedContent?: Record<string, CompiledNode>
+  namedContent?: Record<string, CompiledNode>,
+  parentCtx?: TransformContext
 ): CompiledNode {
   const componentNode = node as unknown as ComponentNode;
   const def = components[componentNode.name];
@@ -813,11 +920,14 @@ function expandComponentNode(
     return { kind: 'element', tag: 'div' } as CompiledNode;
   }
 
+  // Create base context for transforming props
+  const baseCtx: TransformContext = parentCtx ?? { components };
+
   // Transform props to CompiledExpressions
   const params: Record<string, CompiledExpression> = {};
   if (componentNode.props) {
     for (const [name, expr] of Object.entries(componentNode.props)) {
-      params[name] = transformExpression(expr);
+      params[name] = transformExpression(expr, baseCtx);
     }
   }
 
@@ -826,7 +936,7 @@ function expandComponentNode(
   if (componentNode.children && componentNode.children.length > 0) {
     for (const child of componentNode.children) {
       // Recursively process children through replaceSlots
-      const transformedChild = transformViewNode(child, { components });
+      const transformedChild = transformViewNode(child, baseCtx);
       children.push(replaceSlots(transformedChild, defaultContent, namedContent, components));
     }
   }
@@ -849,7 +959,7 @@ function expandComponentNode(
     return {
       kind: 'localState',
       state: transformLocalState(def.localState),
-      actions: transformLocalActions(def.localActions ?? []),
+      actions: transformLocalActions(def.localActions ?? [], newCtx),
       child: processedView,
     } as CompiledLocalStateNode;
   }
