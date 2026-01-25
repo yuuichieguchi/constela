@@ -54,6 +54,37 @@ The compiler transforms JSON programs through three passes:
 - **Object payloads** - Supports object-shaped event handler payloads with expression fields
 - **call/lambda expressions** - Compiles method calls and anonymous functions for array/string/Math/Date operations
 - **array expression** - Compiles dynamic array construction from expressions
+- **localState/localActions** - Component-scoped state with instance isolation
+
+## Component Local State
+
+Components can define `localState` and `localActions` for instance-scoped state:
+
+```json
+{
+  "components": {
+    "Accordion": {
+      "params": { "title": { "type": "string" } },
+      "localState": {
+        "isExpanded": { "type": "boolean", "initial": false }
+      },
+      "localActions": [
+        {
+          "name": "toggle",
+          "steps": [{ "do": "update", "target": "isExpanded", "operation": "toggle" }]
+        }
+      ],
+      "view": { ... }
+    }
+  }
+}
+```
+
+The compiler:
+1. Validates local state types and initial values
+2. Wraps component views with `localState` nodes
+3. Transforms local actions with instance-scoped store references
+4. Handles param substitution within component views
 
 ## CompiledProgram Structure
 

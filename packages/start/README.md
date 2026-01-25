@@ -166,6 +166,63 @@ Define reusable layouts:
 }
 ```
 
+### Components with Local State in Layouts
+
+Layout components can use `localState` and `localActions` for instance-scoped state:
+
+```json
+{
+  "version": "1.0",
+  "type": "layout",
+  "components": {
+    "Sidebar": {
+      "params": { "items": { "type": "list" } },
+      "localState": {
+        "expandedCategory": { "type": "string", "initial": "" }
+      },
+      "localActions": [
+        {
+          "name": "toggleCategory",
+          "steps": [{ "do": "set", "target": "expandedCategory", "value": { "expr": "var", "name": "payload" } }]
+        }
+      ],
+      "view": {
+        "kind": "each",
+        "items": { "expr": "param", "name": "items" },
+        "as": "item",
+        "body": {
+          "kind": "element",
+          "tag": "div",
+          "children": [
+            {
+              "kind": "element",
+              "tag": "button",
+              "props": {
+                "onClick": {
+                  "event": "click",
+                  "action": "toggleCategory",
+                  "payload": { "expr": "var", "name": "item", "path": "name" }
+                }
+              },
+              "children": [
+                { "kind": "text", "value": { "expr": "var", "name": "item", "path": "name" } }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "view": { ... }
+}
+```
+
+Key features:
+- Components in layouts support `localState` and `localActions`
+- `param` expressions inside components are substituted with prop values
+- Works with dynamic props from `each` loops
+- Each component instance maintains independent state
+
 Use layout in pages:
 
 ```json

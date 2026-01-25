@@ -243,6 +243,44 @@ Features:
 - Dual theme support (light/dark)
 - Built-in copy button
 
+### Component Local State
+
+Components can have their own independent local state and actions:
+
+```json
+{
+  "components": {
+    "Counter": {
+      "localState": {
+        "count": { "type": "number", "initial": 0 }
+      },
+      "localActions": [
+        {
+          "name": "increment",
+          "steps": [{ "do": "update", "target": "count", "operation": "increment" }]
+        }
+      ],
+      "view": {
+        "kind": "element",
+        "tag": "button",
+        "props": { "onClick": { "event": "click", "action": "increment" } },
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "count" } }
+        ]
+      }
+    }
+  }
+}
+```
+
+Features:
+- Each instance has independent state
+- Local actions operate on local state only
+- `state` expressions check local state first, then fall back to global
+- Supported steps: `set`, `update`, `setPath`
+
+Use cases: Accordions, dropdowns, form fields, toggles, tooltips
+
 ### Hydration
 
 Server-rendered HTML is hydrated on the client without DOM reconstruction:
