@@ -12,6 +12,8 @@ import type {
   StateField,
   ComponentDef,
   Expression,
+  ComponentNode,
+  LocalActionDefinition,
 } from '@constela/core';
 import type {
   CompiledProgram,
@@ -31,6 +33,8 @@ import type {
   CompiledSubscribeStep,
   CompiledDisposeStep,
   CompiledDomStep,
+  CompiledLocalAction,
+  CompiledLocalStateNode,
 } from './transform.js';
 import type { LayoutAnalysisContext } from './analyze-layout.js';
 
@@ -50,6 +54,8 @@ export interface CompiledLayoutProgram {
 
 interface TransformContext {
   components: Record<string, ComponentDef>;
+  currentParams?: Record<string, CompiledExpression>;
+  currentChildren?: CompiledNode[];
 }
 
 // ==================== State Transformation ====================
@@ -336,6 +342,37 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
   }
 }
 
+// ==================== Local State Transformation ====================
+
+/**
+ * Transforms local state for components
+ */
+function transformLocalState(
+  localState: Record<string, StateField>
+): Record<string, { type: string; initial: unknown }> {
+  const result: Record<string, { type: string; initial: unknown }> = {};
+  for (const [name, field] of Object.entries(localState)) {
+    result[name] = { type: field.type, initial: field.initial };
+  }
+  return result;
+}
+
+/**
+ * Transforms local actions for components
+ */
+function transformLocalActions(
+  localActions: LocalActionDefinition[]
+): Record<string, CompiledLocalAction> {
+  const result: Record<string, CompiledLocalAction> = {};
+  for (const action of localActions) {
+    result[action.name] = {
+      name: action.name,
+      steps: action.steps.map(transformActionStep),
+    };
+  }
+  return result;
+}
+
 // ==================== Actions Transformation ====================
 
 function transformActions(actions?: ActionDefinition[]): CompiledAction[] {
@@ -413,11 +450,50 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       } as unknown as CompiledNode;
 
     case 'component': {
-      const def = ctx.components[node.name];
-      if (def) {
-        return transformViewNode(def.view, ctx);
+      const componentNode = node as ComponentNode;
+      const def = ctx.components[componentNode.name];
+      if (!def) {
+        // Component not found - return empty element as fallback
+        return { kind: 'element', tag: 'div' } as CompiledNode;
       }
-      return { kind: 'element', tag: 'div' };
+
+      // Transform props to CompiledExpressions
+      const params: Record<string, CompiledExpression> = {};
+      if (componentNode.props) {
+        for (const [name, expr] of Object.entries(componentNode.props)) {
+          params[name] = transformExpression(expr);
+        }
+      }
+
+      // Transform children for slot content
+      const children: CompiledNode[] = [];
+      if (componentNode.children && componentNode.children.length > 0) {
+        for (const child of componentNode.children) {
+          children.push(transformViewNode(child, ctx));
+        }
+      }
+
+      // Create new context with currentParams and currentChildren
+      const newCtx: TransformContext = {
+        ...ctx,
+        currentParams: params,
+        currentChildren: children,
+      };
+
+      // Expand component view with the new context
+      const expandedView = transformViewNode(def.view, newCtx);
+
+      // Wrap with localState if present
+      if (def.localState && Object.keys(def.localState).length > 0) {
+        return {
+          kind: 'localState',
+          state: transformLocalState(def.localState),
+          actions: transformLocalActions(def.localActions ?? []),
+          child: expandedView,
+        } as CompiledLocalStateNode;
+      }
+
+      return expandedView;
     }
 
     case 'markdown':
@@ -721,12 +797,74 @@ function processNamedSlotsOnly(
 }
 
 /**
+ * Expands a component node with localState wrapping if applicable
+ */
+function expandComponentNode(
+  node: CompiledNode,
+  components: Record<string, ComponentDef>,
+  defaultContent: CompiledNode,
+  namedContent?: Record<string, CompiledNode>
+): CompiledNode {
+  const componentNode = node as unknown as ComponentNode;
+  const def = components[componentNode.name];
+
+  if (!def) {
+    // Component not found - return empty element as fallback
+    return { kind: 'element', tag: 'div' } as CompiledNode;
+  }
+
+  // Transform props to CompiledExpressions
+  const params: Record<string, CompiledExpression> = {};
+  if (componentNode.props) {
+    for (const [name, expr] of Object.entries(componentNode.props)) {
+      params[name] = transformExpression(expr);
+    }
+  }
+
+  // Transform children for slot content
+  const children: CompiledNode[] = [];
+  if (componentNode.children && componentNode.children.length > 0) {
+    for (const child of componentNode.children) {
+      // Recursively process children through replaceSlots
+      const transformedChild = transformViewNode(child, { components });
+      children.push(replaceSlots(transformedChild, defaultContent, namedContent, components));
+    }
+  }
+
+  // Create new context with currentParams and currentChildren
+  const newCtx: TransformContext = {
+    components,
+    currentParams: params,
+    currentChildren: children,
+  };
+
+  // Expand component view with the new context
+  const expandedView = transformViewNode(def.view, newCtx);
+
+  // Recursively process the expanded view to handle nested components
+  const processedView = replaceSlots(expandedView, defaultContent, namedContent, components);
+
+  // Wrap with localState if present
+  if (def.localState && Object.keys(def.localState).length > 0) {
+    return {
+      kind: 'localState',
+      state: transformLocalState(def.localState),
+      actions: transformLocalActions(def.localActions ?? []),
+      child: processedView,
+    } as CompiledLocalStateNode;
+  }
+
+  return processedView;
+}
+
+/**
  * Replaces slot nodes with content in a compiled node tree
  */
 function replaceSlots(
   node: CompiledNode,
   defaultContent: CompiledNode,
-  namedContent?: Record<string, CompiledNode>
+  namedContent?: Record<string, CompiledNode>,
+  components?: Record<string, ComponentDef>
 ): CompiledNode {
   // Check if this is a slot node
   if ((node as unknown as { kind: string }).kind === 'slot') {
@@ -743,11 +881,16 @@ function replaceSlots(
     return clonedDefault;
   }
 
+  // Handle component nodes - expand them with localState wrapping
+  if ((node as unknown as { kind: string }).kind === 'component' && components) {
+    return expandComponentNode(node, components, defaultContent, namedContent);
+  }
+
   // Handle element nodes with children
   if (node.kind === 'element') {
     const children = (node as { children?: CompiledNode[] }).children;
     if (children && children.length > 0) {
-      const newChildren = children.map(child => replaceSlots(child, defaultContent, namedContent));
+      const newChildren = children.map(child => replaceSlots(child, defaultContent, namedContent, components));
       return {
         ...node,
         children: newChildren,
@@ -761,10 +904,10 @@ function replaceSlots(
     const ifNode = node as { then: CompiledNode; else?: CompiledNode };
     const result = {
       ...node,
-      then: replaceSlots(ifNode.then, defaultContent, namedContent),
+      then: replaceSlots(ifNode.then, defaultContent, namedContent, components),
     };
     if (ifNode.else) {
-      (result as { else?: CompiledNode }).else = replaceSlots(ifNode.else, defaultContent, namedContent);
+      (result as { else?: CompiledNode }).else = replaceSlots(ifNode.else, defaultContent, namedContent, components);
     }
     return result as CompiledNode;
   }
@@ -774,7 +917,7 @@ function replaceSlots(
     const eachNode = node as { body: CompiledNode };
     return {
       ...node,
-      body: replaceSlots(eachNode.body, defaultContent, namedContent),
+      body: replaceSlots(eachNode.body, defaultContent, namedContent, components),
     } as CompiledNode;
   }
 
@@ -842,8 +985,14 @@ export function composeLayoutWithPage(
     namedContent = extractMdxSlotsFromImportData(page.importData);
   }
 
-  // Replace slots with page content
-  const composedView = replaceSlots(layoutView, page.view, namedContent);
+  // Merge components from layout and page (needed for component expansion)
+  const mergedComponents = {
+    ...((layout as unknown as { components?: Record<string, ComponentDef> }).components || {}),
+    ...((page as unknown as { components?: Record<string, ComponentDef> }).components || {}),
+  };
+
+  // Replace slots with page content and expand components with localState
+  const composedView = replaceSlots(layoutView, page.view, namedContent, mergedComponents);
 
   // Merge state (prefix layout state if conflicts)
   const mergedState: Record<string, { type: string; initial: unknown }> = {};
@@ -888,12 +1037,6 @@ export function composeLayoutWithPage(
       mergedActions[action.name] = action;
     }
   }
-
-  // Merge components
-  const mergedComponents = {
-    ...((layout as unknown as { components?: Record<string, ComponentDef> }).components || {}),
-    ...((page as unknown as { components?: Record<string, ComponentDef> }).components || {}),
-  };
 
   const result: CompiledProgram = {
     version: '1.0',
