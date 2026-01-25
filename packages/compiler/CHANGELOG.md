@@ -1,5 +1,11 @@
 # @constela/compiler
 
+## 0.14.4
+
+### Patch Changes
+
+- Fix param substitution in layout components by calling transformExpression on view node expressions
+
 ## 0.14.3
 
 ### Patch Changes

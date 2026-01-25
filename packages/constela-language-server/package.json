@@ -1,6 +1,6 @@
 {
   "name": "@constela/language-server",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Language Server Protocol implementation for Constela DSL",
   "type": "module",
   "main": "./dist/index.js",
