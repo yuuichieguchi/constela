@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.8.20
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.14.3
+  - @constela/router@18.0.0
+  - @constela/runtime@0.19.1
+  - @constela/server@11.0.1
+
 ## 1.8.19
 
 ### Patch Changes

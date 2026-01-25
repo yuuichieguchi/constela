@@ -1,5 +1,11 @@
 # @constela/compiler
 
+## 0.14.3
+
+### Patch Changes
+
+- Fix layout components with localState/localActions not being wrapped with localState node
+
 ## 0.14.2
 
 ### Patch Changes
