@@ -1,5 +1,15 @@
 # @constela/start
 
+## 1.8.22
+
+### Patch Changes
+
+- Fix HMR client connection in generated hydration script
+
+  - Add `hmrUrl` parameter to `generateHydrationScript` function
+  - When `hmrUrl` is provided, generate code that sets up HMR client, handler, and error overlay
+  - Remove redundant `window.__CONSTELA_HMR_URL__` script injection
+
 ## 1.8.21
 
 ### Patch Changes
