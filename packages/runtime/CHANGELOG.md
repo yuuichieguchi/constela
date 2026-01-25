@@ -1,5 +1,11 @@
 # @constela/runtime
 
+## 0.19.0
+
+### Minor Changes
+
+- Add localState/localActions support to hydrate.ts for SSR + Hydration environments
+
 ## 0.18.3
 
 ### Patch Changes
