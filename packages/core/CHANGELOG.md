@@ -1,5 +1,17 @@
 # @constela/core
 
+## 0.16.2
+
+### Patch Changes
+
+- chore: version bump for npm release
+
+## 0.16.1
+
+### Patch Changes
+
+- fix(runtime): prevent double rendering in HMR by adding skipInitialRender option
+
 ## 0.16.0
 
 ### Minor Changes

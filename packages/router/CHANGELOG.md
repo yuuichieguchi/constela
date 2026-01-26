@@ -1,5 +1,14 @@
 # @constela/router
 
+## 18.0.1
+
+### Patch Changes
+
+- chore: version bump for npm release
+- Updated dependencies
+  - @constela/runtime@0.19.6
+  - @constela/compiler@0.14.7
+
 ## 18.0.0
 
 ### Patch Changes

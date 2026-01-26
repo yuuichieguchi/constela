@@ -1,5 +1,31 @@
 # @constela/start
 
+## 1.8.26
+
+### Patch Changes
+
+- chore: version bump for npm release
+- Updated dependencies
+  - @constela/runtime@0.19.6
+  - @constela/core@0.16.2
+  - @constela/compiler@0.14.7
+  - @constela/server@12.0.2
+  - @constela/router@18.0.1
+  - @constela/ai@1.0.2
+
+## 1.8.25
+
+### Patch Changes
+
+- fix(runtime): prevent double rendering in HMR by adding skipInitialRender option
+- Updated dependencies
+  - @constela/runtime@0.19.5
+  - @constela/core@0.16.1
+  - @constela/compiler@0.14.6
+  - @constela/server@12.0.1
+  - @constela/ai@1.0.1
+  - @constela/router@18.0.0
+
 ## 1.8.24
 
 ### Patch Changes

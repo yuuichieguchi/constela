@@ -1,5 +1,20 @@
 # @constela/ai
 
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.16.2
+
+## 1.0.1
+
+### Patch Changes
+
+- fix(runtime): prevent double rendering in HMR by adding skipInitialRender option
+- Updated dependencies
+  - @constela/core@0.16.1
+
 ## 1.0.0
 
 ### Minor Changes

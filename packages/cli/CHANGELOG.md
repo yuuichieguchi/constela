@@ -1,5 +1,26 @@
 # @constela/cli
 
+## 0.5.48
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/start@1.8.26
+  - @constela/core@0.16.2
+  - @constela/compiler@0.14.7
+  - @constela/ai@1.0.2
+
+## 0.5.47
+
+### Patch Changes
+
+- fix(runtime): prevent double rendering in HMR by adding skipInitialRender option
+- Updated dependencies
+  - @constela/start@1.8.25
+  - @constela/core@0.16.1
+  - @constela/compiler@0.14.6
+  - @constela/ai@1.0.1
+
 ## 0.5.46
 
 ### Patch Changes

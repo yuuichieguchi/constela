@@ -1,6 +1,6 @@
 {
   "name": "@constela/ui",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "Copy-paste UI components for Constela",
   "type": "module",
   "main": "./dist/index.js",
