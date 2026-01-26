@@ -230,6 +230,55 @@ constela start --port 8080
 
 The server binds to `0.0.0.0` by default for deployment compatibility.
 
+### constela suggest
+
+AI を使って DSL ファイルを分析し、改善提案を取得します。
+
+```bash
+constela suggest <input> [options]
+```
+
+**Arguments:**
+- `<input>` - 分析対象の JSON ファイル
+
+**Options:**
+- `--aspect <type>` - 分析観点: accessibility, performance, security, ux (default: accessibility)
+- `--provider <name>` - AI プロバイダー: anthropic, openai (default: anthropic)
+- `--json` - JSON 形式で出力
+
+**環境変数:**
+- `ANTHROPIC_API_KEY` - Anthropic プロバイダー使用時
+- `OPENAI_API_KEY` - OpenAI プロバイダー使用時
+
+**Examples:**
+
+```bash
+# アクセシビリティの分析
+constela suggest app.json --aspect accessibility
+
+# セキュリティの分析（OpenAI 使用）
+constela suggest app.json --aspect security --provider openai
+
+# JSON 出力
+constela suggest app.json --aspect ux --json
+```
+
+**Output:**
+
+```
+=== Suggestions for app.json (accessibility) ===
+
+[HIGH] Missing aria-label on button
+   Recommendation: Add aria-label="Submit form" to the button element
+   Location: view.children[0].props
+
+[MED] Low color contrast in text
+   Recommendation: Increase contrast ratio to meet WCAG AA standards
+   Location: view.children[2].props.style
+
+Total: 2 suggestion(s)
+```
+
 ## Project Structure
 
 The CLI expects the following project structure:
