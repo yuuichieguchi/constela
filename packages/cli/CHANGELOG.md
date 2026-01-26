@@ -1,5 +1,11 @@
 # @constela/cli
 
+## 0.5.46
+
+### Patch Changes
+
+- @constela/start@1.8.24
+
 ## 0.5.45
 
 ### Patch Changes
