@@ -624,6 +624,166 @@ describe('createHMRHandler()', () => {
     });
   });
 
+  // ==================== skipInitialRender Option ====================
+
+  describe('skipInitialRender option', () => {
+    it('should NOT render initial app when skipInitialRender is true', () => {
+      /**
+       * Given: HMR handler options with skipInitialRender: true
+       * When: createHMRHandler is called
+       * Then: The container should remain empty (no app rendered)
+       *
+       * This is needed for hydration scenarios where hydrateApp() handles
+       * initial rendering and the HMR handler should only handle updates.
+       */
+      // Arrange
+      const program = createMockCompiledProgram({
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { id: { expr: 'lit', value: 'test-content' } },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Hello HMR' } },
+          ],
+        },
+      });
+
+      // Pre-populate with SSR content (simulating hydration scenario)
+      container.innerHTML = '<div id="ssr-content">SSR Content</div>';
+
+      const options: HMRHandlerOptions = {
+        container,
+        program,
+        skipInitialRender: true,
+      };
+
+      // Act
+      createHMRHandler(options);
+
+      // Assert - Container should still have only the original SSR content
+      // The HMR handler should NOT have rendered the program
+      expect(container.querySelector('#ssr-content')).not.toBeNull();
+      expect(container.textContent).toBe('SSR Content');
+      expect(container.querySelector('#test-content')).toBeNull();
+    });
+
+    it('should handle first update correctly when skipInitialRender is true', async () => {
+      /**
+       * Given: HMR handler with skipInitialRender: true
+       * When: handleUpdate is called with a new program
+       * Then: The container should now have the new app rendered
+       */
+      // Arrange
+      const initialProgram = createMockCompiledProgram({
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Initial (should not render)' } },
+          ],
+        },
+      });
+
+      const handler = createHMRHandler({
+        container,
+        program: initialProgram,
+        skipInitialRender: true,
+      });
+
+      const newProgram = createMockCompiledProgram({
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { id: { expr: 'lit', value: 'updated-content' } },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'Updated via HMR' } },
+          ],
+        },
+      });
+
+      // Act
+      handler.handleUpdate(newProgram);
+      await Promise.resolve();
+
+      // Assert - Now the container should have the updated content
+      expect(container.querySelector('#updated-content')).not.toBeNull();
+      expect(container.textContent).toContain('Updated via HMR');
+    });
+
+    it('should clear container contents before first render when skipInitialRender is true', async () => {
+      /**
+       * Given: Container with SSR content, HMR handler with skipInitialRender: true
+       * When: handleUpdate is called with new program
+       * Then: Container should only have new program's content (no SSR content mixed in)
+       *
+       * This ensures that when the first HMR update arrives, the old SSR content
+       * is properly removed before rendering the new content.
+       */
+      // Arrange
+      // Pre-populate container with SSR content
+      container.innerHTML = '<div id="ssr-content">Server Rendered Content</div>';
+
+      const initialProgram = createMockCompiledProgram({
+        view: { kind: 'element', tag: 'div' },
+      });
+
+      const handler = createHMRHandler({
+        container,
+        program: initialProgram,
+        skipInitialRender: true,
+      });
+
+      // Verify SSR content is still there after handler creation
+      expect(container.querySelector('#ssr-content')).not.toBeNull();
+
+      const newProgram = createMockCompiledProgram({
+        view: {
+          kind: 'element',
+          tag: 'div',
+          props: { id: { expr: 'lit', value: 'hmr-content' } },
+          children: [
+            { kind: 'text', value: { expr: 'lit', value: 'HMR Content Only' } },
+          ],
+        },
+      });
+
+      // Act
+      handler.handleUpdate(newProgram);
+      await Promise.resolve();
+
+      // Assert - Only new content should be present, SSR content should be cleared
+      expect(container.querySelector('#ssr-content')).toBeNull();
+      expect(container.querySelector('#hmr-content')).not.toBeNull();
+      expect(container.textContent).toBe('HMR Content Only');
+      expect(container.textContent).not.toContain('Server Rendered Content');
+    });
+
+    it('should handle destroy() gracefully when skipInitialRender is true and no updates received', () => {
+      /**
+       * Given: HMR handler with skipInitialRender: true and no handleUpdate called
+       * When: destroy() is called
+       * Then: Should not throw and container should remain unchanged (SSR content preserved)
+       *
+       * This edge case can occur when the HMR connection fails before any updates are received.
+       */
+      // Arrange
+      const program = createMockCompiledProgram();
+      container.innerHTML = '<div id="ssr-content">SSR Content</div>';
+
+      const handler = createHMRHandler({
+        container,
+        program,
+        skipInitialRender: true,
+      });
+
+      // Act & Assert - Should not throw
+      expect(() => handler.destroy()).not.toThrow();
+      // Container should remain unchanged (SSR content still there)
+      expect(container.querySelector('#ssr-content')).not.toBeNull();
+      expect(container.textContent).toBe('SSR Content');
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

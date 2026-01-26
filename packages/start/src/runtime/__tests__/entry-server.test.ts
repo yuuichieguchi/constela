@@ -190,6 +190,54 @@ describe('generateHydrationScript', () => {
     });
   });
 
+  // ==================== Tests: HMR skipInitialRender Option ====================
+
+  describe('when hmrUrl is provided (skipInitialRender)', () => {
+    it('should include skipInitialRender: true in HMR handler options', () => {
+      /**
+       * Given: Program and hmrUrl for HMR-enabled hydration
+       * When: generateHydrationScript is called
+       * Then: The generated script should include skipInitialRender: true
+       *       in the createHMRHandler options
+       *
+       * This is necessary because hydrateApp() handles the initial rendering,
+       * so the HMR handler should NOT render the initial app to avoid
+       * double rendering.
+       */
+      // Arrange
+      const program = createMinimalProgram();
+      const hmrUrl = 'ws://localhost:3001';
+
+      // Act
+      const script = generateHydrationScript(program, undefined, undefined, hmrUrl);
+
+      // Assert
+      // The createHMRHandler call should include skipInitialRender: true
+      expect(script).toContain('createHMRHandler');
+      expect(script).toContain('skipInitialRender: true');
+    });
+
+    it('should include skipInitialRender: true with route context', () => {
+      /**
+       * Given: Program, route context, and hmrUrl
+       * When: generateHydrationScript is called
+       * Then: The generated script should include both route and skipInitialRender: true
+       */
+      // Arrange
+      const program = createMinimalProgram();
+      const route = { params: { id: '123' }, query: { q: 'test' }, path: '/items/123' };
+      const hmrUrl = 'ws://localhost:3001';
+
+      // Act
+      const script = generateHydrationScript(program, undefined, route, hmrUrl);
+
+      // Assert
+      expect(script).toContain('createHMRHandler');
+      expect(script).toContain('skipInitialRender: true');
+      expect(script).toContain('route');
+    });
+  });
+
   // ==================== Tests: HMR with Route Context ====================
 
   describe('when hmrUrl is provided with route context', () => {

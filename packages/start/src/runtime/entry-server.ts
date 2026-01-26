@@ -269,11 +269,13 @@ if (container_${jsId}) {
       ? `{
   container: document.getElementById('app'),
   program,
-  route
+  route,
+  skipInitialRender: true
 }`
       : `{
   container: document.getElementById('app'),
-  program
+  program,
+  skipInitialRender: true
 }`;
 
     hmrSetup = `
