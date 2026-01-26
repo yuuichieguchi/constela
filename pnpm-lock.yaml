@@ -92,6 +92,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@constela/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@constela/compiler':
         specifier: workspace:*
         version: link:../compiler
