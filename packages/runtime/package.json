@@ -23,7 +23,6 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@constela/ai": "workspace:*",
     "@constela/compiler": "workspace:*",
     "@constela/core": "workspace:*",
     "dompurify": "^3.3.1",
@@ -39,6 +38,14 @@
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@constela/ai": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@constela/ai": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20.0.0"
