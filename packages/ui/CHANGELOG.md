@@ -1,5 +1,12 @@
 # @constela/ui
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.16.0
+
 ## 0.2.1
 
 ### Minor Changes

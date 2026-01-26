@@ -1,5 +1,25 @@
 # @constela/cli
 
+## 0.5.45
+
+### Patch Changes
+
+- feat(ai): add AI provider abstraction layer
+
+  - New @constela/ai package with Anthropic and OpenAI providers
+  - Security layer for DSL validation (forbidden tags, actions, URL validation)
+  - DSL generator with prompt builders for component, view, and suggestion generation
+  - AiDataSource and GenerateStep types added to @constela/core
+  - Build-time AI data loading in @constela/start
+  - Compiler transformation and runtime execution for GenerateStep
+  - CLI suggest command for AI-powered DSL analysis
+
+- Updated dependencies
+  - @constela/ai@1.0.0
+  - @constela/core@0.16.0
+  - @constela/compiler@0.14.5
+  - @constela/start@1.8.23
+
 ## 0.5.44
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@constela/server",
-  "version": "11.0.1",
+  "version": "12.0.0",
   "description": "Server-side rendering for Constela UI framework",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,8 +23,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.14.4",
-    "@constela/core": "^0.15.2"
+    "@constela/compiler": "^0.14.5",
+    "@constela/core": "^0.16.0"
   },
   "dependencies": {
     "isomorphic-dompurify": "^2.35.0",
