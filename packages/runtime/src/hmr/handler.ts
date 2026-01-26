@@ -36,6 +36,13 @@ export interface HMRHandlerOptions {
   program: CompiledProgram;
   /** Optional route context */
   route?: RouteContext;
+  /**
+   * Skip initial app creation (for hydration scenarios where hydrateApp handles initial render).
+   * When true, the HMR handler will NOT render the app on creation. The first handleUpdate()
+   * call will clear the container (removing SSR content) before rendering.
+   * @default false
+   */
+  skipInitialRender?: boolean;
 }
 
 /**
@@ -177,13 +184,15 @@ function createHMRApp(
  * @returns HMRHandler interface for managing updates
  */
 export function createHMRHandler(options: HMRHandlerOptions): HMRHandler {
-  const { container, program, route } = options;
+  const { container, program, route, skipInitialRender } = options;
 
   let currentApp: HMRAppInstance | null = null;
   let destroyed = false;
 
-  // Create initial app
-  currentApp = createHMRApp(program, container, route);
+  // Create initial app only if skipInitialRender is not true
+  if (!skipInitialRender) {
+    currentApp = createHMRApp(program, container, route);
+  }
 
   return {
     handleUpdate(newProgram: CompiledProgram): void {
@@ -192,13 +201,22 @@ export function createHMRHandler(options: HMRHandlerOptions): HMRHandler {
         return;
       }
 
-      // Serialize current state before destroying
-      let stateSnapshot: Record<string, unknown> = {};
-      if (currentApp) {
-        stateSnapshot = currentApp.stateStore.serialize();
-        currentApp.destroy();
-        currentApp = null;
+      // If skipInitialRender was used, currentApp is null on first update
+      // We need to clear the container (which has SSR content) before rendering
+      if (!currentApp) {
+        // Clear container (remove SSR content)
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+        // Create the app directly with the new program
+        currentApp = createHMRApp(newProgram, container, route);
+        return;
       }
+
+      // Normal update flow: Serialize current state before destroying
+      const stateSnapshot = currentApp.stateStore.serialize();
+      currentApp.destroy();
+      currentApp = null;
 
       // Create new state store
       const newStateStore = createStateStore(newProgram.state);
