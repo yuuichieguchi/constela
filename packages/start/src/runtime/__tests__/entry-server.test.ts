@@ -1,16 +1,18 @@
 /**
- * Test suite for entry-server.ts generateHydrationScript function
+ * Test suite for entry-server.ts
  *
  * Coverage:
- * - Default behavior (no HMR)
- * - HMR-enabled behavior (hmrUrl provided)
- * - Widget mounting with HMR
- * - Route context with HMR
+ * - generateHydrationScript: Default behavior (no HMR)
+ * - generateHydrationScript: HMR-enabled behavior (hmrUrl provided)
+ * - generateHydrationScript: Widget mounting with HMR
+ * - generateHydrationScript: Route context with HMR
+ * - wrapHtml: Theme integration (themeConfig, themeCookie)
  */
 
 import { describe, it, expect } from 'vitest';
 import type { CompiledProgram } from '@constela/compiler';
-import { generateHydrationScript } from '../entry-server.js';
+import type { ThemeConfig, ColorScheme } from '@constela/core';
+import { generateHydrationScript, wrapHtml } from '../entry-server.js';
 
 // ==================== Test Fixtures ====================
 
@@ -320,5 +322,301 @@ describe('generateHydrationScript', () => {
       // The single quote should be escaped
       expect(script).not.toContain("'abc'123'"); // This would break
     });
+  });
+});
+
+// ==================== Tests: wrapHtml Theme Integration ====================
+
+describe('wrapHtml theme integration', () => {
+  // ==================== Test Fixtures ====================
+
+  function createThemeConfig(): ThemeConfig {
+    return {
+      mode: 'light',
+      colors: {
+        primary: '#3b82f6',
+        background: '#ffffff',
+        foreground: '#1f2937',
+      },
+      darkColors: {
+        primary: '#60a5fa',
+        background: '#0f172a',
+        foreground: '#f8fafc',
+      },
+      fonts: {
+        sans: 'Inter, sans-serif',
+      },
+      cssPrefix: 'app',
+    };
+  }
+
+  // ==================== Happy Path ====================
+
+  it('should inject theme CSS from themeConfig', () => {
+    /**
+     * Given: WrapHtmlOptions with themeConfig containing colors
+     * When: wrapHtml is called
+     * Then: Output contains <style> with CSS variables
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      colors: {
+        primary: '#3b82f6',
+        background: '#ffffff',
+      },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    expect(html).toContain('<style>');
+    expect(html).toContain('--primary: #3b82f6');
+    expect(html).toContain('--background: #ffffff');
+  });
+
+  it('should inject theme CSS in head before other content', () => {
+    /**
+     * Given: WrapHtmlOptions with themeConfig and custom head content
+     * When: wrapHtml is called
+     * Then: CSS should be in <head>, before the user-provided head content
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const customHead = '<link rel="stylesheet" href="/custom.css">';
+    const themeConfig: ThemeConfig = {
+      colors: { primary: '#3b82f6' },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, customHead, {
+      themeConfig,
+    });
+
+    // Assert
+    const styleIndex = html.indexOf('<style>');
+    const customHeadIndex = html.indexOf(customHead);
+    expect(styleIndex).toBeGreaterThan(-1);
+    expect(customHeadIndex).toBeGreaterThan(-1);
+    expect(styleIndex).toBeLessThan(customHeadIndex);
+  });
+
+  it('should set dark class when themeConfig.mode is dark', () => {
+    /**
+     * Given: themeConfig with mode: 'dark'
+     * When: wrapHtml is called
+     * Then: html tag should have class="dark"
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      mode: 'dark',
+      colors: { primary: '#3b82f6' },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    expect(html).toMatch(/<html[^>]*class="dark"/);
+  });
+
+  it('should prioritize themeCookie over themeConfig.mode', () => {
+    /**
+     * Given: themeCookie is 'light' but themeConfig.mode is 'dark'
+     * When: wrapHtml is called
+     * Then: html should NOT have dark class (cookie takes precedence)
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      mode: 'dark',
+      colors: { primary: '#3b82f6' },
+    };
+    const themeCookie: ColorScheme = 'light';
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+      themeCookie,
+    });
+
+    // Assert
+    expect(html).not.toMatch(/<html[^>]*class="dark"/);
+  });
+
+  it('should apply dark class when themeCookie is dark', () => {
+    /**
+     * Given: themeCookie is 'dark' and themeConfig.mode is 'light'
+     * When: wrapHtml is called
+     * Then: html should have dark class (cookie takes precedence)
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      mode: 'light',
+      colors: { primary: '#3b82f6' },
+    };
+    const themeCookie: ColorScheme = 'dark';
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+      themeCookie,
+    });
+
+    // Assert
+    expect(html).toMatch(/<html[^>]*class="dark"/);
+  });
+
+  it('should generate FOUC prevention script when themeConfig provided', () => {
+    /**
+     * Given: themeConfig is provided
+     * When: wrapHtml is called
+     * Then: Script should be in head to prevent flash of unstyled content
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      colors: { primary: '#3b82f6' },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    // FOUC script should be in head, checking for localStorage theme
+    expect(html).toMatch(/<head>[\s\S]*<script>[\s\S]*localStorage[\s\S]*<\/script>[\s\S]*<\/head>/);
+  });
+
+  it('should use cssPrefix from themeConfig', () => {
+    /**
+     * Given: themeConfig with cssPrefix: 'app'
+     * When: wrapHtml is called
+     * Then: CSS variables should be prefixed with 'app-'
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      colors: { primary: '#3b82f6' },
+      cssPrefix: 'app',
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    expect(html).toContain('--app-primary: #3b82f6');
+  });
+
+  // ==================== Edge Cases ====================
+
+  it('should handle themeConfig without colors', () => {
+    /**
+     * Given: themeConfig with only fonts (no colors)
+     * When: wrapHtml is called
+     * Then: Should only generate font CSS variables
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      fonts: { sans: 'Inter, sans-serif' },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    expect(html).toContain('--font-sans: Inter, sans-serif');
+    expect(html).not.toContain('--primary');
+  });
+
+  it('should generate dark mode CSS variables', () => {
+    /**
+     * Given: themeConfig with both colors and darkColors
+     * When: wrapHtml is called
+     * Then: Should generate both :root and .dark CSS rules
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      colors: { primary: '#3b82f6' },
+      darkColors: { primary: '#60a5fa' },
+    };
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+    });
+
+    // Assert
+    expect(html).toContain(':root {');
+    expect(html).toContain('.dark {');
+    expect(html).toContain('--primary: #3b82f6');
+    expect(html).toContain('--primary: #60a5fa');
+  });
+
+  it('should not inject theme CSS when themeConfig is undefined', () => {
+    /**
+     * Given: No themeConfig provided
+     * When: wrapHtml is called
+     * Then: Should not contain theme-related <style> tag
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {});
+
+    // Assert
+    // Should not have theme CSS (existing behavior preserved)
+    expect(html).not.toMatch(/<style>[\s\S]*:root[\s\S]*<\/style>/);
+  });
+
+  it('should handle themeCookie system value', () => {
+    /**
+     * Given: themeCookie is 'system'
+     * When: wrapHtml is called
+     * Then: Should not apply dark class (let client handle system preference)
+     */
+    // Arrange
+    const content = '<div>Hello</div>';
+    const hydrationScript = 'hydrateApp({});';
+    const themeConfig: ThemeConfig = {
+      mode: 'dark',
+      colors: { primary: '#3b82f6' },
+    };
+    const themeCookie: ColorScheme = 'system';
+
+    // Act
+    const html = wrapHtml(content, hydrationScript, undefined, {
+      themeConfig,
+      themeCookie,
+    });
+
+    // Assert
+    // 'system' should not apply dark class - let FOUC script handle it
+    expect(html).not.toMatch(/<html[^>]*class="dark"/);
   });
 });

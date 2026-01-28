@@ -4,6 +4,7 @@
  */
 
 import type { CompiledProgram } from '@constela/compiler';
+import type { ThemeConfig } from '@constela/core';
 import {
   hydrateApp,
   createHMRClient,
@@ -12,6 +13,7 @@ import {
   type AppInstance,
   type HMRClient,
 } from '@constela/runtime';
+import { ThemeProvider } from './theme-provider.js';
 
 /**
  * Context provided to EscapeHandler mount functions
@@ -105,7 +107,24 @@ export function initClient(options: InitClientOptions): AppInstance {
     }
   }
 
-  // Step 5: Theme synchronization effect
+  // Step 5: ThemeProvider integration
+  // Check if program has theme property (extended CompiledProgram with theme)
+  const programTheme = (program as { theme?: ThemeConfig }).theme;
+  const hasThemeProvider = !!programTheme;
+
+  if (hasThemeProvider) {
+    // Initialize ThemeProvider with program's theme config
+    ThemeProvider.init(programTheme);
+    ThemeProvider.applyCssVariables();
+
+    // Apply initial dark class based on current theme state
+    const currentTheme = appInstance.getState?.('theme');
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  }
+
+  // Step 6: Theme synchronization effect
   if (program.state?.['theme']) {
     const updateThemeClass = (value: unknown) => {
       if (value === 'dark') {
@@ -115,21 +134,29 @@ export function initClient(options: InitClientOptions): AppInstance {
       }
     };
 
-    // Initial sync from current state
-    const currentTheme = appInstance.getState?.('theme');
-    if (currentTheme) {
-      updateThemeClass(currentTheme);
+    // Initial sync from current state (only if ThemeProvider not handling it)
+    if (!hasThemeProvider) {
+      const currentTheme = appInstance.getState?.('theme');
+      if (currentTheme) {
+        updateThemeClass(currentTheme);
+      }
     }
 
     // Subscribe to changes
-    const unsubscribeTheme = appInstance.subscribe('theme', updateThemeClass);
+    const unsubscribeTheme = appInstance.subscribe('theme', (value: unknown) => {
+      updateThemeClass(value);
+      // Sync with ThemeProvider if initialized
+      if (hasThemeProvider && typeof value === 'string') {
+        ThemeProvider.setMode(value as 'light' | 'dark' | 'system');
+      }
+    });
     cleanupFns.push(unsubscribeTheme);
   }
 
-  // Step 6: Track destroy state
+  // Step 7: Track destroy state
   let destroyed = false;
 
-  // Step 7: Return extended AppInstance
+  // Step 8: Return extended AppInstance
   return {
     destroy(): void {
       if (destroyed) return;
@@ -138,6 +165,11 @@ export function initClient(options: InitClientOptions): AppInstance {
       // Run all escape handler cleanups
       for (const cleanup of cleanupFns) {
         cleanup();
+      }
+
+      // Cleanup ThemeProvider if initialized
+      if (hasThemeProvider) {
+        ThemeProvider.destroy();
       }
 
       // Destroy the underlying app instance

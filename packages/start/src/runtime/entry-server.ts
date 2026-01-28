@@ -4,7 +4,9 @@
  */
 
 import type { CompiledProgram, CompiledExpression, CompiledRouteDefinition } from '@constela/compiler';
+import type { ThemeConfig, ColorScheme } from '@constela/core';
 import { renderToString, type RenderOptions } from '@constela/server';
+import { generateThemeCss, generateThemeScript, getHtmlThemeClass } from './theme.js';
 
 // ==================== Types ====================
 
@@ -27,6 +29,10 @@ export interface WrapHtmlOptions {
   themeStorageKey?: string;
   /** Default theme to use when no stored preference exists */
   defaultTheme?: 'dark' | 'light';
+  /** Full theme configuration from program */
+  themeConfig?: ThemeConfig;
+  /** Theme from cookie (takes precedence over themeConfig.mode) */
+  themeCookie?: ColorScheme;
 }
 
 export interface WidgetConfig {
@@ -334,8 +340,19 @@ export function wrapHtml(
     }
     langAttr = ` lang="${options.lang}"`;
   }
-  // Determine html class: use defaultTheme if set, otherwise fall back to theme option
-  const htmlClass = options?.defaultTheme === 'dark' || options?.theme === 'dark' ? ' class="dark"' : '';
+
+  // Determine html class based on theme configuration
+  let htmlClass = '';
+  if (options?.themeConfig) {
+    // When themeConfig is provided, use getHtmlThemeClass for proper precedence
+    const themeClass = getHtmlThemeClass(options.themeConfig, options.themeCookie);
+    if (themeClass) {
+      htmlClass = ` class="${themeClass}"`;
+    }
+  } else if (options?.defaultTheme === 'dark' || options?.theme === 'dark') {
+    // Legacy behavior: use defaultTheme or theme option
+    htmlClass = ' class="dark"';
+  }
 
   // Production mode: use bundled runtime, no importmap
   let processedScript = hydrationScript;
@@ -362,9 +379,23 @@ export function wrapHtml(
     importMapScript = `<script type="importmap">\n${importMapJson}\n</script>\n`;
   }
 
+  // Generate theme CSS from themeConfig
+  let themeCssStyle = '';
+  if (options?.themeConfig) {
+    const themeCss = generateThemeCss({ config: options.themeConfig });
+    if (themeCss) {
+      themeCssStyle = `<style>${themeCss}</style>\n`;
+    }
+  }
+
   // Generate anti-flash script for theme persistence
   let themeScript = '';
-  if (options?.themeStorageKey) {
+  if (options?.themeConfig) {
+    // When themeConfig is provided, always generate FOUC prevention script
+    const storageKey = options.themeStorageKey ?? 'theme';
+    themeScript = `<script>${generateThemeScript(storageKey)}</script>\n`;
+  } else if (options?.themeStorageKey) {
+    // Legacy behavior: use themeStorageKey option
     // Validate themeStorageKey to prevent injection attacks
     if (!/^[a-zA-Z0-9_-]+$/.test(options.themeStorageKey)) {
       throw new Error(`Invalid themeStorageKey: ${options.themeStorageKey}. Only alphanumeric characters, underscores, and hyphens are allowed.`);
@@ -405,7 +436,7 @@ export function wrapHtml(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${themeScript}${importMapScript}${head ?? ''}
+${themeCssStyle}${themeScript}${importMapScript}${head ?? ''}
 </head>
 <body>
 <div id="app">${content}</div>
