@@ -115,6 +115,16 @@ export type {
   ConstelaProgram,
 } from './types/ast.js';
 
+// ==================== Theme Types ====================
+export type {
+  ColorScheme,
+  ThemeColors,
+  ThemeFonts,
+  ThemeConfig,
+} from './types/theme.js';
+
+export { COLOR_SCHEMES } from './types/theme.js';
+
 export {
   BINARY_OPERATORS,
   UPDATE_OPERATIONS,
@@ -205,6 +215,14 @@ export {
   // Lifecycle type guard
   isLifecycleHooks,
 } from './types/guards.js';
+
+// Theme type guards
+export {
+  isColorScheme,
+  isThemeColors,
+  isThemeFonts,
+  isThemeConfig,
+} from './types/theme.js';
 
 // ==================== Error Types ====================
 export type { ErrorCode, ErrorOptions } from './types/error.js';

@@ -49,3 +49,7 @@ export { createHMRHandler } from './hmr/handler.js';
 export type { HMRHandler, HMRHandlerOptions, RouteContext } from './hmr/handler.js';
 export { createErrorOverlay } from './hmr/overlay.js';
 export type { ErrorOverlay, ErrorInfo } from './hmr/overlay.js';
+
+// Theme
+export { createThemeProvider } from './theme/index.js';
+export type { ThemeProvider, ThemeProviderOptions, ResolvedTheme } from './theme/index.js';

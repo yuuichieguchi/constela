@@ -5,6 +5,8 @@
  * for representing Constela UI applications.
  */
 
+import type { ThemeConfig } from './theme.js';
+
 // ==================== Binary Operators ====================
 
 export const BINARY_OPERATORS = [
@@ -843,6 +845,7 @@ export interface Program {
   data?: Record<string, DataSource>; // Build-time data sources
   styles?: Record<string, StylePreset>;  // Style presets (CVA-like pattern)
   lifecycle?: LifecycleHooks;        // Lifecycle hooks for component/page events
+  theme?: ThemeConfig;               // Theme configuration
   state: Record<string, StateField>;
   actions: ActionDefinition[];
   view: ViewNode;
