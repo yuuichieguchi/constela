@@ -1,0 +1,47 @@
+{
+  "datepickerStyles": {
+    "base": "relative inline-block w-full",
+    "variants": {
+      "size": {
+        "default": "w-64",
+        "sm": "w-48",
+        "lg": "w-80"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  },
+  "datepickerInputStyles": {
+    "base": "flex w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer",
+    "variants": {
+      "state": {
+        "default": "hover:border-primary",
+        "focused": "ring-2 ring-ring ring-offset-2 border-primary",
+        "disabled": "cursor-not-allowed opacity-50 bg-muted",
+        "error": "border-destructive focus-visible:ring-destructive"
+      },
+      "size": {
+        "default": "h-10",
+        "sm": "h-9 text-xs px-2 pr-8",
+        "lg": "h-11 text-base px-4 pr-12"
+      }
+    },
+    "defaultVariants": {
+      "state": "default",
+      "size": "default"
+    }
+  },
+  "datepickerIconStyles": {
+    "base": "absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground",
+    "variants": {
+      "state": {
+        "default": "hover:text-foreground",
+        "disabled": "cursor-not-allowed opacity-50"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  }
+}

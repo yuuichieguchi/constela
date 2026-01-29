@@ -1,0 +1,195 @@
+{
+  "params": {
+    "value": { "type": "string", "required": false },
+    "year": { "type": "number", "required": true },
+    "month": { "type": "number", "required": true },
+    "min": { "type": "string", "required": false },
+    "max": { "type": "string", "required": false },
+    "disabled": { "type": "boolean", "required": false },
+    "locale": { "type": "string", "required": false },
+    "weekStartsOn": { "type": "number", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "role": { "expr": "lit", "value": "grid" },
+      "aria-label": { "expr": "lit", "value": "Calendar" },
+      "className": {
+        "expr": "style",
+        "preset": "calendarStyles",
+        "props": {
+          "size": { "expr": "lit", "value": "default" }
+        }
+      }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "className": {
+            "expr": "style",
+            "preset": "calendarNavStyles"
+          }
+        },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "type": { "expr": "lit", "value": "button" },
+              "aria-label": { "expr": "lit", "value": "Previous month" },
+              "disabled": { "expr": "param", "name": "disabled" }
+            },
+            "children": [
+              { "kind": "text", "content": { "expr": "lit", "value": "<" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "span",
+            "props": {
+              "aria-live": { "expr": "lit", "value": "polite" }
+            },
+            "children": [
+              {
+                "kind": "text",
+                "content": {
+                  "expr": "call",
+                  "fn": "getMonthName",
+                  "args": [
+                    { "expr": "param", "name": "month" },
+                    { "expr": "param", "name": "locale" }
+                  ]
+                }
+              },
+              { "kind": "text", "content": { "expr": "lit", "value": " " } },
+              { "kind": "text", "content": { "expr": "param", "name": "year" } }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "button",
+            "props": {
+              "type": { "expr": "lit", "value": "button" },
+              "aria-label": { "expr": "lit", "value": "Next month" },
+              "disabled": { "expr": "param", "name": "disabled" }
+            },
+            "children": [
+              { "kind": "text", "content": { "expr": "lit", "value": ">" } }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "role": { "expr": "lit", "value": "row" },
+          "className": { "expr": "lit", "value": "calendar-weekdays" }
+        },
+        "children": [
+          {
+            "kind": "each",
+            "items": {
+              "expr": "call",
+              "fn": "getWeekDays",
+              "args": [
+                { "expr": "param", "name": "locale" }
+              ]
+            },
+            "as": "day",
+            "body": {
+              "kind": "element",
+              "tag": "div",
+              "props": {
+                "role": { "expr": "lit", "value": "columnheader" },
+                "aria-label": { "expr": "var", "name": "day" }
+              },
+              "children": [
+                { "kind": "text", "content": { "expr": "var", "name": "day" } }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": {
+          "className": { "expr": "lit", "value": "calendar-grid" }
+        },
+        "children": [
+          {
+            "kind": "each",
+            "items": {
+              "expr": "call",
+              "fn": "getCalendarDays",
+              "args": [
+                { "expr": "param", "name": "year" },
+                { "expr": "param", "name": "month" }
+              ]
+            },
+            "as": "dayInfo",
+            "body": {
+              "kind": "element",
+              "tag": "button",
+              "props": {
+                "type": { "expr": "lit", "value": "button" },
+                "role": { "expr": "lit", "value": "gridcell" },
+                "aria-selected": {
+                  "expr": "cond",
+                  "test": {
+                    "expr": "bin",
+                    "op": "===",
+                    "left": { "expr": "param", "name": "value" },
+                    "right": {
+                      "expr": "call",
+                      "fn": "formatDateISO",
+                      "args": [
+                        { "expr": "get", "obj": { "expr": "var", "name": "dayInfo" }, "key": "year" },
+                        { "expr": "get", "obj": { "expr": "var", "name": "dayInfo" }, "key": "month" },
+                        { "expr": "get", "obj": { "expr": "var", "name": "dayInfo" }, "key": "date" }
+                      ]
+                    }
+                  },
+                  "then": { "expr": "lit", "value": "true" },
+                  "else": { "expr": "lit", "value": "false" }
+                },
+                "aria-disabled": {
+                  "expr": "cond",
+                  "test": { "expr": "param", "name": "disabled" },
+                  "then": { "expr": "lit", "value": "true" },
+                  "else": { "expr": "lit", "value": "false" }
+                },
+                "disabled": { "expr": "param", "name": "disabled" },
+                "className": {
+                  "expr": "style",
+                  "preset": "calendarDayStyles",
+                  "props": {
+                    "state": {
+                      "expr": "cond",
+                      "test": {
+                        "expr": "not",
+                        "arg": { "expr": "get", "obj": { "expr": "var", "name": "dayInfo" }, "key": "isCurrentMonth" }
+                      },
+                      "then": { "expr": "lit", "value": "outside" },
+                      "else": { "expr": "lit", "value": "default" }
+                    }
+                  }
+                }
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "content": { "expr": "get", "obj": { "expr": "var", "name": "dayInfo" }, "key": "date" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
