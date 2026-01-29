@@ -65,6 +65,253 @@ const SAFE_DATE_INSTANCE_METHODS = new Set([
   'getHours', 'getMinutes', 'getSeconds', 'getMilliseconds',
 ]);
 
+// ==================== Date Helper Functions ====================
+
+/**
+ * CalendarDay type - represents a day in the calendar grid
+ */
+interface CalendarDay {
+  readonly date: number;
+  readonly month: number;
+  readonly year: number;
+  readonly isCurrentMonth: boolean;
+}
+
+/**
+ * Returns an array of day objects for a calendar grid
+ *
+ * @param year - The year (e.g., 2024)
+ * @param month - The month (0-indexed, 0 = January)
+ * @returns Array of CalendarDay objects, or undefined for invalid input
+ */
+function getCalendarDays(year: unknown, month: unknown): CalendarDay[] | undefined {
+  // Validate inputs
+  if (typeof year !== 'number' || typeof month !== 'number') {
+    return undefined;
+  }
+  if (month < 0 || month > 11) {
+    return undefined;
+  }
+
+  const days: CalendarDay[] = [];
+
+  // Get first day of the month
+  const firstDayOfMonth = new Date(year, month, 1);
+  const dayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
+
+  // Get last day of the month
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  // Calculate how many days we need from previous month
+  const prevMonthDays = dayOfWeek;
+
+  // Get previous month's last day
+  const prevMonthLastDay = new Date(year, month, 0);
+  const prevMonthDaysCount = prevMonthLastDay.getDate();
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+
+  // Add days from previous month
+  for (let i = prevMonthDays - 1; i >= 0; i--) {
+    days.push({
+      date: prevMonthDaysCount - i,
+      month: prevMonth,
+      year: prevYear,
+      isCurrentMonth: false,
+    });
+  }
+
+  // Add days from current month
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push({
+      date: i,
+      month: month,
+      year: year,
+      isCurrentMonth: true,
+    });
+  }
+
+  // Calculate total days needed (always 42 for 6 complete weeks, or fewer if fits in 5 weeks)
+  // For a complete calendar grid, we need enough to fill complete weeks
+  const totalDaysSoFar = days.length;
+  const totalWeeksNeeded = Math.ceil(totalDaysSoFar / 7);
+  const targetDays = totalWeeksNeeded * 7;
+
+  // Add days from next month to complete the grid
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const nextMonthDaysNeeded = targetDays - totalDaysSoFar;
+
+  for (let i = 1; i <= nextMonthDaysNeeded; i++) {
+    days.push({
+      date: i,
+      month: nextMonth,
+      year: nextYear,
+      isCurrentMonth: false,
+    });
+  }
+
+  return days;
+}
+
+/**
+ * Returns an array of weekday names
+ *
+ * @param locale - The locale (default: 'en-US')
+ * @returns Array of 7 weekday names starting from Sunday
+ */
+function getWeekDays(locale?: unknown): string[] {
+  const effectiveLocale = typeof locale === 'string' ? locale : 'en-US';
+
+  // Use a known Sunday date (January 7, 2024 is a Sunday)
+  const baseSunday = new Date(2024, 0, 7);
+  const weekDays: string[] = [];
+
+  try {
+    const formatter = new Intl.DateTimeFormat(effectiveLocale || 'en-US', { weekday: 'short' });
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(baseSunday);
+      date.setDate(baseSunday.getDate() + i);
+      weekDays.push(formatter.format(date));
+    }
+
+    return weekDays;
+  } catch {
+    // Fallback to English if locale is invalid
+    const fallbackFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(baseSunday);
+      date.setDate(baseSunday.getDate() + i);
+      weekDays.push(fallbackFormatter.format(date));
+    }
+    return weekDays;
+  }
+}
+
+/**
+ * Returns the name of a month
+ *
+ * @param month - The month (0-indexed, 0 = January)
+ * @param locale - The locale (default: 'en-US')
+ * @returns Month name, or undefined for invalid month
+ */
+function getMonthName(month: unknown, locale?: unknown): string | undefined {
+  // Validate month
+  if (typeof month !== 'number' || month < 0 || month > 11) {
+    return undefined;
+  }
+
+  const effectiveLocale = typeof locale === 'string' ? locale : 'en-US';
+
+  try {
+    const date = new Date(2024, month, 1);
+    const formatter = new Intl.DateTimeFormat(effectiveLocale, { month: 'long' });
+    return formatter.format(date);
+  } catch {
+    // Fallback to English
+    const date = new Date(2024, month, 1);
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
+    return formatter.format(date);
+  }
+}
+
+/**
+ * Formats year, month, date to ISO string (YYYY-MM-DD)
+ * @param year - The full year (e.g., 2024)
+ * @param month - The month (0-indexed, 0 = January)
+ * @param date - The day of month (1-31)
+ */
+function formatDateISO(year: unknown, month: unknown, date: unknown): string | undefined {
+  if (typeof year !== 'number' || typeof month !== 'number' || typeof date !== 'number') {
+    return undefined;
+  }
+  const y = String(year).padStart(4, '0');
+  const m = String(month + 1).padStart(2, '0'); // month is 0-indexed
+  const d = String(date).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Formats an ISO date string
+ *
+ * @param dateStr - ISO date string (YYYY-MM-DD)
+ * @param format - Format type: 'short', 'medium', 'long', 'iso' (default: 'medium')
+ * @param locale - The locale (default: 'en-US')
+ * @returns Formatted date string, or undefined for invalid input
+ */
+function formatDate(dateStr: unknown, format?: unknown, locale?: unknown): string | undefined {
+  // Validate date string
+  if (typeof dateStr !== 'string' || !dateStr) {
+    return undefined;
+  }
+
+  // Parse ISO date string (YYYY-MM-DD)
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isoDateRegex.test(dateStr)) {
+    return undefined;
+  }
+
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = parseInt(yearStr!, 10);
+  const month = parseInt(monthStr!, 10) - 1; // 0-indexed
+  const day = parseInt(dayStr!, 10);
+
+  // Create date in UTC to avoid timezone issues
+  const date = new Date(Date.UTC(year, month, day));
+
+  // Validate the date - ensure it wasn't auto-corrected
+  if (isNaN(date.getTime()) ||
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month ||
+      date.getUTCDate() !== day) {
+    return undefined;
+  }
+
+  const effectiveFormat = typeof format === 'string' ? format : 'medium';
+  const effectiveLocale = typeof locale === 'string' ? locale : 'en-US';
+
+  // Handle ISO format
+  if (effectiveFormat === 'iso') {
+    return dateStr;
+  }
+
+  try {
+    let options: Intl.DateTimeFormatOptions;
+
+    switch (effectiveFormat) {
+      case 'short':
+        // Japanese locale uses 4-digit year with leading zeros (2024/01/15)
+        // English locale uses 2-digit year without leading zeros (1/15/24)
+        if (effectiveLocale.startsWith('ja')) {
+          options = { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' };
+        } else {
+          options = { year: '2-digit', month: 'numeric', day: 'numeric', timeZone: 'UTC' };
+        }
+        break;
+      case 'medium':
+        options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' };
+        break;
+      case 'long':
+        options = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+        break;
+      default:
+        // Invalid format - fallback to medium
+        options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' };
+    }
+
+    const formatter = new Intl.DateTimeFormat(effectiveLocale, options);
+    return formatter.format(date);
+  } catch {
+    // Fallback to English
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+    });
+    return formatter.format(date);
+  }
+}
+
 /**
  * Creates a JavaScript function from a lambda expression
  */
@@ -422,6 +669,12 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
           Number,
           Boolean,
           console,
+          // Date helper functions
+          getCalendarDays,
+          getWeekDays,
+          getMonthName,
+          formatDate,
+          formatDateISO,
         };
         value = safeGlobals[varName];
       }
@@ -436,7 +689,7 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       if (typeof value === 'function' && pathParts.length > 0) {
         let parent = ctx.locals[varName];
         if (parent === undefined) {
-          const safeGlobals: Record<string, unknown> = { JSON, Math, Date, Object, Array, String, Number, Boolean, console };
+          const safeGlobals: Record<string, unknown> = { JSON, Math, Date, Object, Array, String, Number, Boolean, console, getCalendarDays, getWeekDays, getMonthName, formatDate, formatDateISO };
           parent = safeGlobals[varName];
         }
         for (let i = 0; i < pathParts.length - 1; i++) {
@@ -591,6 +844,11 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       // Date instance methods
       if (target instanceof Date) {
         return callDateInstanceMethod(target, callExpr.method);
+      }
+
+      // Function call support (for global helper functions like getCalendarDays, getWeekDays, etc.)
+      if (typeof target === 'function' && callExpr.method === 'call') {
+        return target(...args);
       }
 
       return undefined;

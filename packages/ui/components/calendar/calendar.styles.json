@@ -1,0 +1,33 @@
+{
+  "calendarStyles": {
+    "base": "flex flex-col gap-2 p-4 bg-background rounded-lg border border-border",
+    "variants": {
+      "size": {
+        "default": "w-80",
+        "sm": "w-64 p-2 gap-1 text-sm",
+        "lg": "w-96 p-6 gap-3 text-lg"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  },
+  "calendarDayStyles": {
+    "base": "inline-flex items-center justify-center h-10 w-10 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    "variants": {
+      "state": {
+        "default": "hover:bg-accent hover:text-accent-foreground",
+        "selected": "bg-primary text-primary-foreground hover:bg-primary/90",
+        "today": "bg-accent text-accent-foreground font-bold",
+        "disabled": "text-muted-foreground opacity-50 pointer-events-none",
+        "outside": "text-muted-foreground opacity-50"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "calendarNavStyles": {
+    "base": "flex items-center justify-between px-2 py-1"
+  }
+}
