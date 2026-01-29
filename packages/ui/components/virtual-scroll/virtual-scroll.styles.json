@@ -1,0 +1,17 @@
+{
+  "virtualScrollContainer": {
+    "base": "relative overflow-hidden"
+  },
+  "virtualScrollViewport": {
+    "base": "overflow-auto w-full h-full"
+  },
+  "virtualScrollSpacer": {
+    "base": "w-full pointer-events-none"
+  },
+  "virtualScrollContent": {
+    "base": "absolute top-0 left-0 w-full"
+  },
+  "virtualScrollItem": {
+    "base": "w-full"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "params": {
+    "column": { "type": "object", "required": true },
+    "sortable": { "type": "boolean", "required": false },
+    "sorted": { "type": "boolean", "required": false },
+    "sortDirection": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "th",
+    "props": {
+      "role": { "expr": "lit", "value": "columnheader" },
+      "aria-sort": {
+        "expr": "cond",
+        "if": { "expr": "param", "name": "sorted" },
+        "then": { "expr": "param", "name": "sortDirection" },
+        "else": { "expr": "lit", "value": "none" }
+      },
+      "className": {
+        "expr": "style",
+        "preset": "dataTableHeaderCell",
+        "variants": {
+          "sortable": { "expr": "param", "name": "sortable" },
+          "align": { "expr": "get", "base": { "expr": "param", "name": "column" }, "path": "align" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

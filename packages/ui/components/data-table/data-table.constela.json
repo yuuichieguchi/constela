@@ -1,0 +1,32 @@
+{
+  "params": {
+    "columns": { "type": "list", "required": true },
+    "data": { "type": "list", "required": true },
+    "pageSize": { "type": "number", "required": false },
+    "sortable": { "type": "boolean", "required": false },
+    "filterable": { "type": "boolean", "required": false },
+    "selectable": { "type": "boolean", "required": false },
+    "multiSelect": { "type": "boolean", "required": false },
+    "stickyHeader": { "type": "boolean", "required": false }
+  },
+  "localState": {
+    "currentPage": { "type": "number", "initial": 0 },
+    "sortColumn": { "type": "string", "initial": "" },
+    "sortDirection": { "type": "string", "initial": "asc" },
+    "filterText": { "type": "string", "initial": "" },
+    "selectedRows": { "type": "list", "initial": [] }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "table",
+    "props": {
+      "role": { "expr": "lit", "value": "table" },
+      "aria-rowcount": { "expr": "call", "target": { "expr": "param", "name": "data" }, "method": "length" },
+      "className": {
+        "expr": "style",
+        "preset": "dataTableContainer"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

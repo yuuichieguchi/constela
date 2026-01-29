@@ -1,0 +1,19 @@
+{
+  "params": {
+    "currentPage": { "type": "number", "required": true },
+    "totalPages": { "type": "number", "required": true },
+    "maxVisible": { "type": "number", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "nav",
+    "props": {
+      "aria-label": { "expr": "lit", "value": "Pagination" },
+      "className": {
+        "expr": "style",
+        "preset": "dataTablePagination"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

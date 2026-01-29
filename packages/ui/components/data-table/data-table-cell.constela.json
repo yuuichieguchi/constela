@@ -1,0 +1,22 @@
+{
+  "params": {
+    "value": { "type": "any", "required": true },
+    "column": { "type": "object", "required": true },
+    "align": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "td",
+    "props": {
+      "role": { "expr": "lit", "value": "cell" },
+      "className": {
+        "expr": "style",
+        "preset": "dataTableCell",
+        "variants": {
+          "align": { "expr": "param", "name": "align" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

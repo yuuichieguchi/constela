@@ -1,0 +1,30 @@
+{
+  "params": {
+    "row": { "type": "object", "required": true },
+    "rowIndex": { "type": "number", "required": true },
+    "selected": { "type": "boolean", "required": false },
+    "selectable": { "type": "boolean", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "tr",
+    "props": {
+      "role": { "expr": "lit", "value": "row" },
+      "aria-rowindex": {
+        "expr": "bin",
+        "op": "+",
+        "left": { "expr": "param", "name": "rowIndex" },
+        "right": { "expr": "lit", "value": 1 }
+      },
+      "aria-selected": { "expr": "param", "name": "selected" },
+      "className": {
+        "expr": "style",
+        "preset": "dataTableRow",
+        "variants": {
+          "selected": { "expr": "param", "name": "selected" }
+        }
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

@@ -233,6 +233,275 @@ function formatDateISO(year: unknown, month: unknown, date: unknown): string | u
   return `${y}-${m}-${d}`;
 }
 
+// ==================== DataTable Helper Functions ====================
+
+/**
+ * Sorts an array of objects by a specified key
+ *
+ * @param items - Array of objects to sort
+ * @param key - The key to sort by
+ * @param direction - Sort direction: 'asc' (default) or 'desc'
+ * @returns Sorted array (new array, does not mutate original), or undefined for invalid input
+ */
+function sortBy(
+  items: unknown,
+  key: unknown,
+  direction?: unknown
+): unknown[] | undefined {
+  // Validate items
+  if (!Array.isArray(items)) {
+    return undefined;
+  }
+
+  // Validate key
+  if (typeof key !== 'string') {
+    return undefined;
+  }
+
+  // Prototype pollution prevention
+  const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
+  if (forbiddenKeys.has(key)) {
+    return undefined;
+  }
+
+  // Determine direction (default to 'asc', treat invalid as 'asc')
+  const dir = direction === 'desc' ? 'desc' : 'asc';
+
+  // Create a copy to avoid mutation
+  const sorted = [...items];
+
+  sorted.sort((a, b) => {
+    const aVal = a != null && typeof a === 'object' ? (a as Record<string, unknown>)[key] : undefined;
+    const bVal = b != null && typeof b === 'object' ? (b as Record<string, unknown>)[key] : undefined;
+
+    // Handle null/undefined values - push them to the end
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    // Compare values
+    let comparison = 0;
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      comparison = aVal - bVal;
+    } else {
+      comparison = String(aVal).localeCompare(String(bVal));
+    }
+
+    return dir === 'desc' ? -comparison : comparison;
+  });
+
+  return sorted;
+}
+
+/**
+ * Gets items for a specified page (0-indexed)
+ *
+ * @param items - Array of items to paginate
+ * @param page - Page number (0-indexed)
+ * @param pageSize - Number of items per page
+ * @returns Subset of items for the specified page, or undefined for invalid input
+ */
+function getPaginatedItems(
+  items: unknown,
+  page: unknown,
+  pageSize: unknown
+): unknown[] | undefined {
+  // Validate items
+  if (!Array.isArray(items)) {
+    return undefined;
+  }
+
+  // Validate page
+  if (typeof page !== 'number' || page < 0) {
+    return undefined;
+  }
+
+  // Validate pageSize
+  if (typeof pageSize !== 'number' || pageSize <= 0) {
+    return undefined;
+  }
+
+  const start = page * pageSize;
+  const end = start + pageSize;
+  return items.slice(start, end);
+}
+
+/**
+ * Calculates total number of pages
+ *
+ * @param itemCount - Total number of items
+ * @param pageSize - Number of items per page
+ * @returns Total number of pages, or 0 for invalid input
+ */
+function getTotalPages(itemCount: unknown, pageSize: unknown): number {
+  // Validate inputs
+  if (typeof itemCount !== 'number' || typeof pageSize !== 'number') {
+    return 0;
+  }
+
+  if (itemCount < 0 || pageSize <= 0) {
+    return 0;
+  }
+
+  if (itemCount === 0) {
+    return 0;
+  }
+
+  return Math.ceil(itemCount / pageSize);
+}
+
+/**
+ * Returns an array of page numbers for pagination UI
+ *
+ * @param currentPage - Current page (0-indexed)
+ * @param totalPages - Total number of pages
+ * @param maxVisible - Maximum number of visible page buttons
+ * @returns Array of page numbers, with -1 representing ellipsis
+ */
+function getPageNumbers(
+  currentPage: unknown,
+  totalPages: unknown,
+  maxVisible: unknown
+): number[] {
+  // Validate inputs
+  if (
+    typeof currentPage !== 'number' ||
+    typeof totalPages !== 'number' ||
+    typeof maxVisible !== 'number'
+  ) {
+    return [];
+  }
+
+  if (totalPages <= 0) {
+    return [];
+  }
+
+  if (currentPage < 0 || currentPage >= totalPages) {
+    return [];
+  }
+
+  // If total pages fit within maxVisible, return all pages
+  if (totalPages <= maxVisible) {
+    return Array.from({ length: totalPages }, (_, i) => i);
+  }
+
+  const result: number[] = [];
+  const firstPage = 0;
+  const lastPage = totalPages - 1;
+
+  // Always include first page
+  result.push(firstPage);
+
+  // Calculate the range around current page
+  // We need to reserve space for: first, last, and up to 2 ellipses
+  // So the "middle" section has maxVisible - 2 slots (minus first and last)
+  const middleSlots = maxVisible - 2;
+
+  // Calculate start and end of middle section
+  let middleStart = currentPage - Math.floor((middleSlots - 1) / 2);
+  let middleEnd = currentPage + Math.ceil((middleSlots - 1) / 2);
+
+  // Adjust if near the start
+  if (middleStart <= 1) {
+    middleStart = 1;
+    middleEnd = Math.min(middleSlots, lastPage - 1);
+  }
+
+  // Adjust if near the end
+  if (middleEnd >= lastPage - 1) {
+    middleEnd = lastPage - 1;
+    middleStart = Math.max(1, lastPage - middleSlots);
+  }
+
+  // Add ellipsis or pages between first and middle
+  if (middleStart > 1) {
+    result.push(-1); // ellipsis
+  }
+
+  // Add middle pages
+  for (let i = middleStart; i <= middleEnd; i++) {
+    if (i > firstPage && i < lastPage) {
+      result.push(i);
+    }
+  }
+
+  // Add ellipsis or pages between middle and last
+  if (middleEnd < lastPage - 1) {
+    result.push(-1); // ellipsis
+  }
+
+  // Always include last page
+  result.push(lastPage);
+
+  return result;
+}
+
+// ==================== Virtual Scroll Helper Functions ====================
+
+/**
+ * Calculates visible item indices for virtual scrolling
+ *
+ * @param scrollTop - Current scroll position
+ * @param itemHeight - Height of each item
+ * @param containerHeight - Height of the container
+ * @param overscan - Number of items to render outside visible area
+ * @returns Object with start and end indices, or undefined for invalid input
+ */
+function getVisibleRange(
+  scrollTop: unknown,
+  itemHeight: unknown,
+  containerHeight: unknown,
+  overscan: unknown
+): { start: number; end: number } | undefined {
+  // Validate inputs
+  if (
+    typeof scrollTop !== 'number' ||
+    typeof itemHeight !== 'number' ||
+    typeof containerHeight !== 'number' ||
+    typeof overscan !== 'number'
+  ) {
+    return undefined;
+  }
+
+  if (scrollTop < 0 || itemHeight <= 0 || containerHeight <= 0) {
+    return undefined;
+  }
+
+  // Calculate first visible item
+  const firstVisible = Math.floor(scrollTop / itemHeight);
+
+  // Calculate number of visible items
+  const visibleCount = Math.ceil(containerHeight / itemHeight);
+
+  // Apply overscan
+  const start = Math.max(0, firstVisible - overscan);
+  const end = firstVisible + visibleCount + overscan - 1;
+
+  return { start, end };
+}
+
+/**
+ * Calculates total scrollable height for virtual scrolling
+ *
+ * @param itemCount - Total number of items
+ * @param itemHeight - Height of each item
+ * @returns Total height, or 0 for invalid input
+ */
+function getTotalHeight(itemCount: unknown, itemHeight: unknown): number {
+  // Validate inputs
+  if (typeof itemCount !== 'number' || typeof itemHeight !== 'number') {
+    return 0;
+  }
+
+  if (itemCount < 0 || itemHeight <= 0) {
+    return 0;
+  }
+
+  return itemCount * itemHeight;
+}
+
+// ==================== Date Formatting Helper Functions ====================
+
 /**
  * Formats an ISO date string
  *
@@ -675,6 +944,14 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
           getMonthName,
           formatDate,
           formatDateISO,
+          // DataTable helper functions
+          sortBy,
+          getPaginatedItems,
+          getTotalPages,
+          getPageNumbers,
+          // Virtual scroll helper functions
+          getVisibleRange,
+          getTotalHeight,
         };
         value = safeGlobals[varName];
       }
@@ -689,7 +966,7 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       if (typeof value === 'function' && pathParts.length > 0) {
         let parent = ctx.locals[varName];
         if (parent === undefined) {
-          const safeGlobals: Record<string, unknown> = { JSON, Math, Date, Object, Array, String, Number, Boolean, console, getCalendarDays, getWeekDays, getMonthName, formatDate, formatDateISO };
+          const safeGlobals: Record<string, unknown> = { JSON, Math, Date, Object, Array, String, Number, Boolean, console, getCalendarDays, getWeekDays, getMonthName, formatDate, formatDateISO, sortBy, getPaginatedItems, getTotalPages, getPageNumbers, getVisibleRange, getTotalHeight };
           parent = safeGlobals[varName];
         }
         for (let i = 0; i < pathParts.length - 1; i++) {

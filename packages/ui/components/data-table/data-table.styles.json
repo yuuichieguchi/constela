@@ -1,0 +1,84 @@
+{
+  "dataTableContainer": {
+    "base": "w-full border-collapse"
+  },
+  "dataTableToolbar": {
+    "base": "flex items-center py-4",
+    "variants": {
+      "filterable": {
+        "true": "justify-between",
+        "false": "justify-end"
+      }
+    },
+    "defaultVariants": {
+      "filterable": "false"
+    }
+  },
+  "dataTableWrapper": {
+    "base": "rounded-md border overflow-hidden"
+  },
+  "dataTableHeader": {
+    "base": "bg-muted/50",
+    "variants": {
+      "sticky": {
+        "true": "sticky top-0 z-10",
+        "false": ""
+      }
+    },
+    "defaultVariants": {
+      "sticky": "false"
+    }
+  },
+  "dataTableHeaderRow": {
+    "base": "border-b"
+  },
+  "dataTableHeaderCell": {
+    "base": "h-12 px-4 align-middle font-medium text-muted-foreground",
+    "variants": {
+      "sortable": {
+        "true": "cursor-pointer hover:bg-muted/50 select-none",
+        "false": ""
+      },
+      "align": {
+        "left": "text-left",
+        "center": "text-center",
+        "right": "text-right"
+      }
+    },
+    "defaultVariants": {
+      "sortable": "false",
+      "align": "left"
+    }
+  },
+  "dataTableBody": {
+    "base": "[&_tr:last-child]:border-0"
+  },
+  "dataTableRow": {
+    "base": "border-b transition-colors hover:bg-muted/50",
+    "variants": {
+      "selected": {
+        "true": "bg-muted",
+        "false": ""
+      }
+    },
+    "defaultVariants": {
+      "selected": "false"
+    }
+  },
+  "dataTableCell": {
+    "base": "p-4 align-middle",
+    "variants": {
+      "align": {
+        "left": "text-left",
+        "center": "text-center",
+        "right": "text-right"
+      }
+    },
+    "defaultVariants": {
+      "align": "left"
+    }
+  },
+  "dataTablePagination": {
+    "base": "flex items-center justify-end space-x-2 py-4"
+  }
+}
