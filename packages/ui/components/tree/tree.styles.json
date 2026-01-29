@@ -1,0 +1,50 @@
+{
+  "treeStyles": {
+    "base": "list-none space-y-1"
+  },
+  "treeNodeStyles": {
+    "base": "relative"
+  },
+  "treeNodeContentStyles": {
+    "base": "flex items-center gap-1 rounded-md px-2 py-1",
+    "variants": {
+      "selected": {
+        "true": "bg-accent text-accent-foreground",
+        "false": ""
+      }
+    },
+    "defaultVariants": {
+      "selected": "false"
+    }
+  },
+  "treeToggleStyles": {
+    "base": "inline-flex h-4 w-4 items-center justify-center"
+  },
+  "treeChevronStyles": {
+    "base": "h-4 w-4 shrink-0 transition-transform",
+    "variants": {
+      "expanded": {
+        "true": "rotate-90",
+        "false": "rotate-0"
+      }
+    },
+    "defaultVariants": {
+      "expanded": "false"
+    }
+  },
+  "treeLabelStyles": {
+    "base": "flex-1 truncate",
+    "variants": {
+      "selected": {
+        "true": "font-medium",
+        "false": ""
+      }
+    },
+    "defaultVariants": {
+      "selected": "false"
+    }
+  },
+  "treeGroupStyles": {
+    "base": "pl-4"
+  }
+}

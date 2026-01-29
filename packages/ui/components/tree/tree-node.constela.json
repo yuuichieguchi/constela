@@ -1,0 +1,26 @@
+{
+  "params": {
+    "node": { "type": "object", "required": true },
+    "level": { "type": "number", "required": true },
+    "expandedNodes": { "type": "list", "required": true },
+    "selectedNodes": { "type": "list", "required": true },
+    "expanded": { "type": "boolean", "required": false },
+    "selected": { "type": "boolean", "required": false },
+    "selectable": { "type": "boolean", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "li",
+    "props": {
+      "role": { "expr": "lit", "value": "treeitem" },
+      "aria-expanded": { "expr": "param", "name": "expanded" },
+      "aria-selected": { "expr": "param", "name": "selected" },
+      "aria-level": { "expr": "param", "name": "level" },
+      "className": {
+        "expr": "style",
+        "preset": "treeNodeStyles"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

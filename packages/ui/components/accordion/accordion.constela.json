@@ -1,0 +1,18 @@
+{
+  "params": {
+    "type": { "type": "string", "required": false },
+    "collapsible": { "type": "boolean", "required": false },
+    "disabled": { "type": "boolean", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "accordionStyles"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

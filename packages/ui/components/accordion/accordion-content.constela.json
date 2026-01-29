@@ -1,0 +1,20 @@
+{
+  "params": {
+    "id": { "type": "string", "required": false },
+    "triggerId": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "id": { "expr": "param", "name": "id" },
+      "role": { "expr": "lit", "value": "region" },
+      "aria-labelledby": { "expr": "param", "name": "triggerId" },
+      "className": {
+        "expr": "style",
+        "preset": "accordionContentStyles"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}

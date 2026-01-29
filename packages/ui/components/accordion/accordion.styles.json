@@ -1,0 +1,54 @@
+{
+  "accordionStyles": {
+    "base": "flex flex-col"
+  },
+  "accordionItemStyles": {
+    "base": "border-b",
+    "variants": {
+      "state": {
+        "default": "",
+        "disabled": "opacity-50 cursor-not-allowed"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "accordionTriggerStyles": {
+    "base": "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
+    "variants": {
+      "state": {
+        "default": "",
+        "disabled": "opacity-50 cursor-not-allowed pointer-events-none",
+        "hover": "underline"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "accordionChevronStyles": {
+    "base": "h-4 w-4 shrink-0 transition-transform duration-200",
+    "variants": {
+      "expanded": {
+        "true": "rotate-180",
+        "false": "rotate-0"
+      }
+    },
+    "defaultVariants": {
+      "expanded": "false"
+    }
+  },
+  "accordionContentStyles": {
+    "base": "overflow-hidden text-sm transition-all",
+    "variants": {
+      "state": {
+        "open": "animate-accordion-down",
+        "closed": "animate-accordion-up"
+      }
+    },
+    "defaultVariants": {
+      "state": "closed"
+    }
+  }
+}

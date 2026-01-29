@@ -1,0 +1,20 @@
+{
+  "params": {
+    "value": { "type": "string", "required": true },
+    "disabled": { "type": "boolean", "required": false }
+  },
+  "localState": {
+    "isExpanded": { "type": "boolean", "initial": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": {
+        "expr": "style",
+        "preset": "accordionItemStyles"
+      }
+    },
+    "children": [{ "kind": "slot" }]
+  }
+}
