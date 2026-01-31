@@ -564,6 +564,208 @@ describe('evaluate with Math and Date methods', () => {
     });
   });
 
+  // ==================== Math Constants ====================
+
+  describe('Math constants', () => {
+    it('should return Math.PI value (3.141592653589793)', () => {
+      // Arrange
+      // DSL: Math.PI -> 3.141592653589793
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'PI',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.PI);
+      expect(result).toBe(3.141592653589793);
+    });
+
+    it('should return Math.E value (2.718281828459045)', () => {
+      // Arrange
+      // DSL: Math.E -> 2.718281828459045
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'E',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.E);
+      expect(result).toBe(2.718281828459045);
+    });
+
+    it('should return Math.LN2 value (0.6931471805599453)', () => {
+      // Arrange
+      // DSL: Math.LN2 -> 0.6931471805599453
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'LN2',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.LN2);
+      expect(result).toBe(0.6931471805599453);
+    });
+
+    it('should return Math.LN10 value (2.302585092994046)', () => {
+      // Arrange
+      // DSL: Math.LN10 -> 2.302585092994046
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'LN10',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.LN10);
+      expect(result).toBe(2.302585092994046);
+    });
+
+    it('should return Math.LOG2E value (1.4426950408889634)', () => {
+      // Arrange
+      // DSL: Math.LOG2E -> 1.4426950408889634
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'LOG2E',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.LOG2E);
+      expect(result).toBe(1.4426950408889634);
+    });
+
+    it('should return Math.LOG10E value (0.4342944819032518)', () => {
+      // Arrange
+      // DSL: Math.LOG10E -> 0.4342944819032518
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'LOG10E',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.LOG10E);
+      expect(result).toBe(0.4342944819032518);
+    });
+
+    it('should return Math.SQRT2 value (1.4142135623730951)', () => {
+      // Arrange
+      // DSL: Math.SQRT2 -> 1.4142135623730951
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'SQRT2',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.SQRT2);
+      expect(result).toBe(1.4142135623730951);
+    });
+
+    it('should return Math.SQRT1_2 value (0.7071067811865476)', () => {
+      // Arrange
+      // DSL: Math.SQRT1_2 -> 0.7071067811865476
+      const expr = {
+        expr: 'get',
+        base: { expr: 'var', name: 'Math' },
+        path: 'SQRT1_2',
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBe(Math.SQRT1_2);
+      expect(result).toBe(0.7071067811865476);
+    });
+
+    it('should use Math.PI in calculations (circumference formula)', () => {
+      // Arrange
+      // DSL: 2 * Math.PI * radius -> circumference
+      // radius = 5, expected = 2 * 3.141592653589793 * 5 = 31.41592653589793
+      const expr = {
+        expr: 'bin',
+        op: '*',
+        left: {
+          expr: 'bin',
+          op: '*',
+          left: { expr: 'lit', value: 2 },
+          right: {
+            expr: 'get',
+            base: { expr: 'var', name: 'Math' },
+            path: 'PI',
+          },
+        },
+        right: { expr: 'state', name: 'radius' },
+      } as CompiledExpression;
+      const ctx = createContext({ radius: 5 });
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBeCloseTo(31.41592653589793, 10);
+    });
+
+    it('should use Math.E in exponential calculations', () => {
+      // Arrange
+      // DSL: Math.E ** 2 -> e squared
+      // expected = 2.718281828459045 ** 2 = 7.3890560989306495
+      const expr = {
+        expr: 'call',
+        target: { expr: 'var', name: 'Math' },
+        method: 'pow',
+        args: [
+          {
+            expr: 'get',
+            base: { expr: 'var', name: 'Math' },
+            path: 'E',
+          },
+          { expr: 'lit', value: 2 },
+        ],
+      } as CompiledExpression;
+      const ctx = baseContext;
+
+      // Act
+      const result = evaluate(expr, ctx);
+
+      // Assert
+      expect(result).toBeCloseTo(7.3890560989306495, 10);
+    });
+  });
+
   // ==================== Edge Cases ====================
 
   describe('edge cases', () => {

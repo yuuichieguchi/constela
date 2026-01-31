@@ -1,0 +1,297 @@
+{
+  "params": {
+    "data": { "type": "list", "required": true },
+    "valueKey": { "type": "string", "required": true },
+    "labelKey": { "type": "string", "required": true },
+    "width": { "type": "number", "required": false },
+    "height": { "type": "number", "required": false },
+    "colors": { "type": "list", "required": false },
+    "maxValue": { "type": "number", "required": false },
+    "showGrid": { "type": "boolean", "required": false },
+    "fillOpacity": { "type": "number", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "svg",
+    "props": {
+      "role": { "expr": "lit", "value": "img" },
+      "aria-label": { "expr": "lit", "value": "Radar Chart" },
+      "aria-labelledby": { "expr": "lit", "value": "radar-chart-title" },
+      "viewBox": {
+        "expr": "call",
+        "target": null,
+        "method": "concat",
+        "args": [
+          { "expr": "lit", "value": "0 0 " },
+          {
+            "expr": "cond",
+            "test": { "expr": "param", "name": "width" },
+            "then": { "expr": "param", "name": "width" },
+            "else": { "expr": "lit", "value": 300 }
+          },
+          { "expr": "lit", "value": " " },
+          {
+            "expr": "cond",
+            "test": { "expr": "param", "name": "height" },
+            "then": { "expr": "param", "name": "height" },
+            "else": { "expr": "lit", "value": 300 }
+          }
+        ]
+      },
+      "className": {
+        "expr": "style",
+        "preset": "chartSvg",
+        "props": {
+          "size": { "expr": "lit", "value": "default" }
+        }
+      }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "title",
+        "props": {
+          "id": { "expr": "lit", "value": "radar-chart-title" }
+        },
+        "children": [
+          { "kind": "text", "content": { "expr": "lit", "value": "Radar Chart" } }
+        ]
+      },
+      {
+        "kind": "if",
+        "test": { "expr": "param", "name": "showGrid" },
+        "then": {
+          "kind": "element",
+          "tag": "g",
+          "props": {
+            "className": {
+              "expr": "style",
+              "preset": "chartGrid",
+              "props": {
+                "axis": { "expr": "lit", "value": "both" }
+              }
+            }
+          },
+          "children": [
+            {
+              "kind": "each",
+              "items": {
+                "expr": "call",
+                "target": null,
+                "method": "getRadarAxes",
+                "args": [
+                  {
+                    "expr": "call",
+                    "target": { "expr": "param", "name": "data" },
+                    "method": "map",
+                    "args": [
+                      {
+                        "expr": "lambda",
+                        "params": ["item"],
+                        "body": {
+                          "expr": "get",
+                          "obj": { "expr": "var", "name": "item" },
+                          "key": { "expr": "param", "name": "labelKey" }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "expr": "bin",
+                    "op": "/",
+                    "left": {
+                      "expr": "cond",
+                      "test": { "expr": "param", "name": "width" },
+                      "then": { "expr": "param", "name": "width" },
+                      "else": { "expr": "lit", "value": 300 }
+                    },
+                    "right": { "expr": "lit", "value": 2 }
+                  },
+                  {
+                    "expr": "bin",
+                    "op": "/",
+                    "left": {
+                      "expr": "cond",
+                      "test": { "expr": "param", "name": "height" },
+                      "then": { "expr": "param", "name": "height" },
+                      "else": { "expr": "lit", "value": 300 }
+                    },
+                    "right": { "expr": "lit", "value": 2 }
+                  },
+                  {
+                    "expr": "bin",
+                    "op": "*",
+                    "left": {
+                      "expr": "bin",
+                      "op": "/",
+                      "left": {
+                        "expr": "call",
+                        "target": { "expr": "var", "name": "Math" },
+                        "method": "min",
+                        "args": [
+                          {
+                            "expr": "cond",
+                            "test": { "expr": "param", "name": "width" },
+                            "then": { "expr": "param", "name": "width" },
+                            "else": { "expr": "lit", "value": 300 }
+                          },
+                          {
+                            "expr": "cond",
+                            "test": { "expr": "param", "name": "height" },
+                            "then": { "expr": "param", "name": "height" },
+                            "else": { "expr": "lit", "value": 300 }
+                          }
+                        ]
+                      },
+                      "right": { "expr": "lit", "value": 2 }
+                    },
+                    "right": { "expr": "lit", "value": 0.8 }
+                  }
+                ]
+              },
+              "as": "axis",
+              "body": {
+                "kind": "element",
+                "tag": "line",
+                "props": {
+                  "x1": { "expr": "get", "obj": { "expr": "var", "name": "axis" }, "key": "x1" },
+                  "y1": { "expr": "get", "obj": { "expr": "var", "name": "axis" }, "key": "y1" },
+                  "x2": { "expr": "get", "obj": { "expr": "var", "name": "axis" }, "key": "x2" },
+                  "y2": { "expr": "get", "obj": { "expr": "var", "name": "axis" }, "key": "y2" }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "kind": "element",
+        "tag": "polygon",
+        "props": {
+          "points": {
+            "expr": "call",
+            "target": {
+              "expr": "call",
+              "target": null,
+              "method": "getRadarPoints",
+              "args": [
+                { "expr": "param", "name": "data" },
+                { "expr": "param", "name": "valueKey" },
+                {
+                  "expr": "bin",
+                  "op": "/",
+                  "left": {
+                    "expr": "cond",
+                    "test": { "expr": "param", "name": "width" },
+                    "then": { "expr": "param", "name": "width" },
+                    "else": { "expr": "lit", "value": 300 }
+                  },
+                  "right": { "expr": "lit", "value": 2 }
+                },
+                {
+                  "expr": "bin",
+                  "op": "/",
+                  "left": {
+                    "expr": "cond",
+                    "test": { "expr": "param", "name": "height" },
+                    "then": { "expr": "param", "name": "height" },
+                    "else": { "expr": "lit", "value": 300 }
+                  },
+                  "right": { "expr": "lit", "value": 2 }
+                },
+                {
+                  "expr": "bin",
+                  "op": "*",
+                  "left": {
+                    "expr": "bin",
+                    "op": "/",
+                    "left": {
+                      "expr": "call",
+                      "target": { "expr": "var", "name": "Math" },
+                      "method": "min",
+                      "args": [
+                        {
+                          "expr": "cond",
+                          "test": { "expr": "param", "name": "width" },
+                          "then": { "expr": "param", "name": "width" },
+                          "else": { "expr": "lit", "value": 300 }
+                        },
+                        {
+                          "expr": "cond",
+                          "test": { "expr": "param", "name": "height" },
+                          "then": { "expr": "param", "name": "height" },
+                          "else": { "expr": "lit", "value": 300 }
+                        }
+                      ]
+                    },
+                    "right": { "expr": "lit", "value": 2 }
+                  },
+                  "right": { "expr": "lit", "value": 0.8 }
+                },
+                {
+                  "expr": "cond",
+                  "test": { "expr": "param", "name": "maxValue" },
+                  "then": { "expr": "param", "name": "maxValue" },
+                  "else": { "expr": "lit", "value": 100 }
+                }
+              ]
+            },
+            "method": "map",
+            "args": [
+              {
+                "expr": "lambda",
+                "params": ["pt"],
+                "body": {
+                  "expr": "call",
+                  "target": null,
+                  "method": "concat",
+                  "args": [
+                    { "expr": "get", "obj": { "expr": "var", "name": "pt" }, "key": "x" },
+                    { "expr": "lit", "value": "," },
+                    { "expr": "get", "obj": { "expr": "var", "name": "pt" }, "key": "y" }
+                  ]
+                }
+              }
+            ]
+          },
+          "fill": {
+            "expr": "cond",
+            "test": { "expr": "param", "name": "colors" },
+            "then": {
+              "expr": "call",
+              "target": { "expr": "param", "name": "colors" },
+              "method": "at",
+              "args": [{ "expr": "lit", "value": 0 }]
+            },
+            "else": { "expr": "lit", "value": "#3b82f6" }
+          },
+          "fill-opacity": {
+            "expr": "cond",
+            "test": { "expr": "param", "name": "fillOpacity" },
+            "then": { "expr": "param", "name": "fillOpacity" },
+            "else": { "expr": "lit", "value": 0.3 }
+          },
+          "stroke": {
+            "expr": "cond",
+            "test": { "expr": "param", "name": "colors" },
+            "then": {
+              "expr": "call",
+              "target": { "expr": "param", "name": "colors" },
+              "method": "at",
+              "args": [{ "expr": "lit", "value": 0 }]
+            },
+            "else": { "expr": "lit", "value": "#3b82f6" }
+          },
+          "stroke-width": { "expr": "lit", "value": "2" },
+          "className": {
+            "expr": "style",
+            "preset": "chartRadar",
+            "props": {
+              "opacity": { "expr": "lit", "value": "default" }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

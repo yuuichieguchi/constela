@@ -1,0 +1,224 @@
+{
+  "params": {
+    "ticks": { "type": "list", "required": true },
+    "orientation": { "type": "string", "required": true },
+    "width": { "type": "number", "required": false },
+    "height": { "type": "number", "required": false },
+    "showLabels": { "type": "boolean", "required": false },
+    "labelFormatter": { "type": "string", "required": false }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "g",
+    "props": {
+      "aria-hidden": { "expr": "lit", "value": "true" },
+      "className": {
+        "expr": "style",
+        "preset": "chartAxis",
+        "props": {
+          "position": {
+            "expr": "cond",
+            "test": {
+              "expr": "bin",
+              "op": "===",
+              "left": { "expr": "param", "name": "orientation" },
+              "right": { "expr": "lit", "value": "horizontal" }
+            },
+            "then": { "expr": "lit", "value": "bottom" },
+            "else": { "expr": "lit", "value": "left" }
+          }
+        }
+      }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "line",
+        "props": {
+          "x1": { "expr": "lit", "value": "0" },
+          "y1": { "expr": "lit", "value": "0" },
+          "x2": {
+            "expr": "cond",
+            "test": {
+              "expr": "bin",
+              "op": "===",
+              "left": { "expr": "param", "name": "orientation" },
+              "right": { "expr": "lit", "value": "horizontal" }
+            },
+            "then": {
+              "expr": "cond",
+              "test": { "expr": "param", "name": "width" },
+              "then": { "expr": "param", "name": "width" },
+              "else": { "expr": "lit", "value": 400 }
+            },
+            "else": { "expr": "lit", "value": "0" }
+          },
+          "y2": {
+            "expr": "cond",
+            "test": {
+              "expr": "bin",
+              "op": "===",
+              "left": { "expr": "param", "name": "orientation" },
+              "right": { "expr": "lit", "value": "vertical" }
+            },
+            "then": {
+              "expr": "cond",
+              "test": { "expr": "param", "name": "height" },
+              "then": { "expr": "param", "name": "height" },
+              "else": { "expr": "lit", "value": 300 }
+            },
+            "else": { "expr": "lit", "value": "0" }
+          }
+        }
+      },
+      {
+        "kind": "each",
+        "items": {
+          "expr": "call",
+          "target": null,
+          "method": "generateTicks",
+          "args": [
+            { "expr": "lit", "value": 0 },
+            { "expr": "lit", "value": 100 },
+            { "expr": "lit", "value": 5 }
+          ]
+        },
+        "as": "tick",
+        "index": "idx",
+        "body": {
+          "kind": "element",
+          "tag": "g",
+          "props": {},
+          "children": [
+            {
+              "kind": "element",
+              "tag": "line",
+              "props": {
+                "x1": {
+                  "expr": "cond",
+                  "test": {
+                    "expr": "bin",
+                    "op": "===",
+                    "left": { "expr": "param", "name": "orientation" },
+                    "right": { "expr": "lit", "value": "horizontal" }
+                  },
+                  "then": {
+                    "expr": "bin",
+                    "op": "*",
+                    "left": { "expr": "var", "name": "idx" },
+                    "right": { "expr": "lit", "value": 80 }
+                  },
+                  "else": { "expr": "lit", "value": "0" }
+                },
+                "y1": {
+                  "expr": "cond",
+                  "test": {
+                    "expr": "bin",
+                    "op": "===",
+                    "left": { "expr": "param", "name": "orientation" },
+                    "right": { "expr": "lit", "value": "vertical" }
+                  },
+                  "then": {
+                    "expr": "bin",
+                    "op": "*",
+                    "left": { "expr": "var", "name": "idx" },
+                    "right": { "expr": "lit", "value": 60 }
+                  },
+                  "else": { "expr": "lit", "value": "0" }
+                },
+                "x2": {
+                  "expr": "cond",
+                  "test": {
+                    "expr": "bin",
+                    "op": "===",
+                    "left": { "expr": "param", "name": "orientation" },
+                    "right": { "expr": "lit", "value": "horizontal" }
+                  },
+                  "then": {
+                    "expr": "bin",
+                    "op": "*",
+                    "left": { "expr": "var", "name": "idx" },
+                    "right": { "expr": "lit", "value": 80 }
+                  },
+                  "else": { "expr": "lit", "value": "-6" }
+                },
+                "y2": {
+                  "expr": "cond",
+                  "test": {
+                    "expr": "bin",
+                    "op": "===",
+                    "left": { "expr": "param", "name": "orientation" },
+                    "right": { "expr": "lit", "value": "vertical" }
+                  },
+                  "then": {
+                    "expr": "bin",
+                    "op": "*",
+                    "left": { "expr": "var", "name": "idx" },
+                    "right": { "expr": "lit", "value": 60 }
+                  },
+                  "else": { "expr": "lit", "value": "6" }
+                }
+              }
+            },
+            {
+              "kind": "if",
+              "test": { "expr": "param", "name": "showLabels" },
+              "then": {
+                "kind": "element",
+                "tag": "text",
+                "props": {
+                  "x": {
+                    "expr": "cond",
+                    "test": {
+                      "expr": "bin",
+                      "op": "===",
+                      "left": { "expr": "param", "name": "orientation" },
+                      "right": { "expr": "lit", "value": "horizontal" }
+                    },
+                    "then": {
+                      "expr": "bin",
+                      "op": "*",
+                      "left": { "expr": "var", "name": "idx" },
+                      "right": { "expr": "lit", "value": 80 }
+                    },
+                    "else": { "expr": "lit", "value": "-10" }
+                  },
+                  "y": {
+                    "expr": "cond",
+                    "test": {
+                      "expr": "bin",
+                      "op": "===",
+                      "left": { "expr": "param", "name": "orientation" },
+                      "right": { "expr": "lit", "value": "vertical" }
+                    },
+                    "then": {
+                      "expr": "bin",
+                      "op": "*",
+                      "left": { "expr": "var", "name": "idx" },
+                      "right": { "expr": "lit", "value": 60 }
+                    },
+                    "else": { "expr": "lit", "value": "20" }
+                  },
+                  "text-anchor": { "expr": "lit", "value": "middle" },
+                  "className": {
+                    "expr": "style",
+                    "preset": "chartLabel",
+                    "props": {
+                      "type": { "expr": "lit", "value": "axis" }
+                    }
+                  }
+                },
+                "children": [
+                  {
+                    "kind": "text",
+                    "content": { "expr": "var", "name": "tick" }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
