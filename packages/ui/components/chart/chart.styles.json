@@ -1,0 +1,183 @@
+{
+  "chartContainer": {
+    "base": "relative w-full"
+  },
+  "chartSvg": {
+    "base": "overflow-visible",
+    "variants": {
+      "size": {
+        "sm": "w-64 h-48",
+        "default": "w-96 h-72",
+        "lg": "w-[32rem] h-96"
+      }
+    },
+    "defaultVariants": {
+      "size": "default"
+    }
+  },
+  "chartBar": {
+    "base": "transition-all duration-200",
+    "variants": {
+      "state": {
+        "default": "opacity-100",
+        "hover": "opacity-80",
+        "active": "opacity-60"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "chartLine": {
+    "base": "fill-none stroke-2 stroke-current"
+  },
+  "chartArea": {
+    "base": "stroke-none",
+    "variants": {
+      "opacity": {
+        "light": "opacity-20",
+        "default": "opacity-30",
+        "dark": "opacity-50"
+      }
+    },
+    "defaultVariants": {
+      "opacity": "default"
+    }
+  },
+  "chartPoint": {
+    "base": "transition-transform duration-200",
+    "variants": {
+      "size": {
+        "sm": "",
+        "default": "",
+        "lg": ""
+      },
+      "state": {
+        "default": "scale-100",
+        "hover": "scale-150"
+      }
+    },
+    "defaultVariants": {
+      "size": "default",
+      "state": "default"
+    }
+  },
+  "chartGrid": {
+    "base": "stroke-gray-200 stroke-1",
+    "variants": {
+      "axis": {
+        "x": "",
+        "y": "",
+        "both": ""
+      }
+    },
+    "defaultVariants": {
+      "axis": "both"
+    }
+  },
+  "chartAxis": {
+    "base": "stroke-gray-400 stroke-1",
+    "variants": {
+      "position": {
+        "top": "",
+        "right": "",
+        "bottom": "",
+        "left": ""
+      }
+    },
+    "defaultVariants": {
+      "position": "bottom"
+    }
+  },
+  "chartLabel": {
+    "base": "text-xs fill-gray-600",
+    "variants": {
+      "type": {
+        "axis": "font-normal",
+        "data": "font-medium",
+        "title": "font-semibold"
+      },
+      "size": {
+        "sm": "text-[10px]",
+        "default": "text-xs",
+        "lg": "text-sm"
+      }
+    },
+    "defaultVariants": {
+      "type": "axis",
+      "size": "default"
+    }
+  },
+  "chartSlice": {
+    "base": "transition-all duration-200 cursor-pointer",
+    "variants": {
+      "state": {
+        "default": "opacity-100",
+        "hover": "opacity-80 scale-105 origin-center",
+        "active": "opacity-60 scale-95 origin-center"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "chartRadar": {
+    "base": "stroke-current transition-all duration-200",
+    "variants": {
+      "opacity": {
+        "light": "fill-opacity-20",
+        "default": "fill-opacity-30",
+        "dark": "fill-opacity-50"
+      }
+    },
+    "defaultVariants": {
+      "opacity": "default"
+    }
+  },
+  "chartLegend": {
+    "base": "flex gap-4 text-sm",
+    "variants": {
+      "orientation": {
+        "horizontal": "flex-row flex-wrap",
+        "vertical": "flex-col"
+      }
+    },
+    "defaultVariants": {
+      "orientation": "horizontal"
+    }
+  },
+  "chartLegendItem": {
+    "base": "flex items-center gap-2 cursor-pointer transition-opacity duration-200",
+    "variants": {
+      "state": {
+        "default": "opacity-100",
+        "hover": "opacity-80",
+        "disabled": "opacity-40"
+      }
+    },
+    "defaultVariants": {
+      "state": "default"
+    }
+  },
+  "chartTooltip": {
+    "base": "absolute z-50 px-3 py-2 bg-gray-900 text-white text-sm rounded-md shadow-lg pointer-events-none transition-opacity duration-150",
+    "variants": {
+      "visible": {
+        "true": "opacity-100",
+        "false": "opacity-0 invisible"
+      }
+    },
+    "defaultVariants": {
+      "visible": "false"
+    }
+  },
+  "chartBarAnimated": {
+    "base": "origin-bottom animate-[bar-grow_0.5s_ease-out_forwards]"
+  },
+  "chartLineAnimated": {
+    "base": "animate-[line-draw_1s_ease-out_forwards]"
+  },
+  "chartSliceAnimated": {
+    "base": "origin-center animate-[slice-rotate_0.5s_ease-out_forwards]"
+  }
+}
