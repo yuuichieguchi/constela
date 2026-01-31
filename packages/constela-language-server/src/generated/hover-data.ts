@@ -160,6 +160,34 @@ export const ACTION_DOCS: Record<string, { signature: string; description: strin
     signature: '{ "do": "generate", "provider": AiProviderType, "prompt": Expression, "output": AiOutputType, "result": string, "model"?: string, "onSuccess"?: ActionStep[], "onError"?: ActionStep[] }',
     description: 'Generate step - generates DSL using AI at runtime',
   },
+  sseConnect: {
+    signature: '{ "do": "sseConnect", "connection": string, "url": Expression, "eventTypes"?: string[], "reconnect"?: ReconnectConfig, "onOpen"?: ActionStep[], "onMessage"?: ActionStep[], "onError"?: ActionStep[] }',
+    description: 'SSE connect step - establishes a Server-Sent Events connection',
+  },
+  sseClose: {
+    signature: '{ "do": "sseClose", "connection": string }',
+    description: 'SSE close step - closes a named SSE connection',
+  },
+  optimistic: {
+    signature: '{ "do": "optimistic", "target": string, "path"?: Expression, "value": Expression, "result"?: string, "timeout"?: number }',
+    description: 'Optimistic step - applies optimistic UI update',
+  },
+  confirm: {
+    signature: '{ "do": "confirm", "id": Expression }',
+    description: 'Confirm step - confirms an optimistic update',
+  },
+  reject: {
+    signature: '{ "do": "reject", "id": Expression }',
+    description: 'Reject step - rejects an optimistic update and rolls back',
+  },
+  bind: {
+    signature: '{ "do": "bind", "connection": string, "eventType"?: string, "target": string, "path"?: Expression, "transform"?: Expression, "patch"?: boolean }',
+    description: 'Bind step - binds connection messages to state',
+  },
+  unbind: {
+    signature: '{ "do": "unbind", "connection": string, "target": string }',
+    description: 'Unbind step - removes a binding',
+  },
 };
 
 export const VIEW_DOCS: Record<string, { signature: string; description: string }> = {

@@ -85,27 +85,41 @@ function shouldUseColors(): boolean {
   return process.stdout.isTTY === true;
 }
 
-const colors = {
+/**
+ * Color utility type
+ */
+interface Colors {
+  red: (s: string) => string;
+  green: (s: string) => string;
+  yellow: (s: string) => string;
+  cyan: (s: string) => string;
+  dim: (s: string) => string;
+  reset: string;
+}
+
+const colors: Colors = {
   red: (s: string): string => `\x1b[31m${s}\x1b[0m`,
   green: (s: string): string => `\x1b[32m${s}\x1b[0m`,
   yellow: (s: string): string => `\x1b[33m${s}\x1b[0m`,
   cyan: (s: string): string => `\x1b[36m${s}\x1b[0m`,
   dim: (s: string): string => `\x1b[2m${s}\x1b[0m`,
   reset: '\x1b[0m',
-} as const;
+};
 
-function getColors(): typeof colors {
+const noColors: Colors = {
+  red: (s: string): string => s,
+  green: (s: string): string => s,
+  yellow: (s: string): string => s,
+  cyan: (s: string): string => s,
+  dim: (s: string): string => s,
+  reset: '',
+};
+
+function getColors(): Colors {
   if (shouldUseColors()) {
     return colors;
   }
-  return {
-    red: (s: string): string => s,
-    green: (s: string): string => s,
-    yellow: (s: string): string => s,
-    cyan: (s: string): string => s,
-    dim: (s: string): string => s,
-    reset: '',
-  };
+  return noColors;
 }
 
 // ==================== AST Analysis Helpers ====================
@@ -146,13 +160,14 @@ function summarizeStep(step: ActionStep): string {
  * Summarizes an action's steps
  */
 function summarizeAction(action: ActionDefinition): string {
-  if (action.steps.length === 0) {
+  const firstStep = action.steps[0];
+  if (!firstStep) {
     return '(empty)';
   }
   if (action.steps.length === 1) {
-    return summarizeStep(action.steps[0]);
+    return summarizeStep(firstStep);
   }
-  return `${summarizeStep(action.steps[0])} + ${action.steps.length - 1} more`;
+  return `${summarizeStep(firstStep)} + ${action.steps.length - 1} more`;
 }
 
 /**
@@ -228,7 +243,7 @@ function viewNodeToInfo(node: ViewNode): ViewTreeInfo {
  */
 function formatStateSection(
   state: Record<string, StateField>,
-  c: typeof colors
+  c: Colors
 ): string[] {
   const lines: string[] = [];
   const fieldCount = Object.keys(state).length;
@@ -248,7 +263,7 @@ function formatStateSection(
  */
 function formatActionsSection(
   actions: ActionDefinition[],
-  c: typeof colors
+  c: Colors
 ): string[] {
   const lines: string[] = [];
 
@@ -320,7 +335,7 @@ function normalizeComponents(
  */
 function formatComponentsSection(
   components: unknown,
-  c: typeof colors
+  c: Colors
 ): string[] {
   const lines: string[] = [];
   const normalized = normalizeComponents(components);
@@ -341,7 +356,7 @@ function formatComponentsSection(
  */
 function formatStylesSection(
   styles: Record<string, StylePreset>,
-  c: typeof colors
+  c: Colors
 ): string[] {
   const lines: string[] = [];
   const styleCount = Object.keys(styles).length;
@@ -365,7 +380,7 @@ function formatStylesSection(
  */
 function formatViewTree(
   node: ViewNode,
-  c: typeof colors,
+  c: Colors,
   indent: number = 0
 ): string[] {
   const lines: string[] = [];
@@ -455,7 +470,7 @@ function formatViewTree(
 /**
  * Formats view tree section for text output
  */
-function formatViewSection(view: ViewNode, c: typeof colors): string[] {
+function formatViewSection(view: ViewNode, c: Colors): string[] {
   const lines: string[] = [];
   lines.push(`${c.cyan('View Tree')}:`);
   lines.push(...formatViewTree(view, c, 1));
@@ -475,16 +490,7 @@ export async function inspectCommand(
   options: InspectOptions
 ): Promise<void> {
   const isJsonMode = options.json === true;
-  const c = isJsonMode
-    ? {
-        red: (s: string) => s,
-        green: (s: string) => s,
-        yellow: (s: string) => s,
-        cyan: (s: string) => s,
-        dim: (s: string) => s,
-        reset: '',
-      }
-    : getColors();
+  const c: Colors = isJsonMode ? noColors : getColors();
 
   // Determine which sections to show
   const showAll =
@@ -582,8 +588,11 @@ export async function inspectCommand(
 
     // Print sections with blank lines between them
     for (let i = 0; i < sections.length; i++) {
-      for (const line of sections[i]) {
-        console.log(line);
+      const section = sections[i];
+      if (section) {
+        for (const line of section) {
+          console.log(line);
+        }
       }
       if (i < sections.length - 1) {
         console.log('');

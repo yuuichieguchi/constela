@@ -42,28 +42,43 @@ function shouldUseColors(): boolean {
 }
 
 /**
+ * Color utility type
+ */
+interface Colors {
+  red: (s: string) => string;
+  green: (s: string) => string;
+  yellow: (s: string) => string;
+  reset: string;
+}
+
+/**
  * ANSI color codes for terminal output
  */
-const colors = {
+const colors: Colors = {
   red: (s: string): string => `\x1b[31m${s}\x1b[0m`,
   green: (s: string): string => `\x1b[32m${s}\x1b[0m`,
   yellow: (s: string): string => `\x1b[33m${s}\x1b[0m`,
   reset: '\x1b[0m',
-} as const;
+};
+
+/**
+ * No-color fallback
+ */
+const noColors: Colors = {
+  red: (s: string): string => s,
+  green: (s: string): string => s,
+  yellow: (s: string): string => s,
+  reset: '',
+};
 
 /**
  * Creates color functions that respect NO_COLOR
  */
-function getColors(): typeof colors {
+function getColors(): Colors {
   if (shouldUseColors()) {
     return colors;
   }
-  return {
-    red: (s: string): string => s,
-    green: (s: string): string => s,
-    yellow: (s: string): string => s,
-    reset: '',
-  };
+  return noColors;
 }
 
 // ==================== JSON Output Types ====================
@@ -96,6 +111,7 @@ interface JsonValidationError {
   file?: string;
   files?: FileValidationError[];
   errors?: ValidationError[];
+  validatedCount?: number;
   diagnostics: {
     duration: number;
   };
@@ -108,7 +124,7 @@ type JsonValidationOutput = JsonValidationSuccess | JsonValidationError;
 /**
  * Formats a ConstelaError for colored terminal output
  */
-function formatColoredError(error: ConstelaError, c: typeof colors): string {
+function formatColoredError(error: ConstelaError, c: Colors): string {
   const lines: string[] = [];
 
   // Error code and message
@@ -259,9 +275,7 @@ export async function validateCommand(
   const startTime = performance.now();
   const isJsonMode = options.json === true;
   const isAllMode = options.all === true;
-  const c = isJsonMode
-    ? { red: (s: string) => s, green: (s: string) => s, yellow: (s: string) => s, reset: '' }
-    : getColors();
+  const c: Colors = isJsonMode ? noColors : getColors();
 
   // Helper to exit with proper output
   function exitWithResult(success: boolean, output: JsonValidationOutput | null): never {

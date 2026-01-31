@@ -10,13 +10,13 @@ import { Command } from 'commander';
  * CLI options interface.
  */
 export interface CliOptions {
-  projectName?: string;
-  example?: string;
+  projectName: string | undefined;
+  example: string | undefined;
   template: string;
   list: boolean;
   git: boolean;
   install: boolean;
-  packageManager?: 'npm' | 'yarn' | 'pnpm';
+  packageManager: 'npm' | 'yarn' | 'pnpm' | undefined;
 }
 
 /**
@@ -50,11 +50,11 @@ export function parseArgs(argv: string[]): CliOptions {
 
   return {
     projectName: args[0],
-    example: opts.example,
-    template: opts.template,
-    list: opts.list,
-    git: opts.git,
-    install: opts.install,
-    packageManager: opts.packageManager as 'npm' | 'yarn' | 'pnpm' | undefined,
+    example: opts['example'] as string | undefined,
+    template: opts['template'] as string,
+    list: opts['list'] as boolean,
+    git: opts['git'] as boolean,
+    install: opts['install'] as boolean,
+    packageManager: opts['packageManager'] as 'npm' | 'yarn' | 'pnpm' | undefined,
   };
 }

@@ -47,28 +47,43 @@ function shouldUseColors(): boolean {
 }
 
 /**
+ * Color utility type
+ */
+interface Colors {
+  red: (s: string) => string;
+  green: (s: string) => string;
+  yellow: (s: string) => string;
+  reset: string;
+}
+
+/**
  * ANSI color codes for terminal output
  */
-const colors = {
+const colors: Colors = {
   red: (s: string): string => `\x1b[31m${s}\x1b[0m`,
   green: (s: string): string => `\x1b[32m${s}\x1b[0m`,
   yellow: (s: string): string => `\x1b[33m${s}\x1b[0m`,
   reset: '\x1b[0m',
-} as const;
+};
+
+/**
+ * No-color fallback
+ */
+const noColors: Colors = {
+  red: (s: string): string => s,
+  green: (s: string): string => s,
+  yellow: (s: string): string => s,
+  reset: '',
+};
 
 /**
  * Creates color functions that respect NO_COLOR
  */
-function getColors(): typeof colors {
+function getColors(): Colors {
   if (shouldUseColors()) {
     return colors;
   }
-  return {
-    red: (s: string): string => s,
-    green: (s: string): string => s,
-    yellow: (s: string): string => s,
-    reset: '',
-  };
+  return noColors;
 }
 
 // ==================== Verbose Mode Utilities ====================
@@ -94,7 +109,7 @@ function countViewNodes(node: CompiledNode): number {
       }
       break;
     case 'each':
-      count += countViewNodes(node.template);
+      count += countViewNodes(node.body);
       break;
     // text, markdown, code, slot nodes have no children
     default:
@@ -115,7 +130,7 @@ interface VerboseLogger {
   summary(states: number, actions: number, viewNodes: number, totalMs: number): void;
 }
 
-function createVerboseLogger(enabled: boolean, c: typeof colors): VerboseLogger {
+function createVerboseLogger(enabled: boolean, c: Colors): VerboseLogger {
   if (!enabled) {
     return {
       phaseStart: () => {},
@@ -387,7 +402,7 @@ function getOutputPath(inputPath: string, options: CompileOptions): string {
 /**
  * Formats a ConstelaError for colored terminal output
  */
-function formatColoredError(error: ConstelaError, c: typeof colors): string {
+function formatColoredError(error: ConstelaError, c: Colors): string {
   const lines: string[] = [];
 
   // Error code and message
@@ -459,7 +474,7 @@ type CompilationResult = CompilationSuccess | CompilationFailure;
 function performCompilation(
   inputPath: string,
   options: CompileOptions,
-  c: typeof colors
+  c: Colors
 ): CompilationResult {
   const startTime = performance.now();
   const verbose = createVerboseLogger(options.verbose === true, c);
@@ -649,7 +664,7 @@ function outputResult(
   inputPath: string,
   result: CompilationResult,
   options: CompileOptions,
-  c: typeof colors
+  c: Colors
 ): void {
   const isJsonMode = options.json === true;
 
@@ -696,7 +711,7 @@ export async function compileCommand(
   options: CompileOptions
 ): Promise<void> {
   const isJsonMode = options.json === true;
-  const c = isJsonMode ? { red: (s: string) => s, green: (s: string) => s, yellow: (s: string) => s, reset: '' } : getColors();
+  const c: Colors = isJsonMode ? noColors : getColors();
 
   // Perform initial compilation
   const result = performCompilation(inputPath, options, c);

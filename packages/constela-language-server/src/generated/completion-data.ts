@@ -44,6 +44,13 @@ export const ACTION_STEPS = [
   { label: 'focus', detail: 'Focus step - manages form element focus', kind: CompletionItemKind.Function },
   { label: 'if', detail: 'If step - conditional action execution', kind: CompletionItemKind.Function },
   { label: 'generate', detail: 'Generate step - generates DSL using AI at runtime', kind: CompletionItemKind.Function },
+  { label: 'sseConnect', detail: 'SSE connect step - establishes a Server-Sent Events connection', kind: CompletionItemKind.Function },
+  { label: 'sseClose', detail: 'SSE close step - closes a named SSE connection', kind: CompletionItemKind.Function },
+  { label: 'optimistic', detail: 'Optimistic step - applies optimistic UI update', kind: CompletionItemKind.Function },
+  { label: 'confirm', detail: 'Confirm step - confirms an optimistic update', kind: CompletionItemKind.Function },
+  { label: 'reject', detail: 'Reject step - rejects an optimistic update and rolls back', kind: CompletionItemKind.Function },
+  { label: 'bind', detail: 'Bind step - binds connection messages to state', kind: CompletionItemKind.Function },
+  { label: 'unbind', detail: 'Unbind step - removes a binding', kind: CompletionItemKind.Function },
 ];
 
 export const VIEW_NODES = [

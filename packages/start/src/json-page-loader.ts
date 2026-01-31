@@ -11,7 +11,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import type { CompiledProgram, CompiledNode, CompiledAction } from '@constela/compiler';
+import type { CompiledProgram, CompiledNode, CompiledAction, CompiledExpression } from '@constela/compiler';
 import type { DataSource, StaticPathsDefinition, Expression, ViewNode, ActionDefinition, ComponentDef, ComponentNode, ElementNode, IfNode, EachNode, StateField, LocalActionDefinition, ActionStep } from '@constela/core';
 import { DataLoader } from './data/loader.js';
 import { resolveImports } from './utils/import-resolver.js';
@@ -843,23 +843,23 @@ function convertActionStep(step: ActionStep): CompiledAction['steps'][number] {
       return {
         do: 'set',
         target: step.target,
-        value: step.value,
+        value: step.value as CompiledExpression,
       };
     case 'update':
       return {
         do: 'update',
         target: step.target,
         operation: step.operation,
-        ...(step.value && { value: step.value }),
-        ...(step.index && { index: step.index }),
-        ...(step.deleteCount && { deleteCount: step.deleteCount }),
+        ...(step.value && { value: step.value as CompiledExpression }),
+        ...(step.index && { index: step.index as CompiledExpression }),
+        ...(step.deleteCount && { deleteCount: step.deleteCount as CompiledExpression }),
       };
     case 'setPath':
       return {
         do: 'setPath',
         target: step.target,
-        path: step.path,
-        value: step.value,
+        path: step.path as CompiledExpression,
+        value: step.value as CompiledExpression,
       };
     default:
       // For other step types, return as-is
