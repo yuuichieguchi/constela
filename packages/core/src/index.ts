@@ -69,6 +69,15 @@ export type {
   ClearTimerStep,
   FocusStep,
   IfStep,
+  // Realtime Steps
+  SSEConnectStep,
+  SSECloseStep,
+  OptimisticStep,
+  ConfirmStep,
+  RejectStep,
+  BindStep,
+  UnbindStep,
+  ReconnectConfig,
   // Event Handler
   EventHandler,
   EventHandlerOptions,

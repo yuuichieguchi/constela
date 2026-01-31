@@ -98,7 +98,14 @@ export type CompiledActionStep =
   | CompiledIntervalStep
   | CompiledClearTimerStep
   | CompiledFocusStep
-  | CompiledGenerateStep;
+  | CompiledGenerateStep
+  | CompiledSSEConnectStep
+  | CompiledSSECloseStep
+  | CompiledOptimisticStep
+  | CompiledConfirmStep
+  | CompiledRejectStep
+  | CompiledBindStep
+  | CompiledUnbindStep;
 
 export interface CompiledSetStep {
   do: 'set';
@@ -294,6 +301,80 @@ export interface CompiledGenerateStep {
   model?: string;
   onSuccess?: CompiledActionStep[];
   onError?: CompiledActionStep[];
+}
+
+// ==================== Compiled Realtime Steps ====================
+
+/**
+ * Compiled SSE connect step
+ */
+export interface CompiledSSEConnectStep {
+  do: 'sseConnect';
+  connection: string;
+  url: CompiledExpression;
+  eventTypes?: string[];
+  reconnect?: { enabled: boolean; strategy: string; maxRetries: number; baseDelay: number; maxDelay?: number };
+  onOpen?: CompiledActionStep[];
+  onMessage?: CompiledActionStep[];
+  onError?: CompiledActionStep[];
+}
+
+/**
+ * Compiled SSE close step
+ */
+export interface CompiledSSECloseStep {
+  do: 'sseClose';
+  connection: string;
+}
+
+/**
+ * Compiled optimistic step
+ */
+export interface CompiledOptimisticStep {
+  do: 'optimistic';
+  target: string;
+  path?: CompiledExpression;
+  value: CompiledExpression;
+  result?: string;
+  timeout?: number;
+}
+
+/**
+ * Compiled confirm step
+ */
+export interface CompiledConfirmStep {
+  do: 'confirm';
+  id: CompiledExpression;
+}
+
+/**
+ * Compiled reject step
+ */
+export interface CompiledRejectStep {
+  do: 'reject';
+  id: CompiledExpression;
+}
+
+/**
+ * Compiled bind step
+ */
+export interface CompiledBindStep {
+  do: 'bind';
+  connection: string;
+  eventType?: string;
+  target: string;
+  path?: CompiledExpression;
+  transform?: CompiledExpression;
+  patch?: boolean;
+}
+
+/**
+ * Compiled unbind step
+ */
+export interface CompiledUnbindStep {
+  do: 'unbind';
+  connection: string;
+  target: string;
 }
 
 // ==================== Compiled Local State Types ====================
@@ -1086,6 +1167,70 @@ function transformActionStep(step: ActionStep): CompiledActionStep {
         compiledGenerateStep.onError = generateStep.onError.map(transformActionStep);
       }
       return compiledGenerateStep;
+    }
+
+    // ==================== Realtime Steps ====================
+
+    case 'sseConnect': {
+      const sseStep = step as import('@constela/core').SSEConnectStep;
+      const compiled: CompiledSSEConnectStep = {
+        do: 'sseConnect',
+        connection: sseStep.connection,
+        url: transformExpression(sseStep.url, emptyContext),
+      };
+      if (sseStep.eventTypes) compiled.eventTypes = sseStep.eventTypes;
+      if (sseStep.reconnect) compiled.reconnect = sseStep.reconnect;
+      if (sseStep.onOpen) compiled.onOpen = sseStep.onOpen.map(transformActionStep);
+      if (sseStep.onMessage) compiled.onMessage = sseStep.onMessage.map(transformActionStep);
+      if (sseStep.onError) compiled.onError = sseStep.onError.map(transformActionStep);
+      return compiled;
+    }
+
+    case 'sseClose': {
+      const sseCloseStep = step as import('@constela/core').SSECloseStep;
+      return { do: 'sseClose', connection: sseCloseStep.connection } as CompiledSSECloseStep;
+    }
+
+    case 'optimistic': {
+      const optStep = step as import('@constela/core').OptimisticStep;
+      const compiled: CompiledOptimisticStep = {
+        do: 'optimistic',
+        target: optStep.target,
+        value: transformExpression(optStep.value, emptyContext),
+      };
+      if (optStep.path) compiled.path = transformExpression(optStep.path, emptyContext);
+      if (optStep.result) compiled.result = optStep.result;
+      if (optStep.timeout) compiled.timeout = optStep.timeout;
+      return compiled;
+    }
+
+    case 'confirm': {
+      const confirmStep = step as import('@constela/core').ConfirmStep;
+      return { do: 'confirm', id: transformExpression(confirmStep.id, emptyContext) } as CompiledConfirmStep;
+    }
+
+    case 'reject': {
+      const rejectStep = step as import('@constela/core').RejectStep;
+      return { do: 'reject', id: transformExpression(rejectStep.id, emptyContext) } as CompiledRejectStep;
+    }
+
+    case 'bind': {
+      const bindStep = step as import('@constela/core').BindStep;
+      const compiled: CompiledBindStep = {
+        do: 'bind',
+        connection: bindStep.connection,
+        target: bindStep.target,
+      };
+      if (bindStep.eventType) compiled.eventType = bindStep.eventType;
+      if (bindStep.path) compiled.path = transformExpression(bindStep.path, emptyContext);
+      if (bindStep.transform) compiled.transform = transformExpression(bindStep.transform, emptyContext);
+      if (bindStep.patch) compiled.patch = bindStep.patch;
+      return compiled;
+    }
+
+    case 'unbind': {
+      const unbindStep = step as import('@constela/core').UnbindStep;
+      return { do: 'unbind', connection: unbindStep.connection, target: unbindStep.target } as CompiledUnbindStep;
     }
   }
 }

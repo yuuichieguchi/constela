@@ -79,6 +79,13 @@ export type {
   CompiledCallExpr,
   CompiledLambdaExpr,
   CompiledArrayExpr,
+  CompiledSSEConnectStep,
+  CompiledSSECloseStep,
+  CompiledOptimisticStep,
+  CompiledConfirmStep,
+  CompiledRejectStep,
+  CompiledBindStep,
+  CompiledUnbindStep,
 } from './passes/transform.js';
 
 // Layout passes

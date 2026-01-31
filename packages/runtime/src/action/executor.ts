@@ -32,8 +32,21 @@ import type {
   CompiledClearTimerStep,
   CompiledFocusStep,
   CompiledGenerateStep,
+  CompiledSSEConnectStep,
+  CompiledSSECloseStep,
+  CompiledOptimisticStep,
+  CompiledConfirmStep,
+  CompiledRejectStep,
+  CompiledBindStep,
+  CompiledUnbindStep,
 } from '@constela/compiler';
 import type { ConnectionManager } from '../connection/websocket.js';
+import {
+  type SSEConnectionManager,
+  createSSEConnectionManager,
+} from '../connection/sse.js';
+import type { OptimisticManager } from '../optimistic/manager.js';
+import type { BindingManager } from '../binding/realtime.js';
 import { evaluate } from '../expression/evaluator.js';
 
 /**
@@ -67,6 +80,9 @@ export interface ActionContext {
   };
   imports?: Record<string, unknown>;
   connections?: ConnectionManager;          // WebSocket connection manager
+  sse?: SSEConnectionManager;               // SSE connection manager
+  optimistic?: OptimisticManager;           // Optimistic update manager
+  binding?: BindingManager;                 // Realtime binding manager
 }
 
 /**
@@ -541,6 +557,34 @@ async function executeStep(
 
     case 'generate':
       await executeGenerateStep(step, ctx);
+      break;
+
+    case 'sseConnect':
+      await executeSSEConnectStep(step as CompiledSSEConnectStep, ctx);
+      break;
+
+    case 'sseClose':
+      await executeSSECloseStep(step as CompiledSSECloseStep, ctx);
+      break;
+
+    case 'optimistic':
+      await executeOptimisticStep(step as CompiledOptimisticStep, ctx);
+      break;
+
+    case 'confirm':
+      await executeConfirmStep(step as CompiledConfirmStep, ctx);
+      break;
+
+    case 'reject':
+      await executeRejectStep(step as CompiledRejectStep, ctx);
+      break;
+
+    case 'bind':
+      await executeBindStep(step as CompiledBindStep, ctx);
+      break;
+
+    case 'unbind':
+      await executeUnbindStep(step as CompiledUnbindStep, ctx);
       break;
   }
 }
@@ -1344,4 +1388,212 @@ async function executeGenerateStep(
       }
     }
   }
+}
+
+// ==================== Realtime Step Execution ====================
+
+/**
+ * Check if a value is a valid SSEConnectionManager (has required methods)
+ */
+function isSSEConnectionManager(obj: unknown): obj is SSEConnectionManager {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    typeof (obj as SSEConnectionManager).create === 'function' &&
+    typeof (obj as SSEConnectionManager).close === 'function'
+  );
+}
+
+/**
+ * Lazily create SSE connection manager on context if not present or invalid
+ */
+function ensureSSEManager(ctx: ActionContext): SSEConnectionManager {
+  if (!isSSEConnectionManager(ctx.sse)) {
+    ctx.sse = createSSEConnectionManager();
+  }
+  return ctx.sse;
+}
+
+/**
+ * Executes an SSE connect step
+ */
+async function executeSSEConnectStep(
+  step: CompiledSSEConnectStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const url = String(evaluate(step.url, evalCtx));
+
+  const sseManager = ensureSSEManager(ctx);
+
+  // Build handlers object without undefined values to satisfy exactOptionalPropertyTypes
+  const handlers: {
+    onOpen?: () => Promise<void>;
+    onMessage?: (data: unknown, eventType: string) => Promise<void>;
+    onError?: (error: Event) => Promise<void>;
+  } = {};
+
+  if (step.onOpen) {
+    handlers.onOpen = async () => {
+      for (const s of step.onOpen!) {
+        await executeStep(s, ctx);
+      }
+    };
+  }
+
+  if (step.onMessage) {
+    handlers.onMessage = async (data: unknown, eventType: string) => {
+      // Inject event data into locals
+      ctx.locals['event'] = { data, type: eventType };
+      for (const s of step.onMessage!) {
+        await executeStep(s, ctx);
+      }
+    };
+  }
+
+  if (step.onError) {
+    handlers.onError = async (error: Event) => {
+      ctx.locals['error'] = error;
+      for (const s of step.onError!) {
+        await executeStep(s, ctx);
+      }
+    };
+  }
+
+  sseManager.create(step.connection, url, handlers, step.eventTypes);
+}
+
+/**
+ * Executes an SSE close step
+ */
+async function executeSSECloseStep(
+  step: CompiledSSECloseStep,
+  ctx: ActionContext
+): Promise<void> {
+  if (isSSEConnectionManager(ctx.sse)) {
+    ctx.sse.close(step.connection);
+  }
+}
+
+/**
+ * Executes an optimistic update step
+ */
+async function executeOptimisticStep(
+  step: CompiledOptimisticStep,
+  ctx: ActionContext
+): Promise<void> {
+  if (!ctx.optimistic) {
+    return;
+  }
+
+  const evalCtx = createEvalContext(ctx);
+  const value = evaluate(step.value, evalCtx);
+  const path = step.path
+    ? (evaluate(step.path, evalCtx) as (string | number)[])
+    : undefined;
+
+  // Set auto-rollback timeout BEFORE apply so it takes effect for this update
+  if (step.timeout) {
+    ctx.optimistic.setAutoRollbackTimeout(step.timeout);
+  }
+
+  const updateId = ctx.optimistic.apply(
+    step.target,
+    path,
+    value,
+    (target) => ctx.state.get(target),
+    (target, val) => ctx.state.set(target, val)
+  );
+
+  if (step.result) {
+    ctx.locals[step.result] = updateId;
+  }
+}
+
+/**
+ * Executes a confirm step
+ */
+async function executeConfirmStep(
+  step: CompiledConfirmStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const id = evaluate(step.id, evalCtx);
+  ctx.optimistic?.confirm(String(id));
+}
+
+/**
+ * Executes a reject step
+ */
+async function executeRejectStep(
+  step: CompiledRejectStep,
+  ctx: ActionContext
+): Promise<void> {
+  const evalCtx = createEvalContext(ctx);
+  const id = evaluate(step.id, evalCtx);
+  ctx.optimistic?.reject(
+    String(id),
+    (target) => ctx.state.get(target),
+    (target, val) => ctx.state.set(target, val)
+  );
+}
+
+/**
+ * Executes a bind step
+ */
+async function executeBindStep(
+  step: CompiledBindStep,
+  ctx: ActionContext
+): Promise<void> {
+  if (!ctx.binding) {
+    return;
+  }
+
+  const evalCtx = createEvalContext(ctx);
+
+  // Build config object without undefined values to satisfy exactOptionalPropertyTypes
+  const config: {
+    connection: string;
+    target: string;
+    eventType?: string;
+    path?: (string | number)[];
+    patch?: boolean;
+  } = {
+    connection: step.connection,
+    target: step.target,
+  };
+
+  if (step.eventType !== undefined) {
+    config.eventType = step.eventType;
+  }
+
+  if (step.path) {
+    config.path = evaluate(step.path, evalCtx) as (string | number)[];
+  }
+
+  if (step.patch !== undefined) {
+    config.patch = step.patch;
+  }
+
+  ctx.binding.bind(config, (target, value, pathOrOptions) => {
+    if (pathOrOptions && typeof pathOrOptions === 'object' && 'patch' in pathOrOptions) {
+      // Handle patch mode
+      ctx.state.set(target, value);
+    } else if (Array.isArray(pathOrOptions)) {
+      // Path mode - use setPath
+      ctx.state.setPath(target, pathOrOptions, value);
+    } else {
+      ctx.state.set(target, value);
+    }
+  });
+}
+
+/**
+ * Executes an unbind step
+ */
+async function executeUnbindStep(
+  step: CompiledUnbindStep,
+  ctx: ActionContext
+): Promise<void> {
+  ctx.binding?.unbindByConnection(step.connection);
 }
