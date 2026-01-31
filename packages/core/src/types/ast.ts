@@ -560,7 +560,96 @@ export interface GenerateStep {
   onError?: ActionStep[];
 }
 
-export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep | IfStep | GenerateStep;
+// ==================== Realtime Connection Steps ====================
+
+/**
+ * Reconnection configuration for SSE and WebSocket
+ */
+export interface ReconnectConfig {
+  enabled: boolean;
+  strategy: 'exponential' | 'linear' | 'none';
+  maxRetries: number;
+  baseDelay: number;  // ms
+  maxDelay?: number;  // ms
+}
+
+/**
+ * SSE connect step - establishes a Server-Sent Events connection
+ */
+export interface SSEConnectStep {
+  do: 'sseConnect';
+  connection: string;
+  url: Expression;
+  eventTypes?: string[];
+  reconnect?: ReconnectConfig;
+  onOpen?: ActionStep[];
+  onMessage?: ActionStep[];
+  onError?: ActionStep[];
+}
+
+/**
+ * SSE close step - closes a named SSE connection
+ */
+export interface SSECloseStep {
+  do: 'sseClose';
+  connection: string;
+}
+
+// ==================== Optimistic Update Steps ====================
+
+/**
+ * Optimistic step - applies optimistic UI update
+ */
+export interface OptimisticStep {
+  do: 'optimistic';
+  target: string;
+  path?: Expression;
+  value: Expression;
+  result?: string;  // stores update ID
+  timeout?: number; // auto-rollback timeout in ms
+}
+
+/**
+ * Confirm step - confirms an optimistic update
+ */
+export interface ConfirmStep {
+  do: 'confirm';
+  id: Expression;
+}
+
+/**
+ * Reject step - rejects an optimistic update and rolls back
+ */
+export interface RejectStep {
+  do: 'reject';
+  id: Expression;
+}
+
+// ==================== Realtime Binding Steps ====================
+
+/**
+ * Bind step - binds connection messages to state
+ */
+export interface BindStep {
+  do: 'bind';
+  connection: string;
+  eventType?: string;
+  target: string;
+  path?: Expression;
+  transform?: Expression;
+  patch?: boolean;  // JSON Patch mode
+}
+
+/**
+ * Unbind step - removes a binding
+ */
+export interface UnbindStep {
+  do: 'unbind';
+  connection: string;
+  target: string;
+}
+
+export type ActionStep = SetStep | UpdateStep | SetPathStep | FetchStep | StorageStep | ClipboardStep | NavigateStep | ImportStep | CallStep | SubscribeStep | DisposeStep | DomStep | SendStep | CloseStep | DelayStep | IntervalStep | ClearTimerStep | FocusStep | IfStep | GenerateStep | SSEConnectStep | SSECloseStep | OptimisticStep | ConfirmStep | RejectStep | BindStep | UnbindStep;
 
 // LocalActionStep - only set, update, setPath allowed for local actions
 export type LocalActionStep = SetStep | UpdateStep | SetPathStep;

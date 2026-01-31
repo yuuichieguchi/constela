@@ -42,6 +42,22 @@ export type { HydrateOptions } from './hydrate.js';
 export { createWebSocketConnection, createConnectionManager } from './connection/websocket.js';
 export type { WebSocketConnection, WebSocketHandlers, ConnectionManager } from './connection/websocket.js';
 
+// SSE connections
+export { createSSEConnection, createSSEConnectionManager } from './connection/sse.js';
+export type { SSEConnection, SSEHandlers, SSEConnectionManager } from './connection/sse.js';
+
+// Reconnection management
+export { createReconnectionManager } from './connection/reconnect.js';
+export type { ReconnectionPolicy, Reconnectable, ReconnectionManager } from './connection/reconnect.js';
+
+// Optimistic updates
+export { createOptimisticManager } from './optimistic/manager.js';
+export type { PendingUpdate, OptimisticManager } from './optimistic/manager.js';
+
+// Realtime binding
+export { createBindingManager } from './binding/realtime.js';
+export type { BindingConfig, BindingManager } from './binding/realtime.js';
+
 // HMR (Hot Module Replacement)
 export { createHMRClient } from './hmr/client.js';
 export type { HMRClient, HMRClientOptions } from './hmr/client.js';
