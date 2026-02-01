@@ -1,5 +1,11 @@
 # @constela/ui
 
+## 0.4.0
+
+### Minor Changes
+
+- Add components and styles exports for CDN access
+
 ## 0.3.4
 
 ### Patch Changes
