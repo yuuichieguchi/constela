@@ -1,5 +1,19 @@
 # @constela/compiler
 
+## 0.15.4
+
+### Patch Changes
+
+- Support EventHandler props on component nodes
+
+  - Add missing action types to VALID_ACTION_TYPES (sseConnect, sseClose, optimistic, confirm, reject)
+  - Skip EventHandler validation in component node props
+  - Add EventHandler validation in validateComponentProps
+  - Transform EventHandler props correctly for component nodes
+
+- Updated dependencies
+  - @constela/core@0.17.4
+
 ## 0.15.3
 
 ### Patch Changes

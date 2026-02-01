@@ -23,8 +23,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.15.3",
-    "@constela/core": "^0.17.3"
+    "@constela/compiler": "^0.15.4",
+    "@constela/core": "^0.17.4"
   },
   "dependencies": {
     "isomorphic-dompurify": "^2.35.0",

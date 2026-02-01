@@ -712,6 +712,13 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
       // Substitute param with the value from currentParams
       const paramValue = ctx.currentParams?.[expr.name];
       if (paramValue !== undefined) {
+        // EventHandlers are passed through as-is (they don't have path handling)
+        // This happens when a component prop is an EventHandler (e.g., onClick)
+        if ('event' in paramValue) {
+          // Type assertion needed: EventHandlers in params are valid when used in prop position
+          return paramValue as unknown as CompiledExpression;
+        }
+
         // If param has a path, we need to add it to the resulting expression
         if (expr.path) {
           // If the param value is a var or state expression, add the path
