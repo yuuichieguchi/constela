@@ -1043,3 +1043,113 @@ describe('Dev Server Integration', () => {
     });
   });
 });
+
+// ==================== Dev Server externalImports Tests ====================
+
+describe('Dev Server externalImports', () => {
+  let server: Awaited<ReturnType<typeof import('../../src/dev/server.js').createDevServer>> | null = null;
+
+  afterEach(async () => {
+    if (server) {
+      await server.close();
+      server = null;
+    }
+  });
+
+  // ==================== externalImports in importMap ====================
+
+  describe('externalImports in importMap', () => {
+    it('should include externalImports from CDN URL in importMap', async () => {
+      /**
+       * Given: A JSON page with externalImports field specifying a CDN URL
+       * When: The dev server serves the page
+       * Then: The HTML should include an importmap with the external import entry
+       *
+       * This test verifies that pageInfo.page.externalImports is merged into the importMap
+       * so that dynamic module imports (`do: import` action) can resolve in the browser.
+       */
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      // File: page-with-external-imports.json -> route: /page-with-external-imports
+      const response = await fetch(`http://localhost:${server.port}/page-with-external-imports`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      // The importmap should contain the external import from the page JSON
+      expect(html).toContain('<script type="importmap">');
+      expect(html).toContain('@constela/ui');
+      expect(html).toContain('https://cdn.jsdelivr.net/npm/@constela/ui@0.4.0/+esm');
+    });
+
+    it('should merge externalImports with default importMap entries', async () => {
+      /**
+       * Given: A JSON page with externalImports field
+       * When: The dev server serves the page
+       * Then: The HTML importMap should contain both default entries AND external imports
+       *
+       * The dev server has default importMap entries for @constela/runtime, @constela/core, etc.
+       * When a page defines externalImports, these should be merged (not replaced).
+       */
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/page-with-external-imports`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      // Should have default importMap entries
+      expect(html).toContain('@constela/runtime');
+      expect(html).toContain('/node_modules/@constela/runtime/dist/index.js');
+      // Should also have the external imports
+      expect(html).toContain('@constela/ui');
+      expect(html).toContain('https://cdn.jsdelivr.net/npm/@constela/ui@0.4.0/+esm');
+    });
+
+    it('should work normally for pages without externalImports', async () => {
+      /**
+       * Given: A JSON page WITHOUT externalImports field
+       * When: The dev server serves the page
+       * Then: The HTML should still include the default importMap entries
+       *
+       * This is a regression test to ensure adding externalImports support
+       * does not break existing pages that do not use this feature.
+       */
+      // Arrange
+      const { createDevServer } = await import('../../src/dev/server.js');
+      const fixturesDir = new URL('../fixtures/pages', import.meta.url).pathname;
+      server = await createDevServer({
+        port: 0,
+        routesDir: fixturesDir,
+      });
+      await server.listen();
+
+      // Act
+      const response = await fetch(`http://localhost:${server.port}/page-without-widgets`);
+      const html = await response.text();
+
+      // Assert
+      expect(response.status).toBe(200);
+      // Should have default importMap entries
+      expect(html).toContain('<script type="importmap">');
+      expect(html).toContain('@constela/runtime');
+      expect(html).toContain('/node_modules/@constela/runtime/dist/index.js');
+    });
+  });
+});

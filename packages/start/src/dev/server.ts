@@ -499,6 +499,7 @@ export async function createDevServer(
                 '@constela/compiler': '/node_modules/@constela/compiler/dist/index.js',
                 'marked': '/node_modules/marked/lib/marked.esm.js',
                 'monaco-editor': '/node_modules/monaco-editor/esm/vs/editor/editor.api.js',
+                ...(pageInfo.page.externalImports || {}),
               };
 
               const html = wrapHtml(content, hydrationScript, head || undefined, {
