@@ -1382,9 +1382,35 @@ function validateComponentProps(
 
   // Validate prop expressions
   for (const [propName, propValue] of Object.entries(providedProps)) {
-    errors.push(
-      ...validateExpression(propValue, buildPath(path, 'props', propName), context, scope, paramScope)
-    );
+    const propPath = buildPath(path, 'props', propName);
+    if (isEventHandler(propValue)) {
+      // Check action reference - check both global and local actions
+      const isGlobalAction = context.actionNames.has(propValue.action);
+      const isLocalAction = paramScope?.localActionNames?.has(propValue.action) ?? false;
+      if (!isGlobalAction && !isLocalAction) {
+        // Combine available names for suggestion
+        const availableNames = new Set([
+          ...context.actionNames,
+          ...(paramScope?.localActionNames ?? []),
+        ]);
+        const errorOptions = createErrorOptionsWithSuggestion(propValue.action, availableNames);
+        errors.push(createUndefinedActionError(propValue.action, propPath, errorOptions));
+      }
+      // Check payload expression if present
+      if (propValue.payload) {
+        errors.push(
+          ...validateExpressionInEventPayload(
+            propValue.payload as Expression,
+            buildPath(propPath, 'payload'),
+            context,
+            scope
+          )
+        );
+      }
+    } else {
+      // It's an expression
+      errors.push(...validateExpression(propValue as Expression, propPath, context, scope, paramScope));
+    }
   }
 
   return errors;
