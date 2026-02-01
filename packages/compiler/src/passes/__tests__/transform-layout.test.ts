@@ -71,6 +71,58 @@ describe('transformLayoutPass', () => {
     } as unknown as Program;
   }
 
+  // ==================== transformExpression with concat ====================
+
+  describe('transformExpression with concat', () => {
+    it('should transform concat expression correctly', () => {
+      /**
+       * Given: Layout has an element with a prop using concat expression
+       * When: transformLayoutPass is called
+       * Then: The concat expression should be preserved in the compiled output,
+       *       NOT converted to { expr: 'lit', value: null }
+       *
+       * Bug: transformExpression() is missing a case for 'concat' expressions,
+       *      causing them to fall through to the default case which returns null.
+       */
+      // Arrange
+      const layout: LayoutProgram = {
+        version: '1.0',
+        type: 'layout',
+        state: {},
+        actions: [],
+        view: {
+          kind: 'element',
+          tag: 'a',
+          props: {
+            href: {
+              expr: 'concat',
+              items: [
+                { expr: 'lit', value: '/ui/' },
+                { expr: 'var', name: 'comp', path: 'slug' },
+              ],
+            },
+          },
+          children: [{ kind: 'slot' }],
+        },
+      } as unknown as LayoutProgram;
+
+      const context = createLayoutContext();
+
+      // Act
+      const compiled = transformLayoutPass(layout, context);
+
+      // Assert - concat expression should be preserved, not converted to null
+      const props = (compiled.view as { props: Record<string, unknown> }).props;
+      expect(props.href).toEqual({
+        expr: 'concat',
+        items: [
+          { expr: 'lit', value: '/ui/' },
+          { expr: 'var', name: 'comp', path: 'slug' },
+        ],
+      });
+    });
+  });
+
   // ==================== Basic Layout Transformation ====================
 
   describe('basic layout transformation', () => {

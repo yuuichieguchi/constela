@@ -263,6 +263,13 @@ function transformExpression(expr: Expression, ctx?: TransformContext): Compiled
         elements: arrayExpr.elements.map(elem => transformExpression(elem, ctx)),
       } as CompiledExpression;
     }
+    case 'concat': {
+      const concatExpr = expr as { expr: 'concat'; items: Expression[] };
+      return {
+        expr: 'concat',
+        items: concatExpr.items.map(item => transformExpression(item, ctx)),
+      } as CompiledExpression;
+    }
     default:
       return { expr: 'lit', value: null };
   }

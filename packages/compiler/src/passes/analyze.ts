@@ -414,6 +414,17 @@ function validateExpression(
       }
       break;
     }
+
+    case 'concat': {
+      const concatExpr = expr as { expr: 'concat'; items: Expression[] };
+      for (let i = 0; i < concatExpr.items.length; i++) {
+        const item = concatExpr.items[i];
+        if (item) {
+          errors.push(...validateExpression(item, buildPath(path, 'items', i), context, scope, paramScope));
+        }
+      }
+      break;
+    }
   }
 
   return errors;
@@ -887,6 +898,17 @@ function validateExpressionStateOnly(
       }
       break;
     }
+
+    case 'concat': {
+      const concatExpr = expr as { expr: 'concat'; items: Expression[] };
+      for (let i = 0; i < concatExpr.items.length; i++) {
+        const item = concatExpr.items[i];
+        if (item) {
+          errors.push(...validateExpressionStateOnly(item, buildPath(path, 'items', i), context));
+        }
+      }
+      break;
+    }
   }
 
   return errors;
@@ -1090,6 +1112,17 @@ function validateExpressionInEventPayload(
         const elem = arrayExpr.elements[i];
         if (elem) {
           errors.push(...validateExpressionInEventPayload(elem, buildPath(path, 'elements', i), context, scope));
+        }
+      }
+      break;
+    }
+
+    case 'concat': {
+      const concatExpr = expr as { expr: 'concat'; items: Expression[] };
+      for (let i = 0; i < concatExpr.items.length; i++) {
+        const item = concatExpr.items[i];
+        if (item) {
+          errors.push(...validateExpressionInEventPayload(item, buildPath(path, 'items', i), context, scope));
         }
       }
       break;
