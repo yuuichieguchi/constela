@@ -1,0 +1,230 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/",
+    "title": { "expr": "lit", "value": "Theme Demo - Constela" }
+  },
+  "theme": {
+    "mode": "system",
+    "colors": {
+      "primary": "hsl(220 90% 56%)",
+      "primary-foreground": "hsl(0 0% 100%)",
+      "secondary": "hsl(215 28% 17%)",
+      "secondary-foreground": "hsl(210 40% 98%)",
+      "background": "hsl(0 0% 100%)",
+      "foreground": "hsl(222 47% 11%)",
+      "muted": "hsl(210 40% 96%)",
+      "muted-foreground": "hsl(215 16% 47%)",
+      "border": "hsl(214 32% 91%)",
+      "ring": "hsl(220 90% 56%)"
+    },
+    "darkColors": {
+      "background": "hsl(222 47% 11%)",
+      "foreground": "hsl(210 40% 98%)",
+      "muted": "hsl(217 33% 17%)",
+      "muted-foreground": "hsl(215 20% 65%)",
+      "border": "hsl(217 33% 17%)"
+    },
+    "fonts": {
+      "sans": "Inter, system-ui, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "cssPrefix": "theme"
+  },
+  "state": {
+    "mode": {
+      "type": "string",
+      "initial": { "expr": "cookie", "key": "theme-mode", "default": "system" }
+    }
+  },
+  "styles": {
+    "container": {
+      "base": "min-h-screen bg-background text-foreground transition-colors duration-300"
+    },
+    "card": {
+      "base": "rounded-lg border border-border bg-card p-6 shadow-sm"
+    },
+    "button": {
+      "base": "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "variants": {
+        "variant": {
+          "default": "bg-primary text-primary-foreground hover:bg-primary/90",
+          "outline": "border border-border bg-background hover:bg-muted",
+          "ghost": "hover:bg-muted"
+        },
+        "active": {
+          "true": "ring-2 ring-ring",
+          "false": ""
+        }
+      },
+      "defaultVariants": {
+        "variant": "default",
+        "active": "false"
+      }
+    }
+  },
+  "actions": [
+    {
+      "name": "setTheme",
+      "steps": [
+        { "do": "set", "target": "mode", "value": { "expr": "var", "name": "payload" } },
+        { "do": "storage", "operation": "set", "key": { "expr": "lit", "value": "theme-mode" }, "value": { "expr": "var", "name": "payload" }, "storage": "local" },
+        {
+          "do": "if",
+          "condition": { "expr": "bin", "op": "==", "left": { "expr": "var", "name": "payload" }, "right": { "expr": "lit", "value": "dark" } },
+          "then": [{ "do": "dom", "operation": "addClass", "selector": { "expr": "lit", "value": "html" }, "value": { "expr": "lit", "value": "dark" } }],
+          "else": [
+            {
+              "do": "if",
+              "condition": { "expr": "bin", "op": "==", "left": { "expr": "var", "name": "payload" }, "right": { "expr": "lit", "value": "light" } },
+              "then": [{ "do": "dom", "operation": "removeClass", "selector": { "expr": "lit", "value": "html" }, "value": { "expr": "lit", "value": "dark" } }]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {
+      "className": { "expr": "style", "name": "container" }
+    },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "max-w-2xl mx-auto py-12 px-4" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "h1",
+            "props": { "className": { "expr": "lit", "value": "text-3xl font-bold mb-8" } },
+            "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Theme Demo" } }]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "style", "name": "card" } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "h2",
+                "props": { "className": { "expr": "lit", "value": "text-xl font-semibold mb-4" } },
+                "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Select Theme" } }]
+              },
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "flex gap-3" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": {
+                        "expr": "style",
+                        "name": "button",
+                        "variants": {
+                          "variant": { "expr": "lit", "value": "outline" },
+                          "active": { "expr": "bin", "op": "==", "left": { "expr": "state", "name": "mode" }, "right": { "expr": "lit", "value": "light" } }
+                        }
+                      },
+                      "onClick": { "event": "click", "action": "setTheme", "payload": { "expr": "lit", "value": "light" } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Light" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": {
+                        "expr": "style",
+                        "name": "button",
+                        "variants": {
+                          "variant": { "expr": "lit", "value": "outline" },
+                          "active": { "expr": "bin", "op": "==", "left": { "expr": "state", "name": "mode" }, "right": { "expr": "lit", "value": "dark" } }
+                        }
+                      },
+                      "onClick": { "event": "click", "action": "setTheme", "payload": { "expr": "lit", "value": "dark" } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Dark" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "button",
+                    "props": {
+                      "className": {
+                        "expr": "style",
+                        "name": "button",
+                        "variants": {
+                          "variant": { "expr": "lit", "value": "outline" },
+                          "active": { "expr": "bin", "op": "==", "left": { "expr": "state", "name": "mode" }, "right": { "expr": "lit", "value": "system" } }
+                        }
+                      },
+                      "onClick": { "event": "click", "action": "setTheme", "payload": { "expr": "lit", "value": "system" } }
+                    },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "System" } }]
+                  }
+                ]
+              },
+              {
+                "kind": "element",
+                "tag": "p",
+                "props": { "className": { "expr": "lit", "value": "mt-4 text-sm text-muted-foreground" } },
+                "children": [
+                  { "kind": "text", "value": { "expr": "lit", "value": "Current mode: " } },
+                  { "kind": "text", "value": { "expr": "state", "name": "mode" } }
+                ]
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "concat", "items": [{ "expr": "style", "name": "card" }, { "expr": "lit", "value": " mt-6" }] } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "h2",
+                "props": { "className": { "expr": "lit", "value": "text-xl font-semibold mb-4" } },
+                "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Color Palette" } }]
+              },
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "grid grid-cols-2 gap-4" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "lit", "value": "p-4 rounded bg-primary text-primary-foreground" } },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Primary" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "lit", "value": "p-4 rounded bg-secondary text-secondary-foreground" } },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Secondary" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "lit", "value": "p-4 rounded bg-muted text-muted-foreground" } },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Muted" } }]
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "lit", "value": "p-4 rounded border border-border" } },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Border" } }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

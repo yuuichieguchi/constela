@@ -1,0 +1,207 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/",
+    "title": { "expr": "lit", "value": "Dashboard - Constela" }
+  },
+  "state": {
+    "salesData": {
+      "type": "object",
+      "initial": {
+        "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        "datasets": [{
+          "label": "Revenue",
+          "data": [12000, 19000, 15000, 25000, 22000, 30000],
+          "borderColor": "hsl(220, 90%, 56%)",
+          "backgroundColor": "hsla(220, 90%, 56%, 0.1)",
+          "fill": true,
+          "tension": 0.4
+        }]
+      }
+    },
+    "trafficData": {
+      "type": "object",
+      "initial": {
+        "labels": ["Desktop", "Mobile", "Tablet"],
+        "datasets": [{
+          "data": [55, 35, 10],
+          "backgroundColor": ["hsl(220, 90%, 56%)", "hsl(150, 60%, 50%)", "hsl(40, 90%, 60%)"]
+        }]
+      }
+    },
+    "stats": {
+      "type": "list",
+      "initial": [
+        { "label": "Total Revenue", "value": "$123,456", "change": "+12.5%", "positive": true },
+        { "label": "Active Users", "value": "8,234", "change": "+5.2%", "positive": true },
+        { "label": "Conversion Rate", "value": "3.24%", "change": "-0.8%", "positive": false },
+        { "label": "Avg. Order Value", "value": "$89.50", "change": "+2.1%", "positive": true }
+      ]
+    }
+  },
+  "styles": {
+    "statCard": {
+      "base": "bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700"
+    },
+    "change": {
+      "base": "text-sm font-medium",
+      "variants": {
+        "positive": {
+          "true": "text-green-600 dark:text-green-400",
+          "false": "text-red-600 dark:text-red-400"
+        }
+      }
+    }
+  },
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "min-h-screen bg-gray-50 dark:bg-gray-900" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "h1",
+            "props": { "className": { "expr": "lit", "value": "text-3xl font-bold text-gray-900 dark:text-white mb-8" } },
+            "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Dashboard" } }]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" } },
+            "children": [
+              {
+                "kind": "each",
+                "items": { "expr": "state", "name": "stats" },
+                "as": "stat",
+                "key": { "expr": "var", "name": "stat", "path": "label" },
+                "body": {
+                  "kind": "island",
+                  "id": "stat-card",
+                  "strategy": "visible",
+                  "content": {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "style", "name": "statCard" } },
+                    "children": [
+                      {
+                        "kind": "element",
+                        "tag": "p",
+                        "props": { "className": { "expr": "lit", "value": "text-sm font-medium text-gray-500 dark:text-gray-400" } },
+                        "children": [{ "kind": "text", "value": { "expr": "var", "name": "stat", "path": "label" } }]
+                      },
+                      {
+                        "kind": "element",
+                        "tag": "p",
+                        "props": { "className": { "expr": "lit", "value": "text-2xl font-bold text-gray-900 dark:text-white mt-2" } },
+                        "children": [{ "kind": "text", "value": { "expr": "var", "name": "stat", "path": "value" } }]
+                      },
+                      {
+                        "kind": "element",
+                        "tag": "p",
+                        "props": {
+                          "className": {
+                            "expr": "style",
+                            "name": "change",
+                            "variants": { "positive": { "expr": "var", "name": "stat", "path": "positive" } }
+                          }
+                        },
+                        "children": [{ "kind": "text", "value": { "expr": "var", "name": "stat", "path": "change" } }]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "grid grid-cols-1 lg:grid-cols-3 gap-6" } },
+            "children": [
+              {
+                "kind": "island",
+                "id": "revenue-chart",
+                "strategy": "visible",
+                "strategyOptions": { "rootMargin": "100px" },
+                "content": {
+                  "kind": "element",
+                  "tag": "div",
+                  "props": { "className": { "expr": "lit", "value": "lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700" } },
+                  "children": [
+                    {
+                      "kind": "element",
+                      "tag": "h2",
+                      "props": { "className": { "expr": "lit", "value": "text-lg font-semibold text-gray-900 dark:text-white mb-4" } },
+                      "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Revenue Overview" } }]
+                    },
+                    {
+                      "kind": "component",
+                      "name": "Chart",
+                      "props": {
+                        "type": { "expr": "lit", "value": "area" },
+                        "data": { "expr": "state", "name": "salesData" },
+                        "height": { "expr": "lit", "value": 300 },
+                        "options": { "expr": "lit", "value": {
+                          "responsive": true,
+                          "maintainAspectRatio": false,
+                          "animation": { "duration": 750 },
+                          "plugins": {
+                            "legend": { "display": false }
+                          },
+                          "scales": {
+                            "y": { "beginAtZero": true }
+                          }
+                        }}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "island",
+                "id": "traffic-chart",
+                "strategy": "visible",
+                "strategyOptions": { "rootMargin": "100px" },
+                "content": {
+                  "kind": "element",
+                  "tag": "div",
+                  "props": { "className": { "expr": "lit", "value": "bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700" } },
+                  "children": [
+                    {
+                      "kind": "element",
+                      "tag": "h2",
+                      "props": { "className": { "expr": "lit", "value": "text-lg font-semibold text-gray-900 dark:text-white mb-4" } },
+                      "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Traffic by Device" } }]
+                    },
+                    {
+                      "kind": "component",
+                      "name": "Chart",
+                      "props": {
+                        "type": { "expr": "lit", "value": "doughnut" },
+                        "data": { "expr": "state", "name": "trafficData" },
+                        "height": { "expr": "lit", "value": 300 },
+                        "options": { "expr": "lit", "value": {
+                          "responsive": true,
+                          "maintainAspectRatio": false,
+                          "animation": { "duration": 750 },
+                          "plugins": {
+                            "legend": { "position": "bottom" }
+                          }
+                        }}
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/",
+    "title": { "expr": "lit", "value": "DataTable Demo - Constela" }
+  },
+  "state": {
+    "users": {
+      "type": "list",
+      "initial": [
+        { "id": 1, "name": "Alice Johnson", "email": "alice@example.com", "role": "Admin", "status": "active", "joined": "2023-01-15" },
+        { "id": 2, "name": "Bob Smith", "email": "bob@example.com", "role": "User", "status": "active", "joined": "2023-02-20" },
+        { "id": 3, "name": "Carol Williams", "email": "carol@example.com", "role": "Editor", "status": "inactive", "joined": "2023-03-10" },
+        { "id": 4, "name": "David Brown", "email": "david@example.com", "role": "User", "status": "active", "joined": "2023-04-05" },
+        { "id": 5, "name": "Eva Martinez", "email": "eva@example.com", "role": "Admin", "status": "active", "joined": "2023-05-12" },
+        { "id": 6, "name": "Frank Wilson", "email": "frank@example.com", "role": "User", "status": "pending", "joined": "2023-06-18" },
+        { "id": 7, "name": "Grace Lee", "email": "grace@example.com", "role": "Editor", "status": "active", "joined": "2023-07-22" },
+        { "id": 8, "name": "Henry Taylor", "email": "henry@example.com", "role": "User", "status": "inactive", "joined": "2023-08-30" },
+        { "id": 9, "name": "Ivy Anderson", "email": "ivy@example.com", "role": "User", "status": "active", "joined": "2023-09-14" },
+        { "id": 10, "name": "Jack Thomas", "email": "jack@example.com", "role": "Admin", "status": "active", "joined": "2023-10-25" },
+        { "id": 11, "name": "Kate Jackson", "email": "kate@example.com", "role": "Editor", "status": "pending", "joined": "2023-11-08" },
+        { "id": 12, "name": "Leo White", "email": "leo@example.com", "role": "User", "status": "active", "joined": "2023-12-01" }
+      ]
+    },
+    "page": { "type": "number", "initial": 1 },
+    "pageSize": { "type": "number", "initial": 5 },
+    "sort": { "type": "object", "initial": { "key": "name", "direction": "asc" } },
+    "filters": { "type": "object", "initial": {} },
+    "selected": { "type": "list", "initial": [] },
+    "searchQuery": { "type": "string", "initial": "" }
+  },
+  "styles": {
+    "statusBadge": {
+      "base": "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+      "variants": {
+        "status": {
+          "active": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+          "inactive": "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+          "pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+        }
+      }
+    },
+    "roleBadge": {
+      "base": "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+      "variants": {
+        "role": {
+          "Admin": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+          "Editor": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+          "User": "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+        }
+      }
+    }
+  },
+  "actions": [
+    {
+      "name": "handleSort",
+      "steps": [{ "do": "set", "target": "sort", "value": { "expr": "var", "name": "payload" } }]
+    },
+    {
+      "name": "handleFilter",
+      "steps": [{ "do": "set", "target": "filters", "value": { "expr": "var", "name": "payload" } }]
+    },
+    {
+      "name": "handlePageChange",
+      "steps": [{ "do": "set", "target": "page", "value": { "expr": "var", "name": "payload" } }]
+    },
+    {
+      "name": "handleSelectionChange",
+      "steps": [{ "do": "set", "target": "selected", "value": { "expr": "var", "name": "payload" } }]
+    },
+    {
+      "name": "updateSearch",
+      "steps": [
+        { "do": "set", "target": "searchQuery", "value": { "expr": "var", "name": "payload" } },
+        { "do": "set", "target": "page", "value": { "expr": "lit", "value": 1 } }
+      ]
+    },
+    {
+      "name": "deleteSelected",
+      "steps": [
+        {
+          "do": "set",
+          "target": "users",
+          "value": {
+            "expr": "call",
+            "target": { "expr": "state", "name": "users" },
+            "method": "filter",
+            "args": [{
+              "expr": "lambda",
+              "param": "user",
+              "body": {
+                "expr": "not",
+                "operand": {
+                  "expr": "call",
+                  "target": { "expr": "state", "name": "selected" },
+                  "method": "includes",
+                  "args": [{ "expr": "get", "base": { "expr": "var", "name": "user" }, "path": "id" }]
+                }
+              }
+            }]
+          }
+        },
+        { "do": "set", "target": "selected", "value": { "expr": "lit", "value": [] } }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "min-h-screen bg-gray-50 dark:bg-gray-900" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "max-w-6xl mx-auto py-8 px-4" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "h1",
+            "props": { "className": { "expr": "lit", "value": "text-3xl font-bold text-gray-900 dark:text-white mb-8" } },
+            "children": [{ "kind": "text", "value": { "expr": "lit", "value": "User Management" } }]
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700" } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": { "className": { "expr": "lit", "value": "flex items-center gap-4" } },
+                    "children": [
+                      {
+                        "kind": "element",
+                        "tag": "input",
+                        "props": {
+                          "type": { "expr": "lit", "value": "text" },
+                          "placeholder": { "expr": "lit", "value": "Search users..." },
+                          "className": { "expr": "lit", "value": "px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" },
+                          "value": { "expr": "state", "name": "searchQuery" },
+                          "onInput": { "event": "input", "action": "updateSearch", "payload": { "expr": "var", "name": "event", "path": "target.value" } }
+                        }
+                      },
+                      {
+                        "kind": "if",
+                        "condition": { "expr": "bin", "op": ">", "left": { "expr": "call", "target": { "expr": "state", "name": "selected" }, "method": "length" }, "right": { "expr": "lit", "value": 0 } },
+                        "then": {
+                          "kind": "element",
+                          "tag": "span",
+                          "props": { "className": { "expr": "lit", "value": "text-sm text-gray-500" } },
+                          "children": [
+                            { "kind": "text", "value": { "expr": "call", "target": { "expr": "state", "name": "selected" }, "method": "length" } },
+                            { "kind": "text", "value": { "expr": "lit", "value": " selected" } }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "if",
+                    "condition": { "expr": "bin", "op": ">", "left": { "expr": "call", "target": { "expr": "state", "name": "selected" }, "method": "length" }, "right": { "expr": "lit", "value": 0 } },
+                    "then": {
+                      "kind": "element",
+                      "tag": "button",
+                      "props": {
+                        "className": { "expr": "lit", "value": "px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium" },
+                        "onClick": { "event": "click", "action": "deleteSelected" }
+                      },
+                      "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Delete Selected" } }]
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "component",
+                "name": "DataTable",
+                "props": {
+                  "data": { "expr": "state", "name": "users" },
+                  "columns": { "expr": "lit", "value": [
+                    { "key": "name", "title": "Name", "sortable": true, "filterable": true },
+                    { "key": "email", "title": "Email", "sortable": true, "filterable": true },
+                    { "key": "role", "title": "Role", "sortable": true, "filterable": true, "filterType": "select", "filterOptions": [
+                      { "label": "Admin", "value": "Admin" },
+                      { "label": "Editor", "value": "Editor" },
+                      { "label": "User", "value": "User" }
+                    ]},
+                    { "key": "status", "title": "Status", "sortable": true, "filterable": true, "filterType": "select", "filterOptions": [
+                      { "label": "Active", "value": "active" },
+                      { "label": "Inactive", "value": "inactive" },
+                      { "label": "Pending", "value": "pending" }
+                    ]},
+                    { "key": "joined", "title": "Joined", "sortable": true }
+                  ]},
+                  "rowKey": { "expr": "lit", "value": "id" },
+                  "pageSize": { "expr": "state", "name": "pageSize" },
+                  "page": { "expr": "state", "name": "page" },
+                  "sortable": { "expr": "lit", "value": true },
+                  "filterable": { "expr": "lit", "value": true },
+                  "selectable": { "expr": "lit", "value": true },
+                  "selectedRows": { "expr": "state", "name": "selected" },
+                  "onSort": { "event": "sort", "action": "handleSort" },
+                  "onFilter": { "event": "filter", "action": "handleFilter" },
+                  "onPageChange": { "event": "pageChange", "action": "handlePageChange" },
+                  "onSelectionChange": { "event": "selectionChange", "action": "handleSelectionChange" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

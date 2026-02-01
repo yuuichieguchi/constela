@@ -68,17 +68,25 @@ components/
 - **Tooltip** - Hover tooltip
 - **Popover** - Click-triggered popover
 
-### Data Display (5)
-- **Table** - Data table
+### Data Display (8)
 - **Card** - Card container
 - **Badge** - Inline badge
 - **Avatar** - User avatar
 - **Skeleton** - Loading placeholder
+- **DataTable** - Advanced data table with sorting, filtering, and pagination
+- **VirtualScroll** - Virtualized list for large datasets
+- **Chart** - 12 chart types (line, bar, pie, area, scatter, radar, doughnut, polar, bubble, histogram, candlestick, treemap)
 
-### Navigation (3)
+### Date & Time (2)
+- **DatePicker** - Date selection with calendar popup
+- **Calendar** - Calendar view for date display and selection
+
+### Navigation (5)
 - **Tabs** - Tab navigation
 - **Breadcrumb** - Breadcrumb navigation
 - **Pagination** - Page pagination
+- **Tree** - Hierarchical tree view with expand/collapse
+- **Accordion** - Collapsible content sections
 
 ### Layout (3)
 - **Container** - Max-width container
@@ -122,6 +130,169 @@ Each component uses the CVA-like style system with:
   }
 }
 ```
+
+## New Components (2026.02)
+
+### DatePicker
+
+Date selection with calendar popup:
+
+```json
+{
+  "kind": "component",
+  "name": "DatePicker",
+  "props": {
+    "value": { "expr": "state", "name": "selectedDate" },
+    "onChange": { "event": "change", "action": "updateDate" },
+    "format": { "expr": "lit", "value": "yyyy-MM-dd" },
+    "minDate": { "expr": "lit", "value": "2024-01-01" },
+    "maxDate": { "expr": "lit", "value": "2025-12-31" },
+    "locale": { "expr": "lit", "value": "ja-JP" }
+  }
+}
+```
+
+### Calendar
+
+Calendar view for date display:
+
+```json
+{
+  "kind": "component",
+  "name": "Calendar",
+  "props": {
+    "value": { "expr": "state", "name": "selectedDate" },
+    "onSelect": { "event": "select", "action": "handleDateSelect" },
+    "highlightedDates": { "expr": "state", "name": "events" },
+    "weekStartsOn": { "expr": "lit", "value": 1 }
+  }
+}
+```
+
+### Tree
+
+Hierarchical tree view:
+
+```json
+{
+  "kind": "component",
+  "name": "Tree",
+  "props": {
+    "items": { "expr": "state", "name": "treeData" },
+    "onSelect": { "event": "select", "action": "handleNodeSelect" },
+    "expandedKeys": { "expr": "state", "name": "expanded" },
+    "selectedKey": { "expr": "state", "name": "selected" },
+    "showIcons": { "expr": "lit", "value": true }
+  }
+}
+```
+
+### Accordion
+
+Collapsible content sections:
+
+```json
+{
+  "kind": "component",
+  "name": "Accordion",
+  "props": {
+    "items": { "expr": "state", "name": "accordionItems" },
+    "type": { "expr": "lit", "value": "single" },
+    "collapsible": { "expr": "lit", "value": true },
+    "defaultValue": { "expr": "lit", "value": "item-1" }
+  }
+}
+```
+
+### DataTable
+
+Advanced data table with sorting, filtering, and pagination:
+
+```json
+{
+  "kind": "component",
+  "name": "DataTable",
+  "props": {
+    "data": { "expr": "state", "name": "tableData" },
+    "columns": { "expr": "lit", "value": [
+      { "key": "name", "title": "Name", "sortable": true },
+      { "key": "email", "title": "Email", "sortable": true, "filterable": true },
+      { "key": "status", "title": "Status", "sortable": true }
+    ]},
+    "pageSize": { "expr": "lit", "value": 10 },
+    "sortable": { "expr": "lit", "value": true },
+    "filterable": { "expr": "lit", "value": true },
+    "selectable": { "expr": "lit", "value": true },
+    "onSort": { "event": "sort", "action": "handleSort" },
+    "onFilter": { "event": "filter", "action": "handleFilter" },
+    "onPageChange": { "event": "pageChange", "action": "handlePageChange" }
+  }
+}
+```
+
+### VirtualScroll
+
+Virtualized list for large datasets:
+
+```json
+{
+  "kind": "component",
+  "name": "VirtualScroll",
+  "props": {
+    "items": { "expr": "state", "name": "largeList" },
+    "itemHeight": { "expr": "lit", "value": 50 },
+    "containerHeight": { "expr": "lit", "value": 400 },
+    "overscan": { "expr": "lit", "value": 5 },
+    "renderItem": { "expr": "param", "name": "itemTemplate" }
+  }
+}
+```
+
+### Chart
+
+12 chart types with animations:
+
+```json
+{
+  "kind": "component",
+  "name": "Chart",
+  "props": {
+    "type": { "expr": "lit", "value": "line" },
+    "data": { "expr": "state", "name": "chartData" },
+    "options": { "expr": "lit", "value": {
+      "responsive": true,
+      "animation": { "duration": 750, "easing": "easeOutQuart" },
+      "scales": {
+        "y": { "beginAtZero": true }
+      },
+      "plugins": {
+        "legend": { "position": "top" },
+        "tooltip": { "enabled": true }
+      }
+    }},
+    "width": { "expr": "lit", "value": 600 },
+    "height": { "expr": "lit", "value": 400 }
+  }
+}
+```
+
+**Supported Chart Types:**
+
+| Type | Description |
+|------|-------------|
+| `line` | Line chart with optional curved paths |
+| `bar` | Vertical bar chart |
+| `horizontalBar` | Horizontal bar chart |
+| `pie` | Pie chart |
+| `doughnut` | Doughnut chart |
+| `area` | Area chart with fill |
+| `scatter` | Scatter plot |
+| `radar` | Radar/spider chart |
+| `polar` | Polar area chart |
+| `bubble` | Bubble chart |
+| `histogram` | Histogram |
+| `candlestick` | Candlestick chart for financial data |
+| `treemap` | Treemap visualization |
 
 ## Accessibility
 

@@ -300,6 +300,71 @@ However, these words are allowed inside string literals:
 <PropsTable items={[{ description: "operations that require one" }]} />
 ```
 
+## Islands Architecture
+
+Define interactive islands for partial hydration:
+
+```json
+{
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "children": [
+      {
+        "kind": "island",
+        "id": "interactive-counter",
+        "strategy": "visible",
+        "strategyOptions": { "threshold": 0.5 },
+        "content": {
+          "kind": "element",
+          "tag": "button",
+          "props": { "onClick": { "event": "click", "action": "increment" } },
+          "children": [{ "kind": "text", "value": { "expr": "state", "name": "count" } }]
+        },
+        "state": {
+          "count": { "type": "number", "initial": 0 }
+        },
+        "actions": [
+          {
+            "name": "increment",
+            "steps": [{ "do": "update", "target": "count", "operation": "increment" }]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Hydration Strategies:**
+
+| Strategy | When to Hydrate | Use Case |
+|----------|-----------------|----------|
+| `load` | Immediately | Critical interactive elements |
+| `idle` | Browser idle | Non-urgent interactions |
+| `visible` | In viewport | Below-the-fold content |
+| `interaction` | User interaction | Lazy-loaded widgets |
+| `media` | Media query match | Responsive components |
+| `never` | Never | Static content only |
+
+**Build Optimization:**
+
+Islands are automatically code-split during build:
+
+```bash
+npx constela build --islands
+```
+
+Output structure:
+
+```
+dist/
+  _islands/
+    interactive-counter.js   # Island-specific bundle
+    chart-widget.js
+  client.js                  # Main client bundle
+```
+
 ## Configuration
 
 Create `constela.config.json`:
@@ -308,7 +373,15 @@ Create `constela.config.json`:
 {
   "adapter": "node",
   "css": "src/styles/globals.css",
-  "layoutsDir": "src/layouts"
+  "layoutsDir": "src/layouts",
+  "islands": {
+    "enabled": true,
+    "defaultStrategy": "visible"
+  },
+  "streaming": {
+    "enabled": true,
+    "flushStrategy": "batched"
+  }
 }
 ```
 
@@ -385,15 +458,61 @@ export default async (ctx, next) => {
 
 ### Edge Adapters
 
+Deploy to any edge platform with streaming support:
+
 ```typescript
 import { createAdapter } from '@constela/start';
 
 const adapter = createAdapter({
   platform: 'cloudflare',
   routes: scannedRoutes,
+  streaming: true,
 });
 
 export default { fetch: adapter.fetch };
+```
+
+**Platform-specific adapters:**
+
+```typescript
+// Cloudflare Workers
+import { cloudflareAdapter } from '@constela/start/adapters/cloudflare';
+
+export default {
+  fetch: cloudflareAdapter({
+    routes: scannedRoutes,
+    streaming: true,
+  }),
+};
+
+// Vercel Edge
+import { vercelAdapter } from '@constela/start/adapters/vercel';
+
+export const config = { runtime: 'edge' };
+export default vercelAdapter({ routes: scannedRoutes, streaming: true });
+
+// Deno Deploy
+import { denoAdapter } from '@constela/start/adapters/deno';
+
+Deno.serve(denoAdapter({ routes: scannedRoutes, streaming: true }));
+
+// Node.js
+import { nodeAdapter } from '@constela/start/adapters/node';
+import { createServer } from 'http';
+
+const handler = nodeAdapter({ routes: scannedRoutes, streaming: true });
+createServer(handler).listen(3000);
+```
+
+**Streaming Response:**
+
+All adapters support streaming HTML responses:
+
+```typescript
+// Returns ReadableStream<Uint8Array> for streaming
+const response = await adapter.fetch(request);
+// Content-Type: text/html; charset=utf-8
+// Transfer-Encoding: chunked
 ```
 
 ## License

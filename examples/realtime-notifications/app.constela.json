@@ -1,0 +1,353 @@
+{
+  "version": "1.0",
+  "route": {
+    "path": "/",
+    "title": { "expr": "lit", "value": "Realtime Notifications - Constela" }
+  },
+  "state": {
+    "connected": { "type": "boolean", "initial": false },
+    "notifications": { "type": "list", "initial": [] },
+    "unreadCount": { "type": "number", "initial": 0 },
+    "error": { "type": "string", "initial": "" }
+  },
+  "styles": {
+    "container": {
+      "base": "min-h-screen bg-gray-50 dark:bg-gray-900"
+    },
+    "card": {
+      "base": "bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+    },
+    "notification": {
+      "base": "p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors",
+      "variants": {
+        "read": {
+          "true": "bg-white dark:bg-gray-800",
+          "false": "bg-blue-50 dark:bg-blue-900/20"
+        }
+      },
+      "defaultVariants": { "read": "true" }
+    },
+    "badge": {
+      "base": "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full",
+      "variants": {
+        "variant": {
+          "default": "bg-blue-500 text-white",
+          "success": "bg-green-500 text-white",
+          "warning": "bg-yellow-500 text-white",
+          "error": "bg-red-500 text-white"
+        }
+      },
+      "defaultVariants": { "variant": "default" }
+    },
+    "statusDot": {
+      "base": "w-2 h-2 rounded-full",
+      "variants": {
+        "connected": {
+          "true": "bg-green-500",
+          "false": "bg-red-500"
+        }
+      }
+    }
+  },
+  "lifecycle": {
+    "onMount": "connect",
+    "onUnmount": "disconnect"
+  },
+  "actions": [
+    {
+      "name": "connect",
+      "steps": [
+        {
+          "do": "sseConnect",
+          "connection": "notifications",
+          "url": { "expr": "lit", "value": "/api/notifications/stream" },
+          "eventTypes": ["notification", "read", "clear"],
+          "reconnect": {
+            "enabled": true,
+            "strategy": "exponential",
+            "maxRetries": 10,
+            "baseDelay": 1000,
+            "maxDelay": 30000
+          },
+          "onOpen": [
+            { "do": "set", "target": "connected", "value": { "expr": "lit", "value": true } },
+            { "do": "set", "target": "error", "value": { "expr": "lit", "value": "" } }
+          ],
+          "onMessage": [
+            {
+              "do": "if",
+              "condition": { "expr": "bin", "op": "==", "left": { "expr": "var", "name": "payload", "path": "type" }, "right": { "expr": "lit", "value": "notification" } },
+              "then": [
+                { "do": "update", "target": "notifications", "operation": "insertAt", "index": { "expr": "lit", "value": 0 }, "value": { "expr": "var", "name": "payload", "path": "data" } },
+                { "do": "update", "target": "unreadCount", "operation": "increment" }
+              ]
+            }
+          ],
+          "onError": [
+            { "do": "set", "target": "connected", "value": { "expr": "lit", "value": false } },
+            { "do": "set", "target": "error", "value": { "expr": "lit", "value": "Connection lost. Reconnecting..." } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "disconnect",
+      "steps": [
+        { "do": "sseClose", "connection": "notifications" }
+      ]
+    },
+    {
+      "name": "markAsRead",
+      "steps": [
+        {
+          "do": "optimistic",
+          "target": "notifications",
+          "path": { "expr": "var", "name": "payload", "path": "index" },
+          "value": { "expr": "lit", "value": { "read": true } },
+          "result": "updateId"
+        },
+        { "do": "update", "target": "unreadCount", "operation": "decrement" },
+        {
+          "do": "fetch",
+          "url": {
+            "expr": "concat",
+            "items": [
+              { "expr": "lit", "value": "/api/notifications/" },
+              { "expr": "var", "name": "payload", "path": "id" },
+              { "expr": "lit", "value": "/read" }
+            ]
+          },
+          "method": "POST",
+          "onSuccess": [
+            { "do": "confirm", "id": { "expr": "var", "name": "updateId" } }
+          ],
+          "onError": [
+            { "do": "reject", "id": { "expr": "var", "name": "updateId" } },
+            { "do": "update", "target": "unreadCount", "operation": "increment" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "markAllAsRead",
+      "steps": [
+        {
+          "do": "fetch",
+          "url": { "expr": "lit", "value": "/api/notifications/read-all" },
+          "method": "POST",
+          "onSuccess": [
+            { "do": "set", "target": "unreadCount", "value": { "expr": "lit", "value": 0 } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "clearAll",
+      "steps": [
+        {
+          "do": "fetch",
+          "url": { "expr": "lit", "value": "/api/notifications/clear" },
+          "method": "DELETE",
+          "onSuccess": [
+            { "do": "set", "target": "notifications", "value": { "expr": "lit", "value": [] } },
+            { "do": "set", "target": "unreadCount", "value": { "expr": "lit", "value": 0 } }
+          ]
+        }
+      ]
+    }
+  ],
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "style", "name": "container" } },
+    "children": [
+      {
+        "kind": "element",
+        "tag": "div",
+        "props": { "className": { "expr": "lit", "value": "max-w-lg mx-auto py-8 px-4" } },
+        "children": [
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "lit", "value": "flex items-center justify-between mb-6" } },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "flex items-center gap-3" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "h1",
+                    "props": { "className": { "expr": "lit", "value": "text-2xl font-bold text-gray-900 dark:text-white" } },
+                    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Notifications" } }]
+                  },
+                  {
+                    "kind": "if",
+                    "condition": { "expr": "bin", "op": ">", "left": { "expr": "state", "name": "unreadCount" }, "right": { "expr": "lit", "value": 0 } },
+                    "then": {
+                      "kind": "element",
+                      "tag": "span",
+                      "props": { "className": { "expr": "style", "name": "badge" } },
+                      "children": [{ "kind": "text", "value": { "expr": "state", "name": "unreadCount" } }]
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "element",
+                "tag": "div",
+                "props": { "className": { "expr": "lit", "value": "flex items-center gap-2" } },
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "span",
+                    "props": {
+                      "className": {
+                        "expr": "style",
+                        "name": "statusDot",
+                        "variants": { "connected": { "expr": "state", "name": "connected" } }
+                      }
+                    }
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "span",
+                    "props": { "className": { "expr": "lit", "value": "text-sm text-gray-500" } },
+                    "children": [
+                      {
+                        "kind": "text",
+                        "value": {
+                          "expr": "cond",
+                          "if": { "expr": "state", "name": "connected" },
+                          "then": { "expr": "lit", "value": "Connected" },
+                          "else": { "expr": "lit", "value": "Disconnected" }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "kind": "if",
+            "condition": { "expr": "bin", "op": "!=", "left": { "expr": "state", "name": "error" }, "right": { "expr": "lit", "value": "" } },
+            "then": {
+              "kind": "element",
+              "tag": "div",
+              "props": { "className": { "expr": "lit", "value": "mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm" } },
+              "children": [{ "kind": "text", "value": { "expr": "state", "name": "error" } }]
+            }
+          },
+          {
+            "kind": "element",
+            "tag": "div",
+            "props": { "className": { "expr": "style", "name": "card" } },
+            "children": [
+              {
+                "kind": "if",
+                "condition": { "expr": "bin", "op": "==", "left": { "expr": "call", "target": { "expr": "state", "name": "notifications" }, "method": "length" }, "right": { "expr": "lit", "value": 0 } },
+                "then": {
+                  "kind": "element",
+                  "tag": "div",
+                  "props": { "className": { "expr": "lit", "value": "p-8 text-center text-gray-500" } },
+                  "children": [{ "kind": "text", "value": { "expr": "lit", "value": "No notifications yet" } }]
+                },
+                "else": {
+                  "kind": "each",
+                  "items": { "expr": "state", "name": "notifications" },
+                  "as": "notification",
+                  "index": "index",
+                  "key": { "expr": "var", "name": "notification", "path": "id" },
+                  "body": {
+                    "kind": "element",
+                    "tag": "div",
+                    "props": {
+                      "className": {
+                        "expr": "style",
+                        "name": "notification",
+                        "variants": { "read": { "expr": "var", "name": "notification", "path": "read" } }
+                      },
+                      "onClick": {
+                        "event": "click",
+                        "action": "markAsRead",
+                        "payload": {
+                          "id": { "expr": "var", "name": "notification", "path": "id" },
+                          "index": { "expr": "var", "name": "index" }
+                        }
+                      }
+                    },
+                    "children": [
+                      {
+                        "kind": "element",
+                        "tag": "div",
+                        "props": { "className": { "expr": "lit", "value": "flex items-start gap-3" } },
+                        "children": [
+                          {
+                            "kind": "element",
+                            "tag": "div",
+                            "props": { "className": { "expr": "lit", "value": "flex-1" } },
+                            "children": [
+                              {
+                                "kind": "element",
+                                "tag": "p",
+                                "props": { "className": { "expr": "lit", "value": "font-medium text-gray-900 dark:text-white" } },
+                                "children": [{ "kind": "text", "value": { "expr": "var", "name": "notification", "path": "title" } }]
+                              },
+                              {
+                                "kind": "element",
+                                "tag": "p",
+                                "props": { "className": { "expr": "lit", "value": "text-sm text-gray-500 dark:text-gray-400 mt-1" } },
+                                "children": [{ "kind": "text", "value": { "expr": "var", "name": "notification", "path": "message" } }]
+                              },
+                              {
+                                "kind": "element",
+                                "tag": "p",
+                                "props": { "className": { "expr": "lit", "value": "text-xs text-gray-400 mt-2" } },
+                                "children": [{ "kind": "text", "value": { "expr": "var", "name": "notification", "path": "time" } }]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "if",
+            "condition": { "expr": "bin", "op": ">", "left": { "expr": "call", "target": { "expr": "state", "name": "notifications" }, "method": "length" }, "right": { "expr": "lit", "value": 0 } },
+            "then": {
+              "kind": "element",
+              "tag": "div",
+              "props": { "className": { "expr": "lit", "value": "flex gap-3 mt-4" } },
+              "children": [
+                {
+                  "kind": "element",
+                  "tag": "button",
+                  "props": {
+                    "className": { "expr": "lit", "value": "flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" },
+                    "onClick": { "event": "click", "action": "markAllAsRead" }
+                  },
+                  "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Mark all as read" } }]
+                },
+                {
+                  "kind": "element",
+                  "tag": "button",
+                  "props": {
+                    "className": { "expr": "lit", "value": "flex-1 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50" },
+                    "onClick": { "event": "click", "action": "clearAll" }
+                  },
+                  "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Clear all" } }]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

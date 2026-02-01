@@ -313,6 +313,182 @@ Server-rendered HTML is hydrated on the client without DOM reconstruction:
 }
 ```
 
+## Theme Provider
+
+Manage application theming with reactive CSS variables:
+
+```typescript
+import { createThemeProvider } from '@constela/runtime';
+
+const theme = createThemeProvider({
+  config: {
+    mode: 'system',
+    colors: {
+      primary: 'hsl(220 90% 56%)',
+      background: 'hsl(0 0% 100%)',
+    },
+    darkColors: {
+      background: 'hsl(222 47% 11%)',
+    },
+  },
+  storageKey: 'app-theme',
+  useCookies: true,
+});
+
+// Get current theme
+const current = theme.getTheme();
+console.log(current.resolvedMode); // 'light' or 'dark'
+
+// Switch theme
+theme.setMode('dark');
+
+// Subscribe to changes
+const unsubscribe = theme.subscribe((theme) => {
+  console.log('Theme changed:', theme.resolvedMode);
+});
+
+// Cleanup
+theme.destroy();
+```
+
+**Features:**
+
+- System preference detection via `prefers-color-scheme`
+- CSS variable application to `:root`
+- Dark class management on `document.documentElement`
+- Persistence via localStorage with optional cookies (for SSR)
+- Subscription-based change notifications
+
+## Realtime Features
+
+### SSE Connections
+
+Establish Server-Sent Events connections:
+
+```json
+{
+  "actions": [
+    {
+      "name": "connectToNotifications",
+      "steps": [
+        {
+          "do": "sseConnect",
+          "connection": "notifications",
+          "url": { "expr": "lit", "value": "/api/events" },
+          "eventTypes": ["message", "update", "delete"],
+          "reconnect": {
+            "enabled": true,
+            "strategy": "exponential",
+            "maxRetries": 5,
+            "baseDelay": 1000,
+            "maxDelay": 30000
+          },
+          "onMessage": [
+            { "do": "update", "target": "messages", "operation": "push", "value": { "expr": "var", "name": "payload" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Reconnection Strategies:**
+
+| Strategy | Description |
+|----------|-------------|
+| `exponential` | Exponential backoff (1s, 2s, 4s, 8s...) |
+| `linear` | Linear backoff (1s, 2s, 3s, 4s...) |
+| `none` | No automatic reconnection |
+
+### Optimistic Updates
+
+Apply UI changes immediately with automatic rollback on failure:
+
+```json
+{
+  "actions": [
+    {
+      "name": "likePost",
+      "steps": [
+        {
+          "do": "optimistic",
+          "target": "posts",
+          "path": { "expr": "var", "name": "payload", "path": "index" },
+          "value": { "expr": "lit", "value": { "liked": true } },
+          "result": "updateId",
+          "timeout": 5000
+        },
+        {
+          "do": "fetch",
+          "url": { "expr": "concat", "items": [
+            { "expr": "lit", "value": "/api/posts/" },
+            { "expr": "var", "name": "payload", "path": "id" },
+            { "expr": "lit", "value": "/like" }
+          ]},
+          "method": "POST",
+          "onSuccess": [
+            { "do": "confirm", "id": { "expr": "var", "name": "updateId" } }
+          ],
+          "onError": [
+            { "do": "reject", "id": { "expr": "var", "name": "updateId" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### State Binding
+
+Bind SSE messages directly to state:
+
+```json
+{
+  "actions": [
+    {
+      "name": "bindNotifications",
+      "steps": [
+        {
+          "do": "bind",
+          "connection": "notifications",
+          "eventType": "update",
+          "target": "items",
+          "transform": { "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "data" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Island Hydration
+
+Hydrate interactive islands with the appropriate strategy:
+
+```typescript
+import { hydrateIsland } from '@constela/runtime';
+
+// Hydrate an island when it becomes visible
+hydrateIsland({
+  id: 'interactive-chart',
+  strategy: 'visible',
+  strategyOptions: { threshold: 0.5 },
+  program: compiledIslandProgram,
+  mount: document.querySelector('[data-island="interactive-chart"]'),
+});
+```
+
+**Supported Strategies:**
+
+- `load` - Hydrate immediately
+- `idle` - Hydrate when browser is idle (requestIdleCallback)
+- `visible` - Hydrate when element enters viewport (IntersectionObserver)
+- `interaction` - Hydrate on first user interaction (click, focus, mouseover)
+- `media` - Hydrate when media query matches (matchMedia)
+- `never` - Never hydrate (static content only)
+
 ## Security
 
 The runtime includes security measures:

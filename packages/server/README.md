@@ -201,6 +201,104 @@ Pass style presets via `RenderOptions.styles` for evaluation.
 .dark .shiki span { color: var(--shiki-dark); }
 ```
 
+## Streaming SSR
+
+Render to a ReadableStream for progressive HTML delivery:
+
+```typescript
+import { renderToStream, createHtmlTransformStream } from '@constela/server';
+
+// Render program to stream
+const contentStream = renderToStream(compiledProgram, {
+  flushStrategy: 'batched',
+}, {
+  route: { params: { id: '123' }, query: {}, path: '/posts/123' },
+  imports: { config: siteConfig },
+});
+
+// Wrap with HTML document structure
+const htmlStream = contentStream.pipeThrough(
+  createHtmlTransformStream({
+    title: 'My Page',
+    lang: 'en',
+    stylesheets: ['/styles.css'],
+    scripts: ['/client.js'],
+  })
+);
+
+// Use with Response (Edge/Workers)
+return new Response(htmlStream, {
+  headers: { 'Content-Type': 'text/html; charset=utf-8' },
+});
+```
+
+**Flush Strategies:**
+
+| Strategy | Description |
+|----------|-------------|
+| `immediate` | Flush each chunk as soon as it's ready |
+| `batched` | Flush when buffer exceeds 1KB threshold |
+| `manual` | Only flush at the end (for small pages) |
+
+**StreamingRenderOptions:**
+
+```typescript
+interface StreamingRenderOptions {
+  flushStrategy: 'immediate' | 'batched' | 'manual';
+}
+```
+
+### Abort Signal Support
+
+Cancel streaming when the client disconnects:
+
+```typescript
+const controller = new AbortController();
+
+const stream = renderToStream(program, { flushStrategy: 'batched' }, {
+  signal: controller.signal,
+});
+
+// Cancel on client disconnect
+request.signal.addEventListener('abort', () => {
+  controller.abort();
+});
+```
+
+## Suspense Boundaries
+
+Server-side suspense for async content:
+
+```json
+{
+  "view": {
+    "kind": "suspense",
+    "id": "user-data",
+    "fallback": {
+      "kind": "element",
+      "tag": "div",
+      "props": { "className": { "expr": "lit", "value": "skeleton" } },
+      "children": []
+    },
+    "content": {
+      "kind": "component",
+      "name": "UserProfile",
+      "props": { "user": { "expr": "data", "name": "user" } }
+    }
+  }
+}
+```
+
+Renders with markers for client-side hydration:
+
+```html
+<div data-suspense-id="user-data">
+  <!-- Fallback content first -->
+  <div class="skeleton"></div>
+</div>
+<!-- Resolved content follows -->
+```
+
 ## Security
 
 - **HTML Escaping** - All text output is escaped

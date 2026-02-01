@@ -60,7 +60,7 @@ String state can use a cookie expression to read initial value from cookies (SSR
 
 ## Expression Types
 
-18 expression types for constrained computation:
+19 expression types for constrained computation:
 
 | Type | JSON Example | Description |
 |------|-------------|-------------|
@@ -82,6 +82,7 @@ String state can use a cookie expression to read initial value from cookies (SSR
 | `call` | `{ "expr": "call", "target": ..., "method": "filter", "args": [...] }` | Method call |
 | `lambda` | `{ "expr": "lambda", "param": "item", "body": ... }` | Anonymous function |
 | `array` | `{ "expr": "array", "elements": [...] }` | Array construction |
+| `index` | `{ "expr": "index", "base": ..., "key": ... }` | Dynamic property/array access |
 
 **Binary Operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
@@ -125,7 +126,7 @@ Construct arrays dynamically from expressions:
 
 ## View Node Types
 
-8 node types for building UI:
+12 node types for building UI:
 
 ```json
 // Element node
@@ -155,11 +156,40 @@ Construct arrays dynamically from expressions:
 
 // Code block node
 { "kind": "code", "code": { ... }, "language": { ... } }
+
+// Portal node - renders children to a different DOM location
+{ "kind": "portal", "target": "body", "children": [ ... ] }
+
+// Island node - partial hydration boundary
+{
+  "kind": "island",
+  "id": "counter",
+  "strategy": "visible",
+  "strategyOptions": { "threshold": 0.5 },
+  "content": { ... },
+  "state": { ... },
+  "actions": [ ... ]
+}
+
+// Suspense node - async content with fallback
+{
+  "kind": "suspense",
+  "id": "async-data",
+  "fallback": { "kind": "text", "value": { "expr": "lit", "value": "Loading..." } },
+  "content": { ... }
+}
+
+// ErrorBoundary node - error handling with fallback UI
+{
+  "kind": "errorBoundary",
+  "fallback": { "kind": "text", "value": { "expr": "lit", "value": "Something went wrong" } },
+  "content": { ... }
+}
 ```
 
 ## Action Step Types
 
-14 step types for declarative actions:
+27 step types for declarative actions:
 
 ```json
 // Set state value
@@ -205,6 +235,66 @@ Construct arrays dynamically from expressions:
 
 // WebSocket close
 { "do": "close", "connection": "chat" }
+
+// Delay (setTimeout equivalent)
+{ "do": "delay", "ms": { "expr": "lit", "value": 1000 }, "then": [ ... ] }
+
+// Interval (setInterval equivalent)
+{ "do": "interval", "ms": { "expr": "lit", "value": 5000 }, "action": "refresh", "result": "intervalId" }
+
+// Clear timer (clearTimeout/clearInterval)
+{ "do": "clearTimer", "target": { "expr": "state", "name": "intervalId" } }
+
+// Focus management
+{ "do": "focus", "target": { "expr": "ref", "name": "inputEl" }, "operation": "focus" }
+
+// Conditional execution
+{ "do": "if", "condition": { ... }, "then": [ ... ], "else": [ ... ] }
+
+// SSE connection (Server-Sent Events)
+{
+  "do": "sseConnect",
+  "connection": "notifications",
+  "url": { "expr": "lit", "value": "/api/events" },
+  "eventTypes": ["message", "update"],
+  "reconnect": { "enabled": true, "strategy": "exponential", "maxRetries": 5, "baseDelay": 1000 },
+  "onOpen": [ ... ],
+  "onMessage": [ ... ],
+  "onError": [ ... ]
+}
+
+// SSE close
+{ "do": "sseClose", "connection": "notifications" }
+
+// Optimistic update (apply UI update immediately, rollback on failure)
+{
+  "do": "optimistic",
+  "target": "posts",
+  "path": { "expr": "var", "name": "index" },
+  "value": { "expr": "lit", "value": { "liked": true } },
+  "result": "updateId",
+  "timeout": 5000
+}
+
+// Confirm optimistic update
+{ "do": "confirm", "id": { "expr": "var", "name": "updateId" } }
+
+// Reject optimistic update (rollback)
+{ "do": "reject", "id": { "expr": "var", "name": "updateId" } }
+
+// Bind connection messages to state
+{
+  "do": "bind",
+  "connection": "notifications",
+  "eventType": "update",
+  "target": "messages",
+  "path": { "expr": "var", "name": "payload", "path": "id" },
+  "transform": { "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "data" },
+  "patch": false
+}
+
+// Unbind connection from state
+{ "do": "unbind", "connection": "notifications", "target": "messages" }
 ```
 
 ## Connections
@@ -300,6 +390,100 @@ Use styles with `StyleExpr`:
   }
 }
 ```
+
+## Theme System
+
+Configure application theming with CSS variables:
+
+```json
+{
+  "theme": {
+    "mode": "system",
+    "colors": {
+      "primary": "hsl(220 90% 56%)",
+      "primary-foreground": "hsl(0 0% 100%)",
+      "background": "hsl(0 0% 100%)",
+      "foreground": "hsl(222 47% 11%)",
+      "muted": "hsl(210 40% 96%)",
+      "muted-foreground": "hsl(215 16% 47%)",
+      "border": "hsl(214 32% 91%)"
+    },
+    "darkColors": {
+      "background": "hsl(222 47% 11%)",
+      "foreground": "hsl(210 40% 98%)",
+      "muted": "hsl(217 33% 17%)",
+      "muted-foreground": "hsl(215 20% 65%)",
+      "border": "hsl(217 33% 17%)"
+    },
+    "fonts": {
+      "sans": "Inter, system-ui, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "cssPrefix": "app"
+  }
+}
+```
+
+**ThemeConfig:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `mode` | `'light' \| 'dark' \| 'system'` | Color scheme mode |
+| `colors` | `ThemeColors` | Light mode color tokens |
+| `darkColors` | `ThemeColors` | Dark mode color tokens |
+| `fonts` | `ThemeFonts` | Font family definitions |
+| `cssPrefix` | `string` | CSS variable prefix (e.g., `--app-primary`) |
+
+**ColorScheme:** `'light'`, `'dark'`, `'system'`
+
+## Islands Architecture
+
+Define interactive islands with partial hydration strategies:
+
+```json
+{
+  "kind": "island",
+  "id": "interactive-chart",
+  "strategy": "visible",
+  "strategyOptions": {
+    "threshold": 0.5,
+    "rootMargin": "100px"
+  },
+  "content": {
+    "kind": "component",
+    "name": "Chart",
+    "props": { ... }
+  },
+  "state": {
+    "data": { "type": "list", "initial": [] }
+  },
+  "actions": [
+    { "name": "loadData", "steps": [ ... ] }
+  ]
+}
+```
+
+**Hydration Strategies:**
+
+| Strategy | Description | Options |
+|----------|-------------|---------|
+| `load` | Hydrate immediately on page load | - |
+| `idle` | Hydrate when browser is idle | `timeout` (ms) |
+| `visible` | Hydrate when element enters viewport | `threshold` (0-1), `rootMargin` |
+| `interaction` | Hydrate on first user interaction | - |
+| `media` | Hydrate when media query matches | `media` (query string) |
+| `never` | Never hydrate (static only) | - |
+
+**IslandNode Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique island identifier |
+| `strategy` | `IslandStrategy` | Hydration strategy |
+| `strategyOptions` | `IslandStrategyOptions` | Strategy-specific options |
+| `content` | `ViewNode` | Island content |
+| `state` | `Record<string, StateField>` | Island-local state |
+| `actions` | `ActionDefinition[]` | Island-local actions |
 
 ## Error Codes
 
