@@ -13,6 +13,12 @@ export type {
   Expression,
 } from '@constela/core';
 
+// Export all components
+export { components, type ComponentName } from './components.js';
+
+// Export all styles
+export { styles, type StyleName } from './styles.js';
+
 // Re-export validation utilities
 export { validateAst } from '@constela/core';
 
