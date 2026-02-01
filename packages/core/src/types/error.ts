@@ -55,7 +55,9 @@ export type ErrorCode =
   | 'UNDEFINED_VARIANT'
   // Local state error codes
   | 'UNDEFINED_LOCAL_STATE'
-  | 'LOCAL_ACTION_INVALID_STEP';
+  | 'LOCAL_ACTION_INVALID_STEP'
+  // Island-related error codes
+  | 'DUPLICATE_ISLAND_ID';
 
 // ==================== Error Options Interface ====================
 
@@ -615,6 +617,22 @@ export function createLocalActionInvalidStepError(stepType: string, path?: strin
     'LOCAL_ACTION_INVALID_STEP',
     `Invalid step type '${stepType}' in local action. Only 'set', 'update', and 'setPath' are allowed`,
     path
+  );
+}
+
+// ==================== Island Error Factory Functions ====================
+
+/**
+ * Creates a duplicate island ID error
+ */
+export function createDuplicateIslandIdError(id: string, path?: string, suggestions?: string[]): ConstelaError {
+  return new ConstelaError(
+    'DUPLICATE_ISLAND_ID',
+    `Duplicate island ID: "${id}"`,
+    path,
+    {
+      suggestion: suggestions?.[0] ?? 'Use a unique ID for each island',
+    }
   );
 }
 

@@ -126,7 +126,7 @@
       }
     },
     "node-key": {
-      "match": "\"(kind)\"\\s*:\\s*\"(code|component|each|element|if|markdown|portal|slot|text)\"",
+      "match": "\"(kind)\"\\s*:\\s*\"(code|component|each|element|errorBoundary|if|island|markdown|portal|slot|suspense|text)\"",
       "captures": {
         "1": {
           "name": "keyword.control.constela"

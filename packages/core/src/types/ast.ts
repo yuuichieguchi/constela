@@ -81,6 +81,21 @@ export type ValidityProperty = (typeof VALIDITY_PROPERTIES)[number];
 export const NAVIGATE_TARGETS = ['_self', '_blank'] as const;
 export type NavigateTarget = (typeof NAVIGATE_TARGETS)[number];
 
+// ==================== Island Strategies ====================
+
+export const ISLAND_STRATEGIES = ['load', 'idle', 'visible', 'interaction', 'media', 'never'] as const;
+export type IslandStrategy = (typeof ISLAND_STRATEGIES)[number];
+
+/**
+ * Options for island hydration strategies
+ */
+export interface IslandStrategyOptions {
+  threshold?: number;      // visible (0-1)
+  rootMargin?: string;     // visible
+  media?: string;          // media
+  timeout?: number;        // idle (>=0)
+}
+
 // ==================== Param Types ====================
 
 export const PARAM_TYPES = ['string', 'number', 'boolean', 'json'] as const;
@@ -784,7 +799,39 @@ export interface PortalNode {
   children: ViewNode[];
 }
 
-export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode | MarkdownNode | CodeNode | PortalNode;
+/**
+ * Island node - represents an interactive island in the Islands Architecture
+ */
+export interface IslandNode {
+  kind: 'island';
+  id: string;
+  strategy: IslandStrategy;
+  strategyOptions?: IslandStrategyOptions;
+  content: ViewNode;
+  state?: Record<string, StateField>;
+  actions?: ActionDefinition[];
+}
+
+/**
+ * Suspense node - represents an async boundary with loading fallback
+ */
+export interface SuspenseNode {
+  kind: 'suspense';
+  id: string;
+  fallback: ViewNode;
+  content: ViewNode;
+}
+
+/**
+ * Error boundary node - catches errors and displays fallback UI
+ */
+export interface ErrorBoundaryNode {
+  kind: 'errorBoundary';
+  fallback: ViewNode;
+  content: ViewNode;
+}
+
+export type ViewNode = ElementNode | TextNode | IfNode | EachNode | ComponentNode | SlotNode | MarkdownNode | CodeNode | PortalNode | IslandNode | SuspenseNode | ErrorBoundaryNode;
 
 // ==================== Component Definition ====================
 

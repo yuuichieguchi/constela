@@ -93,6 +93,10 @@ export interface ConstelaConfig {
   edge?: {
     adapter?: 'cloudflare' | 'vercel' | 'deno' | 'node';
   };
+  /** Enable streaming SSR */
+  streaming?: boolean;
+  /** Flush strategy for streaming SSR */
+  streamingFlushStrategy?: 'immediate' | 'batched' | 'manual';
 }
 
 /**
@@ -111,6 +115,8 @@ export interface DevServerOptions {
   seo?: {
     lang?: string;
   };
+  /** Enable streaming SSR */
+  streaming?: boolean;
 }
 
 /**
@@ -130,4 +136,6 @@ export interface BuildOptions {
   seo?: {
     lang?: string;
   };
+  /** Enable streaming SSR */
+  streaming?: boolean;
 }

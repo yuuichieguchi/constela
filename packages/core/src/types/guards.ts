@@ -18,6 +18,7 @@ import {
   VALIDITY_PROPERTIES,
   AI_PROVIDER_TYPES,
   AI_OUTPUT_TYPES,
+  ISLAND_STRATEGIES,
   type Expression,
   type LitExpr,
   type StateExpr,
@@ -47,6 +48,11 @@ import {
   type MarkdownNode,
   type CodeNode,
   type PortalNode,
+  type IslandNode,
+  type IslandStrategy,
+  type IslandStrategyOptions,
+  type SuspenseNode,
+  type ErrorBoundaryNode,
   type ActionStep,
   type SetStep,
   type UpdateStep,
@@ -539,6 +545,110 @@ export function isPortalNode(value: unknown): value is PortalNode {
 }
 
 /**
+ * Checks if value is a valid island strategy
+ */
+export function isIslandStrategy(value: unknown): value is IslandStrategy {
+  return typeof value === 'string' && ISLAND_STRATEGIES.includes(value as IslandStrategy);
+}
+
+/**
+ * Checks if value is valid island strategy options
+ */
+export function isIslandStrategyOptions(value: unknown): value is IslandStrategyOptions {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+
+  // Validate threshold if present (0-1)
+  if (obj['threshold'] !== undefined) {
+    if (typeof obj['threshold'] !== 'number' || obj['threshold'] < 0 || obj['threshold'] > 1) {
+      return false;
+    }
+  }
+
+  // Validate rootMargin if present (string)
+  if (obj['rootMargin'] !== undefined && typeof obj['rootMargin'] !== 'string') {
+    return false;
+  }
+
+  // Validate media if present (string)
+  if (obj['media'] !== undefined && typeof obj['media'] !== 'string') {
+    return false;
+  }
+
+  // Validate timeout if present (>= 0)
+  if (obj['timeout'] !== undefined) {
+    if (typeof obj['timeout'] !== 'number' || obj['timeout'] < 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Checks if value is an island node
+ */
+export function isIslandNode(value: unknown): value is IslandNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'island') return false;
+  if (typeof value['id'] !== 'string') return false;
+  if (!isIslandStrategy(value['strategy'])) return false;
+
+  // Check strategyOptions if present
+  if ('strategyOptions' in value && value['strategyOptions'] !== undefined) {
+    if (!isIslandStrategyOptions(value['strategyOptions'])) return false;
+  }
+
+  // Check content exists and is a valid ViewNode (shallow check to avoid infinite recursion)
+  if (!('content' in value) || !isObject(value['content'])) return false;
+
+  const content = value['content'] as Record<string, unknown>;
+  const validKinds = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
+  if (!validKinds.includes(content['kind'] as string)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Checks if value is a suspense node
+ */
+export function isSuspenseNode(value: unknown): value is SuspenseNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'suspense') return false;
+  if (typeof value['id'] !== 'string') return false;
+  if (!('fallback' in value) || !isObject(value['fallback'])) return false;
+  if (!('content' in value) || !isObject(value['content'])) return false;
+  // Shallow validation that fallback and content are ViewNode-like
+  const validKinds = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island', 'suspense', 'errorBoundary'];
+  const fallback = value['fallback'] as Record<string, unknown>;
+  const content = value['content'] as Record<string, unknown>;
+  if (!validKinds.includes(fallback['kind'] as string)) return false;
+  if (!validKinds.includes(content['kind'] as string)) return false;
+  return true;
+}
+
+/**
+ * Checks if value is an error boundary node
+ */
+export function isErrorBoundaryNode(value: unknown): value is ErrorBoundaryNode {
+  if (!isObject(value)) return false;
+  if (value['kind'] !== 'errorBoundary') return false;
+  if (!('fallback' in value) || !isObject(value['fallback'])) return false;
+  if (!('content' in value) || !isObject(value['content'])) return false;
+  // Shallow validation that fallback and content are ViewNode-like
+  const validKinds = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island', 'suspense', 'errorBoundary'];
+  const fallback = value['fallback'] as Record<string, unknown>;
+  const content = value['content'] as Record<string, unknown>;
+  if (!validKinds.includes(fallback['kind'] as string)) return false;
+  if (!validKinds.includes(content['kind'] as string)) return false;
+  return true;
+}
+
+/**
  * Checks if value is any valid view node
  */
 export function isViewNode(value: unknown): value is ViewNode {
@@ -551,7 +661,10 @@ export function isViewNode(value: unknown): value is ViewNode {
     isSlotNode(value) ||
     isMarkdownNode(value) ||
     isCodeNode(value) ||
-    isPortalNode(value)
+    isPortalNode(value) ||
+    isIslandNode(value) ||
+    isSuspenseNode(value) ||
+    isErrorBoundaryNode(value)
   );
 }
 

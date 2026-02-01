@@ -14,6 +14,9 @@ import type {
   Expression,
   ComponentNode,
   LocalActionDefinition,
+  IslandNode,
+  SuspenseNode,
+  ErrorBoundaryNode,
 } from '@constela/core';
 import type {
   CompiledProgram,
@@ -38,6 +41,9 @@ import type {
   CompiledVarExpr,
   CompiledStateExpr,
   CompiledImportExpr,
+  CompiledIslandNode,
+  CompiledSuspenseNode,
+  CompiledErrorBoundaryNode,
 } from './transform.js';
 import type { LayoutAnalysisContext } from './analyze-layout.js';
 
@@ -628,6 +634,60 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
           child => transformViewNode(child, ctx)
         ),
       } as CompiledNode;
+
+    case 'island': {
+      const islandNode = node as IslandNode;
+      const compiledIsland: CompiledIslandNode = {
+        kind: 'island',
+        id: islandNode.id,
+        strategy: islandNode.strategy,
+        content: transformViewNode(islandNode.content, ctx),
+      };
+
+      if (islandNode.strategyOptions) {
+        compiledIsland.strategyOptions = islandNode.strategyOptions;
+      }
+
+      if (islandNode.state) {
+        compiledIsland.state = transformLocalState(islandNode.state);
+      }
+
+      if (islandNode.actions && islandNode.actions.length > 0) {
+        compiledIsland.actions = {};
+        for (const action of islandNode.actions) {
+          compiledIsland.actions[action.name] = {
+            name: action.name,
+            steps: action.steps.map(s => transformActionStep(s)),
+          };
+        }
+      }
+
+      return compiledIsland;
+    }
+
+    case 'suspense': {
+      const suspenseNode = node as SuspenseNode;
+      return {
+        kind: 'suspense',
+        id: suspenseNode.id,
+        fallback: transformViewNode(suspenseNode.fallback, ctx),
+        content: transformViewNode(suspenseNode.content, ctx),
+      } as CompiledSuspenseNode;
+    }
+
+    case 'errorBoundary': {
+      const errorBoundaryNode = node as ErrorBoundaryNode;
+      return {
+        kind: 'errorBoundary',
+        fallback: transformViewNode(errorBoundaryNode.fallback, ctx),
+        content: transformViewNode(errorBoundaryNode.content, ctx),
+      } as CompiledErrorBoundaryNode;
+    }
+
+    default: {
+      const _exhaustiveCheck: never = node;
+      throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);
+    }
   }
 }
 

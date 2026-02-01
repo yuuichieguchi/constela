@@ -19,6 +19,7 @@ import type {
   CompiledLocalAction,
 } from '@constela/compiler';
 import type { AppInstance } from './app.js';
+import { hydrateIsland, detectIslandsInDOM } from './hydrate-island.js';
 import { createStateStore, type StateStore } from './state/store.js';
 import { createEffect } from './reactive/effect.js';
 import { createSignal, type Signal } from './reactive/signal.js';
@@ -1619,4 +1620,40 @@ function initCopyButtons(container: HTMLElement): void {
       }
     });
   });
+}
+
+// ==================== Island Hydration ====================
+
+/**
+ * Hydrates all islands in the application with their respective strategies.
+ * Returns a cleanup function that cleans up all island resources.
+ *
+ * @param program - The compiled program
+ * @param options - Options including the container element
+ * @returns Cleanup function to dispose all island hydrations
+ */
+export function hydrateAppWithIslands(
+  program: CompiledProgram,
+  options?: { container?: HTMLElement }
+): () => void {
+  const container =
+    options?.container ??
+    document.getElementById('app') ??
+    document.body;
+  const cleanupFns: Array<() => void> = [];
+
+  const islands = detectIslandsInDOM(container);
+  for (const island of islands) {
+    const cleanup = hydrateIsland({
+      ...island,
+      program,
+    });
+    cleanupFns.push(cleanup);
+  }
+
+  return () => {
+    for (const cleanup of cleanupFns) {
+      cleanup();
+    }
+  };
 }

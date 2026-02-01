@@ -17,6 +17,24 @@ export interface AdapterOptions {
   platform: PlatformAdapter;
   routes: ScannedRoute[];
   loadModule?: (file: string) => Promise<unknown>;
+  /** Enable streaming SSR */
+  streaming?: boolean;
+  /** Flush strategy for streaming SSR */
+  streamingFlushStrategy?: 'immediate' | 'batched' | 'manual';
+}
+
+/**
+ * Options for wrapping HTML stream
+ */
+export interface WrapHtmlStreamOptions {
+  /** Additional content for the head section */
+  head?: string;
+  /** Initial theme setting */
+  theme?: 'dark' | 'light';
+  /** HTML language attribute */
+  lang?: string;
+  /** Path to the runtime script */
+  runtimePath?: string;
 }
 
 export interface EdgeAdapter {
@@ -86,13 +104,99 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
   return cookies;
 }
 
+// ==================== Streaming HTML Wrapper ====================
+
+/**
+ * Wrap a content stream with HTML document structure.
+ * Creates a streaming HTML response with proper document structure.
+ *
+ * @param contentStream - The content stream to wrap
+ * @param hydrationScript - The hydration script to include
+ * @param options - Options for the HTML wrapper
+ * @returns A ReadableStream of the complete HTML document
+ */
+export function wrapHtmlStream(
+  contentStream: ReadableStream<Uint8Array>,
+  hydrationScript: string,
+  options?: WrapHtmlStreamOptions
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const lang = options?.lang ?? 'en';
+  const themeClass = options?.theme === 'dark' ? 'class="dark"' : '';
+
+  // Build the document shell
+  const docStart = `<!DOCTYPE html>
+<html lang="${lang}" ${themeClass}>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+${options?.head ?? ''}
+</head>
+<body>
+<div id="app">`;
+
+  const docEnd = `</div>
+${options?.runtimePath ? `<script type="module" src="${options.runtimePath}"></script>` : ''}
+<script type="module">
+${hydrationScript}
+</script>
+</body>
+</html>`;
+
+  let contentReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let startSent = false;
+  let contentDone = false;
+
+  return new ReadableStream<Uint8Array>({
+    async start() {
+      contentReader = contentStream.getReader();
+    },
+
+    async pull(controller) {
+      try {
+        // First, send the document start
+        if (!startSent) {
+          controller.enqueue(encoder.encode(docStart));
+          startSent = true;
+          return;
+        }
+
+        // Then, stream the content
+        if (!contentDone && contentReader) {
+          const { done, value } = await contentReader.read();
+          if (done) {
+            contentDone = true;
+            // Send the document end
+            controller.enqueue(encoder.encode(docEnd));
+            controller.close();
+            return;
+          }
+          controller.enqueue(value);
+          return;
+        }
+
+        // If content is done, close the stream
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+
+    cancel(reason) {
+      if (contentReader) {
+        contentReader.cancel(reason);
+      }
+    },
+  });
+}
+
 // ==================== Adapter Creation ====================
 
 /**
  * Create edge runtime adapter
  */
 export function createAdapter(options: AdapterOptions): EdgeAdapter {
-  const { routes, loadModule = defaultLoadModule } = options;
+  const { routes, loadModule = defaultLoadModule, streaming = false } = options;
 
   async function fetch(request: Request): Promise<Response> {
     try {
@@ -179,6 +283,36 @@ export function createAdapter(options: AdapterOptions): EdgeAdapter {
           }
         }
 
+        // Return streaming response if streaming is enabled
+        if (streaming) {
+          // Convert string content to a stream
+          const encoder = new TextEncoder();
+          const contentStream = new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(encoder.encode(content));
+              controller.close();
+            },
+          });
+
+          const streamOptions: WrapHtmlStreamOptions = {
+            lang: 'en',
+          };
+          if (initialTheme) {
+            streamOptions.theme = initialTheme;
+          }
+
+          const htmlStream = wrapHtmlStream(contentStream, hydrationScript, streamOptions);
+
+          return new Response(htmlStream, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Transfer-Encoding': 'chunked',
+            },
+          });
+        }
+
+        // Non-streaming response (default)
         const html = wrapHtml(content, hydrationScript, undefined, initialTheme ? {
           theme: initialTheme,
           defaultTheme: initialTheme,
