@@ -1,5 +1,15 @@
 # @constela/core
 
+## 0.17.1
+
+### Patch Changes
+
+- fix: support cookie expression in validateStateField
+
+  The validateStateField function now correctly validates cookie expressions
+  for string type state fields. Previously only plain strings were accepted,
+  but the AST schema allows `{ expr: 'cookie', key: string, default: string }`.
+
 ## 0.17.0
 
 ### Minor Changes
