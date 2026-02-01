@@ -8,7 +8,7 @@
  * - Applies syntax highlighting (async)
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from '../../src/renderer/index.js';
 import type { RenderContext } from '../../src/renderer/index.js';
 import { createStateStore } from '../../src/state/store.js';
@@ -310,11 +310,10 @@ describe('render code node', () => {
       container.appendChild(result);
 
       // Wait for async highlighting to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert - shiki adds spans with style or class for tokens
-      const spans = result.querySelectorAll('span');
-      expect(spans.length).toBeGreaterThan(0);
+      await vi.waitFor(() => {
+        const spans = result.querySelectorAll('span');
+        expect(spans.length).toBeGreaterThan(0);
+      }, { timeout: 5000, interval: 50 });
     });
 
     it('should highlight keywords', async () => {
@@ -331,13 +330,11 @@ describe('render code node', () => {
       container.appendChild(result);
 
       // Wait for async highlighting to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert - should have highlighted tokens
-      // Shiki typically creates spans with inline styles or specific classes
-      const code = result.querySelector('code');
-      expect(code).not.toBeNull();
-      expect(code?.querySelectorAll('span').length).toBeGreaterThan(0);
+      await vi.waitFor(() => {
+        const code = result.querySelector('code');
+        expect(code).not.toBeNull();
+        expect(code?.querySelectorAll('span').length).toBeGreaterThan(0);
+      }, { timeout: 5000, interval: 50 });
     });
 
     it('should highlight strings', async () => {
@@ -354,11 +351,10 @@ describe('render code node', () => {
       container.appendChild(result);
 
       // Wait for async highlighting to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert - should have highlighted tokens
-      const code = result.querySelector('code');
-      expect(code).not.toBeNull();
+      await vi.waitFor(() => {
+        const code = result.querySelector('code');
+        expect(code).not.toBeNull();
+      }, { timeout: 5000, interval: 50 });
     });
 
     it('should highlight comments', async () => {
@@ -375,11 +371,10 @@ describe('render code node', () => {
       container.appendChild(result);
 
       // Wait for async highlighting to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert - should have highlighted tokens
-      const code = result.querySelector('code');
-      expect(code).not.toBeNull();
+      await vi.waitFor(() => {
+        const code = result.querySelector('code');
+        expect(code).not.toBeNull();
+      }, { timeout: 5000, interval: 50 });
     });
   });
 
@@ -463,15 +458,14 @@ describe('render code node', () => {
       context.state.set('selectedLanguage', 'python');
 
       // Wait for reactivity and re-highlighting
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert - language should be updated
-      code = result.querySelector('code');
-      expect(
-        code?.classList.contains('language-python') ||
-        result.dataset.language === 'python' ||
-        code?.dataset.language === 'python'
-      ).toBe(true);
+      await vi.waitFor(() => {
+        code = result.querySelector('code');
+        expect(
+          code?.classList.contains('language-python') ||
+          result.dataset.language === 'python' ||
+          code?.dataset.language === 'python'
+        ).toBe(true);
+      }, { timeout: 5000, interval: 50 });
     });
 
     it('should re-apply highlighting when content changes', async () => {
@@ -490,16 +484,18 @@ describe('render code node', () => {
       container.appendChild(result);
 
       // Wait for initial highlighting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.waitFor(() => {
+        const spans = result.querySelectorAll('span');
+        expect(spans.length).toBeGreaterThan(0);
+      }, { timeout: 5000, interval: 50 });
 
       // Update state
       context.state.set('codeContent', 'function newCode() { return true; }');
 
       // Wait for reactivity and re-highlighting
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Assert
-      expect(result.textContent).toContain('function newCode');
+      await vi.waitFor(() => {
+        expect(result.textContent).toContain('function newCode');
+      }, { timeout: 5000, interval: 50 });
     });
   });
 

@@ -1,5 +1,18 @@
 # @constela/start
 
+## 1.8.27
+
+### Patch Changes
+
+- fix: resolve type error and flaky tests for release build
+
+  - bundler.ts: Use conditional spread for optional strategyOptions property
+  - code.test.ts: Replace setTimeout with vi.waitFor for stable shiki initialization
+
+- Updated dependencies
+  - @constela/runtime@0.19.7
+  - @constela/router@18.0.1
+
 ## 1.8.26
 
 ### Patch Changes

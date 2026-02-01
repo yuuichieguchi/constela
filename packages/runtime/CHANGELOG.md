@@ -1,5 +1,14 @@
 # @constela/runtime
 
+## 0.19.7
+
+### Patch Changes
+
+- fix: resolve type error and flaky tests for release build
+
+  - bundler.ts: Use conditional spread for optional strategyOptions property
+  - code.test.ts: Replace setTimeout with vi.waitFor for stable shiki initialization
+
 ## 0.19.6
 
 ### Patch Changes

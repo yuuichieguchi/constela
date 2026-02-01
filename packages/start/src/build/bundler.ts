@@ -390,7 +390,7 @@ export async function bundleIslands(
       manifestEntries.push({
         id: island.id,
         strategy: island.strategy,
-        strategyOptions: island.strategyOptions,
+        ...(island.strategyOptions !== undefined && { strategyOptions: island.strategyOptions }),
         path: relativePath,
       });
     } catch (error) {
