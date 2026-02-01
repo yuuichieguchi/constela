@@ -42,7 +42,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
-const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
+const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if', 'storage', 'dom'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
@@ -632,6 +632,50 @@ function validateActionStep(step: unknown, path: string): ValidationError | null
             const elseError = validateActionStep(step['else'][i], path + '/else/' + i);
             if (elseError) return elseError;
           }
+        }
+      }
+      break;
+
+    case 'storage':
+      if (!('operation' in step)) {
+        return { path: path + '/operation', message: 'operation is required' };
+      }
+      if (!['get', 'set', 'remove'].includes(step['operation'] as string)) {
+        return { path: path + '/operation', message: 'must be one of: get, set, remove' };
+      }
+      if (!('key' in step)) {
+        return { path: path + '/key', message: 'key is required' };
+      }
+      {
+        const keyError = validateExpression(step['key'], path + '/key');
+        if (keyError) return keyError;
+        if (step['operation'] === 'set' && 'value' in step) {
+          const valueError = validateExpression(step['value'], path + '/value');
+          if (valueError) return valueError;
+        }
+      }
+      break;
+
+    case 'dom':
+      if (!('operation' in step)) {
+        return { path: path + '/operation', message: 'operation is required' };
+      }
+      if (!['addClass', 'removeClass', 'toggleClass', 'setAttribute', 'removeAttribute'].includes(step['operation'] as string)) {
+        return { path: path + '/operation', message: 'must be one of: addClass, removeClass, toggleClass, setAttribute, removeAttribute' };
+      }
+      if (!('selector' in step)) {
+        return { path: path + '/selector', message: 'selector is required' };
+      }
+      {
+        const selectorError = validateExpression(step['selector'], path + '/selector');
+        if (selectorError) return selectorError;
+        if ('value' in step) {
+          const valueError = validateExpression(step['value'], path + '/value');
+          if (valueError) return valueError;
+        }
+        if ('attribute' in step) {
+          const attrError = validateExpression(step['attribute'], path + '/attribute');
+          if (attrError) return attrError;
         }
       }
       break;

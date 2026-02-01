@@ -588,6 +588,313 @@ describe('validateAst - Invalid Schema', () => {
     });
   });
 
+  // ==================== Storage Action Validation ====================
+
+  describe('Storage Action Validation', () => {
+    it('should accept valid storage set action', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'save',
+            steps: [
+              {
+                do: 'storage',
+                operation: 'set',
+                key: { expr: 'lit', value: 'myKey' },
+                value: { expr: 'state', name: 'value' },
+                storage: 'local',
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept valid storage get action', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'load',
+            steps: [
+              {
+                do: 'storage',
+                operation: 'get',
+                key: { expr: 'lit', value: 'myKey' },
+                result: 'storedValue',
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept valid storage remove action', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'clear',
+            steps: [
+              {
+                do: 'storage',
+                operation: 'remove',
+                key: { expr: 'lit', value: 'myKey' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return error for storage action without operation', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'save',
+            steps: [
+              {
+                do: 'storage',
+                // missing operation
+                key: { expr: 'lit', value: 'myKey' },
+                value: { expr: 'state', name: 'value' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/operation');
+        expect(result.error.message).toContain('operation is required');
+      }
+    });
+
+    it('should return error for storage action with invalid operation', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'save',
+            steps: [
+              {
+                do: 'storage',
+                operation: 'invalid',
+                key: { expr: 'lit', value: 'myKey' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/operation');
+      }
+    });
+
+    it('should return error for storage action without key', () => {
+      const ast = {
+        version: '1.0',
+        state: { value: { type: 'string', initial: '' } },
+        actions: [
+          {
+            name: 'save',
+            steps: [
+              {
+                do: 'storage',
+                operation: 'set',
+                // missing key
+                value: { expr: 'state', name: 'value' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'text', value: { expr: 'state', name: 'value' } },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/key');
+      }
+    });
+  });
+
+  // ==================== DOM Action Validation ====================
+
+  describe('DOM Action Validation', () => {
+    it('should accept valid dom addClass action', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'enableDarkMode',
+            steps: [
+              {
+                do: 'dom',
+                operation: 'addClass',
+                selector: { expr: 'lit', value: 'html' },
+                value: { expr: 'lit', value: 'dark' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept valid dom setAttribute action', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'setTheme',
+            steps: [
+              {
+                do: 'dom',
+                operation: 'setAttribute',
+                selector: { expr: 'lit', value: 'html' },
+                attribute: { expr: 'lit', value: 'data-theme' },
+                value: { expr: 'lit', value: 'dark' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return error for dom action without operation', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'test',
+            steps: [
+              {
+                do: 'dom',
+                // missing operation
+                selector: { expr: 'lit', value: 'html' },
+                value: { expr: 'lit', value: 'dark' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/operation');
+      }
+    });
+
+    it('should return error for dom action with invalid operation', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'test',
+            steps: [
+              {
+                do: 'dom',
+                operation: 'invalid',
+                selector: { expr: 'lit', value: 'html' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/operation');
+      }
+    });
+
+    it('should return error for dom action without selector', () => {
+      const ast = {
+        version: '1.0',
+        state: {},
+        actions: [
+          {
+            name: 'test',
+            steps: [
+              {
+                do: 'dom',
+                operation: 'addClass',
+                // missing selector
+                value: { expr: 'lit', value: 'dark' },
+              },
+            ],
+          },
+        ],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/actions/0/steps/0/selector');
+      }
+    });
+  });
+
   describe('Invalid State Fields', () => {
     it('should return error for invalid state field type', () => {
       const ast = {
