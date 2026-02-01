@@ -7,10 +7,19 @@
 
 import * as esbuild from 'esbuild';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join, dirname, isAbsolute, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type {
+  CompiledProgram,
+  CompiledIslandNode,
+  CompiledNode,
+  CompiledElementNode,
+  CompiledIfNode,
+  CompiledEachNode,
+} from '@constela/compiler';
+import type { IslandStrategy, IslandStrategyOptions } from '@constela/core';
 
 // Get the directory of this module for resolving workspace packages
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -275,4 +284,236 @@ export async function bundleCSS(options: BundleCSSOptions): Promise<string> {
 
   // Return relative path for HTML reference
   return '/_constela/styles.css';
+}
+
+// ==================== Island Bundling ====================
+
+/**
+ * Options for bundling islands.
+ */
+export interface BundleIslandOptions {
+  /** Output directory where the bundled islands will be written */
+  outDir: string;
+  /** Array of compiled island nodes to bundle */
+  islands: CompiledIslandNode[];
+  /** Whether to minify the output (default: true) */
+  minify?: boolean;
+}
+
+/**
+ * Island manifest entry for a single island.
+ */
+export interface IslandManifestEntry {
+  /** Unique island identifier */
+  id: string;
+  /** Hydration strategy */
+  strategy: IslandStrategy;
+  /** Strategy-specific options */
+  strategyOptions?: IslandStrategyOptions;
+  /** Relative path to the bundled island file */
+  path: string;
+}
+
+/**
+ * Island manifest containing metadata for all bundled islands.
+ */
+export interface IslandManifest {
+  /** Array of island entries */
+  islands: IslandManifestEntry[];
+}
+
+/**
+ * Sanitize island ID for use as a filename.
+ * Replaces unsafe characters with underscores.
+ */
+function sanitizeIslandId(id: string): string {
+  return id.replace(/[\/\\:*?"<>|]/g, '_');
+}
+
+/**
+ * Bundle individual islands for lazy loading.
+ *
+ * Creates individual bundle files for each island at {outDir}/_constela/islands/{id}.js
+ * and generates a manifest at {outDir}/_constela/islands/manifest.json.
+ *
+ * @param options - Bundle options
+ * @returns Map of island ID to relative path (e.g., "/_constela/islands/{id}.js")
+ * @throws Error if the output directory cannot be created or bundling fails
+ */
+export async function bundleIslands(
+  options: BundleIslandOptions
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  const { islands, outDir, minify = true } = options;
+
+  if (islands.length === 0) {
+    return result;
+  }
+
+  // Output directory for islands
+  const islandsDir = join(outDir, '_constela', 'islands');
+
+  // Ensure output directory exists
+  await mkdir(islandsDir, { recursive: true });
+
+  // Manifest entries
+  const manifestEntries: IslandManifestEntry[] = [];
+
+  // Bundle each island individually
+  for (const island of islands) {
+    const sanitizedId = sanitizeIslandId(island.id);
+    const outFile = join(islandsDir, `${sanitizedId}.js`);
+    const relativePath = `/_constela/islands/${sanitizedId}.js`;
+
+    // Generate island module content
+    const islandModule = generateIslandModule(island);
+
+    try {
+      await esbuild.build({
+        stdin: {
+          contents: islandModule,
+          resolveDir: __dirname,
+          loader: 'ts',
+        },
+        bundle: true,
+        format: 'esm',
+        target: 'es2020',
+        platform: 'browser',
+        outfile: outFile,
+        minify,
+        treeShaking: true,
+      });
+
+      result.set(island.id, relativePath);
+
+      // Add to manifest
+      manifestEntries.push({
+        id: island.id,
+        strategy: island.strategy,
+        strategyOptions: island.strategyOptions,
+        path: relativePath,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to bundle island "${island.id}" to ${outFile}: ${message}`);
+    }
+  }
+
+  // Write manifest file
+  const manifest: IslandManifest = { islands: manifestEntries };
+  const manifestPath = join(islandsDir, 'manifest.json');
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+  return result;
+}
+
+/**
+ * Generate JavaScript module content for an island.
+ *
+ * The generated module exports the island's compiled program structure
+ * that can be used for hydration.
+ */
+function generateIslandModule(island: CompiledIslandNode): string {
+  // Serialize the island to JSON for embedding
+  const serializedIsland = JSON.stringify(island, null, 2);
+
+  return `
+// Island: ${island.id}
+// Strategy: ${island.strategy}
+
+export const island = ${serializedIsland};
+
+export const state = ${JSON.stringify(island.state ?? {})};
+
+export const actions = ${JSON.stringify(island.actions ?? {})};
+
+export default island;
+`;
+}
+
+/**
+ * Extract all islands from a CompiledProgram.
+ *
+ * Recursively traverses the view tree and collects all island nodes
+ * into a flat array.
+ *
+ * @param program - The compiled program to extract islands from
+ * @returns Array of all CompiledIslandNode found in the program
+ */
+export function extractIslands(program: CompiledProgram): CompiledIslandNode[] {
+  const islands: CompiledIslandNode[] = [];
+  collectIslandsFromNode(program.view, islands);
+  return islands;
+}
+
+/**
+ * Recursively collect islands from a compiled node.
+ */
+function collectIslandsFromNode(
+  node: CompiledNode,
+  islands: CompiledIslandNode[]
+): void {
+  switch (node.kind) {
+    case 'island': {
+      // Add this island to the list
+      islands.push(node as CompiledIslandNode);
+      // Also search within the island's content for nested islands
+      collectIslandsFromNode((node as CompiledIslandNode).content, islands);
+      break;
+    }
+
+    case 'element': {
+      const elementNode = node as CompiledElementNode;
+      if (elementNode.children) {
+        for (const child of elementNode.children) {
+          collectIslandsFromNode(child, islands);
+        }
+      }
+      break;
+    }
+
+    case 'if': {
+      const ifNode = node as CompiledIfNode;
+      collectIslandsFromNode(ifNode.then, islands);
+      if (ifNode.else) {
+        collectIslandsFromNode(ifNode.else, islands);
+      }
+      break;
+    }
+
+    case 'each': {
+      const eachNode = node as CompiledEachNode;
+      collectIslandsFromNode(eachNode.body, islands);
+      break;
+    }
+
+    case 'localState': {
+      // LocalState has a child node
+      const localStateNode = node as { kind: 'localState'; child: CompiledNode };
+      collectIslandsFromNode(localStateNode.child, islands);
+      break;
+    }
+
+    case 'portal': {
+      // Portal has children
+      const portalNode = node as { kind: 'portal'; children?: CompiledNode[] };
+      if (portalNode.children) {
+        for (const child of portalNode.children) {
+          collectIslandsFromNode(child, islands);
+        }
+      }
+      break;
+    }
+
+    case 'text':
+    case 'markdown':
+    case 'code':
+    case 'slot':
+      // These nodes have no children that could contain islands
+      break;
+
+    default:
+      // Unknown node type - no action needed
+      break;
+  }
 }

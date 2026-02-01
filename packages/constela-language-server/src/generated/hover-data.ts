@@ -227,4 +227,16 @@ export const VIEW_DOCS: Record<string, { signature: string; description: string 
     signature: '{ "kind": "portal", "target": \'body\' | \'head\' | string, "children": ViewNode[] }',
     description: 'Portal node - renders children to a different DOM location',
   },
+  island: {
+    signature: '{ "kind": "island", "id": string, "strategy": IslandStrategy, "strategyOptions"?: IslandStrategyOptions, "content": ViewNode, "state"?: Record<string, StateField>, "actions"?: ActionDefinition[] }',
+    description: 'Island node - represents an interactive island in the Islands Architecture',
+  },
+  suspense: {
+    signature: '{ "kind": "suspense", "id": string, "fallback": ViewNode, "content": ViewNode }',
+    description: 'Suspense node - represents an async boundary with loading fallback',
+  },
+  errorBoundary: {
+    signature: '{ "kind": "errorBoundary", "fallback": ViewNode, "content": ViewNode }',
+    description: 'Error boundary node - catches errors and displays fallback UI',
+  },
 };

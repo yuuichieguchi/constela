@@ -35,8 +35,16 @@ export { createApp } from './app.js';
 export type { AppInstance } from './app.js';
 
 // Hydration
-export { hydrateApp } from './hydrate.js';
+export { hydrateApp, hydrateAppWithIslands } from './hydrate.js';
 export type { HydrateOptions } from './hydrate.js';
+
+// Island Hydration
+export { hydrateIsland, detectIslandsInDOM } from './hydrate-island.js';
+export type { IslandHydrationOptions } from './hydrate-island.js';
+
+// Island Loader
+export { createIslandLoader } from './island-loader.js';
+export type { IslandLoaderOptions, IslandLoader, LoadedIslandModule } from './island-loader.js';
 
 // WebSocket connections
 export { createWebSocketConnection, createConnectionManager } from './connection/websocket.js';
@@ -69,3 +77,13 @@ export type { ErrorOverlay, ErrorInfo } from './hmr/overlay.js';
 // Theme
 export { createThemeProvider } from './theme/index.js';
 export type { ThemeProvider, ThemeProviderOptions, ResolvedTheme } from './theme/index.js';
+
+// Prefetching
+export {
+  prefetchIsland,
+  createPrefetcher,
+  isPrefetchOptions,
+  setGlobalLoader,
+  PREFETCH_STRATEGIES,
+} from './prefetch.js';
+export type { PrefetchOptions, PrefetchStrategy, Prefetcher } from './prefetch.js';

@@ -19,6 +19,11 @@ import type {
   CallExpr,
   LambdaExpr,
   ArrayExpr,
+  IslandStrategy,
+  IslandStrategyOptions,
+  IslandNode,
+  SuspenseNode,
+  ErrorBoundaryNode,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -397,6 +402,38 @@ export interface CompiledLocalStateNode {
   child: CompiledNode;
 }
 
+/**
+ * Compiled island node - represents an interactive island in the Islands Architecture
+ */
+export interface CompiledIslandNode {
+  kind: 'island';
+  id: string;
+  strategy: IslandStrategy;
+  strategyOptions?: IslandStrategyOptions;
+  content: CompiledNode;
+  state?: Record<string, { type: string; initial: unknown }>;
+  actions?: Record<string, CompiledAction>;
+}
+
+/**
+ * Compiled suspense node - represents an async boundary with fallback
+ */
+export interface CompiledSuspenseNode {
+  kind: 'suspense';
+  id: string;
+  fallback: CompiledNode;
+  content: CompiledNode;
+}
+
+/**
+ * Compiled error boundary node - represents an error handling boundary
+ */
+export interface CompiledErrorBoundaryNode {
+  kind: 'errorBoundary';
+  fallback: CompiledNode;
+  content: CompiledNode;
+}
+
 // ==================== Compiled View Node Types ====================
 
 export type CompiledNode =
@@ -408,7 +445,10 @@ export type CompiledNode =
   | CompiledCodeNode
   | CompiledSlotNode
   | CompiledPortalNode
-  | CompiledLocalStateNode;
+  | CompiledLocalStateNode
+  | CompiledIslandNode
+  | CompiledSuspenseNode
+  | CompiledErrorBoundaryNode;
 
 export interface CompiledElementNode {
   kind: 'element';
@@ -1424,6 +1464,54 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         target: portalNode.target,
         children: compiledChildren,
       } as CompiledPortalNode;
+    }
+
+    case 'island': {
+      const islandNode = node as IslandNode;
+      const compiledIsland: CompiledIslandNode = {
+        kind: 'island',
+        id: islandNode.id,
+        strategy: islandNode.strategy,
+        content: transformViewNode(islandNode.content, ctx),
+      };
+
+      if (islandNode.strategyOptions) {
+        compiledIsland.strategyOptions = islandNode.strategyOptions;
+      }
+
+      if (islandNode.state) {
+        compiledIsland.state = transformState(islandNode.state);
+      }
+
+      if (islandNode.actions && islandNode.actions.length > 0) {
+        compiledIsland.actions = transformActions(islandNode.actions);
+      }
+
+      return compiledIsland;
+    }
+
+    case 'suspense': {
+      const suspenseNode = node as SuspenseNode;
+      return {
+        kind: 'suspense',
+        id: suspenseNode.id,
+        fallback: transformViewNode(suspenseNode.fallback, ctx),
+        content: transformViewNode(suspenseNode.content, ctx),
+      } as CompiledSuspenseNode;
+    }
+
+    case 'errorBoundary': {
+      const errorBoundaryNode = node as ErrorBoundaryNode;
+      return {
+        kind: 'errorBoundary',
+        fallback: transformViewNode(errorBoundaryNode.fallback, ctx),
+        content: transformViewNode(errorBoundaryNode.content, ctx),
+      } as CompiledErrorBoundaryNode;
+    }
+
+    default: {
+      const _exhaustiveCheck: never = node;
+      throw new Error(`Unknown node kind: ${JSON.stringify(_exhaustiveCheck)}`);
     }
   }
 }

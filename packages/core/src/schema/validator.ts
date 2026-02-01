@@ -15,7 +15,7 @@ import {
   findSimilarNames,
 } from '../types/error.js';
 import type { Program } from '../types/ast.js';
-import { BINARY_OPERATORS, UPDATE_OPERATIONS, HTTP_METHODS } from '../types/ast.js';
+import { BINARY_OPERATORS, UPDATE_OPERATIONS, HTTP_METHODS, ISLAND_STRATEGIES } from '../types/ast.js';
 
 // ==================== Result Types ====================
 
@@ -39,7 +39,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 // ==================== Recursive Validation ====================
 
-const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal'];
+const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if'];
@@ -193,6 +193,97 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
         for (let i = 0; i < node['children'].length; i++) {
           const error = validateViewNode(node['children'][i], path + '/children/' + i);
           if (error) return error;
+        }
+      }
+      break;
+
+    case 'island':
+      // id is required and must be a non-empty string
+      if (typeof node['id'] !== 'string' || node['id'] === '') {
+        return { path: path + '/id', message: 'id is required and must be a non-empty string' };
+      }
+      // strategy is required and must be a valid island strategy
+      if (typeof node['strategy'] !== 'string') {
+        return { path: path + '/strategy', message: 'strategy is required' };
+      }
+      if (!ISLAND_STRATEGIES.includes(node['strategy'] as typeof ISLAND_STRATEGIES[number])) {
+        return { path: path + '/strategy', message: `must be one of: ${ISLAND_STRATEGIES.join(', ')}` };
+      }
+      // content is required
+      if (!('content' in node)) {
+        return { path: path + '/content', message: 'content is required' };
+      }
+      {
+        const contentError = validateViewNode(node['content'], path + '/content');
+        if (contentError) return contentError;
+      }
+      // Validate strategyOptions if present
+      if ('strategyOptions' in node && node['strategyOptions'] !== undefined) {
+        if (!isObject(node['strategyOptions'])) {
+          return { path: path + '/strategyOptions', message: 'strategyOptions must be an object' };
+        }
+        const opts = node['strategyOptions'];
+        // Validate threshold (must be number between 0 and 1)
+        if ('threshold' in opts && opts['threshold'] !== undefined) {
+          if (typeof opts['threshold'] !== 'number' || opts['threshold'] < 0 || opts['threshold'] > 1) {
+            return { path: path + '/strategyOptions/threshold', message: 'threshold must be a number between 0 and 1' };
+          }
+        }
+        // Validate rootMargin (must be string)
+        if ('rootMargin' in opts && opts['rootMargin'] !== undefined) {
+          if (typeof opts['rootMargin'] !== 'string') {
+            return { path: path + '/strategyOptions/rootMargin', message: 'rootMargin must be a string' };
+          }
+        }
+        // Validate event (must be string)
+        if ('event' in opts && opts['event'] !== undefined) {
+          if (typeof opts['event'] !== 'string') {
+            return { path: path + '/strategyOptions/event', message: 'event must be a string' };
+          }
+        }
+        // Validate media (must be string)
+        if ('media' in opts && opts['media'] !== undefined) {
+          if (typeof opts['media'] !== 'string') {
+            return { path: path + '/strategyOptions/media', message: 'media must be a string' };
+          }
+        }
+        // Validate timeout (must be non-negative number)
+        if ('timeout' in opts && opts['timeout'] !== undefined) {
+          if (typeof opts['timeout'] !== 'number' || opts['timeout'] < 0) {
+            return { path: path + '/strategyOptions/timeout', message: 'timeout must be a non-negative number' };
+          }
+        }
+      }
+      // Validate state if present
+      if ('state' in node && node['state'] !== undefined) {
+        if (!isObject(node['state'])) {
+          return { path: path + '/state', message: 'state must be an object' };
+        }
+        for (const [name, field] of Object.entries(node['state'])) {
+          const error = validateStateField(field, path + '/state/' + name);
+          if (error) return error;
+        }
+      }
+      // Validate actions if present
+      if ('actions' in node && node['actions'] !== undefined) {
+        if (!Array.isArray(node['actions'])) {
+          return { path: path + '/actions', message: 'actions must be an array' };
+        }
+        for (let i = 0; i < node['actions'].length; i++) {
+          const action = node['actions'][i];
+          if (!isObject(action)) {
+            return { path: path + '/actions/' + i, message: 'action must be an object' };
+          }
+          if (typeof action['name'] !== 'string') {
+            return { path: path + '/actions/' + i + '/name', message: 'name is required' };
+          }
+          if (!Array.isArray(action['steps'])) {
+            return { path: path + '/actions/' + i + '/steps', message: 'steps is required' };
+          }
+          for (let j = 0; j < action['steps'].length; j++) {
+            const error = validateActionStep(action['steps'][j], path + '/actions/' + i + '/steps/' + j);
+            if (error) return error;
+          }
         }
       }
       break;
@@ -828,6 +919,31 @@ function validateStateReferences(
 ): ConstelaError | null {
   if (!isObject(node)) return null;
 
+  // Check if this is an island node
+  if (node['kind'] === 'island') {
+    // Collect island-local state names
+    const islandStateNames = new Set(stateNames);
+    if (isObject(node['state'])) {
+      for (const name of Object.keys(node['state'])) {
+        islandStateNames.add(name);
+      }
+    }
+    // Validate content with island state names included
+    if (isObject(node['content'])) {
+      const error = validateStateReferences(node['content'], path + '/content', islandStateNames);
+      if (error) return error;
+    }
+    // Validate island's own actions
+    if (Array.isArray(node['actions'])) {
+      for (let i = 0; i < node['actions'].length; i++) {
+        const error = validateStateReferences(node['actions'][i], path + '/actions/' + i, islandStateNames);
+        if (error) return error;
+      }
+    }
+    // Don't continue with default recursive check
+    return null;
+  }
+
   // Check state expressions
   if (node['expr'] === 'state' && typeof node['name'] === 'string') {
     if (!stateNames.has(node['name'])) {
@@ -885,6 +1001,26 @@ function validateActionReferences(
   actionNames: Set<string>
 ): ConstelaError | null {
   if (!isObject(node)) return null;
+
+  // Check if this is an island node
+  if (node['kind'] === 'island') {
+    // Collect island-local action names
+    const islandActionNames = new Set(actionNames);
+    if (Array.isArray(node['actions'])) {
+      for (const action of node['actions']) {
+        if (isObject(action) && typeof action['name'] === 'string') {
+          islandActionNames.add(action['name']);
+        }
+      }
+    }
+    // Validate content with island action names included
+    if (isObject(node['content'])) {
+      const error = validateActionReferences(node['content'], path + '/content', islandActionNames);
+      if (error) return error;
+    }
+    // Don't continue with default recursive check
+    return null;
+  }
 
   // Check event handlers in props
   if (isObject(node['props'])) {

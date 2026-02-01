@@ -24,6 +24,7 @@ import type {
   CallExpr,
   LambdaExpr,
   ArrayExpr,
+  IslandNode,
 } from '@constela/core';
 import {
   createUndefinedStateError,
@@ -56,6 +57,7 @@ import {
   createUndefinedVariantError,
   createUndefinedLocalStateError,
   createLocalActionInvalidStepError,
+  createDuplicateIslandIdError,
   findSimilarNames,
   isEventHandler,
   isDataSource,
@@ -84,6 +86,7 @@ export interface AnalysisContext {
   dataNames: Set<string>;
   refNames: Set<string>;
   styleNames: Set<string>;
+  islandIds: Set<string>;
 }
 
 /**
@@ -229,8 +232,9 @@ function collectContext(programAst: Program): AnalysisContext {
   const styleNames = new Set<string>(
     programAst.styles ? Object.keys(programAst.styles) : []
   );
+  const islandIds = new Set<string>();
 
-  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames, refNames, styleNames };
+  return { stateNames, actionNames, componentNames, routeParams, importNames, dataNames, refNames, styleNames, islandIds };
 }
 
 // ==================== Duplicate Action Detection ====================
@@ -1282,6 +1286,70 @@ function validateViewNode(
         );
       }
       break;
+
+    case 'island': {
+      // Check for duplicate island ID
+      if (context.islandIds.has(node.id)) {
+        errors.push(createDuplicateIslandIdError(node.id, path));
+      } else {
+        context.islandIds.add(node.id);
+      }
+
+      // Collect island-local state and action names
+      const islandStateNames = new Set<string>(
+        node.state ? Object.keys(node.state) : []
+      );
+      const islandActionNames = new Set<string>(
+        node.actions ? node.actions.map(a => a.name) : []
+      );
+
+      // Create a param scope for island-local state and actions
+      const islandParamScope: ParamScope = {
+        params: new Set(),
+        componentName: `island:${node.id}`,
+        localStateNames: islandStateNames,
+        localActionNames: islandActionNames,
+      };
+
+      // Validate content with island-local state and actions in scope
+      errors.push(
+        ...validateViewNode(
+          node.content,
+          buildPath(path, 'content'),
+          context,
+          scope,
+          { ...options, paramScope: islandParamScope }
+        )
+      );
+
+      // Validate island actions if present
+      if (node.actions) {
+        for (let i = 0; i < node.actions.length; i++) {
+          const action = node.actions[i];
+          if (!action) continue;
+
+          for (let j = 0; j < action.steps.length; j++) {
+            const step = action.steps[j];
+            if (!step) continue;
+
+            // Validate action steps reference island state or global state
+            if (step.do === 'set' || step.do === 'update' || step.do === 'setPath') {
+              const target = (step as { target: string }).target;
+              if (!islandStateNames.has(target) && !context.stateNames.has(target)) {
+                errors.push(
+                  createUndefinedStateError(
+                    target,
+                    buildPath(path, 'actions', i, 'steps', j, 'target'),
+                    createErrorOptionsWithSuggestion(target, new Set([...islandStateNames, ...context.stateNames]))
+                  )
+                );
+              }
+            }
+          }
+        }
+      }
+      break;
+    }
   }
 
   return errors;

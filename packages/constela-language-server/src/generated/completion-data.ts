@@ -63,4 +63,7 @@ export const VIEW_NODES = [
   { label: 'markdown', detail: 'Markdown node - renders markdown content', kind: CompletionItemKind.Class },
   { label: 'code', detail: 'Code node - renders syntax-highlighted code', kind: CompletionItemKind.Class },
   { label: 'portal', detail: 'Portal node - renders children to a different DOM location', kind: CompletionItemKind.Class },
+  { label: 'island', detail: 'Island node - represents an interactive island in the Islands Architecture', kind: CompletionItemKind.Class },
+  { label: 'suspense', detail: 'Suspense node - represents an async boundary with loading fallback', kind: CompletionItemKind.Class },
+  { label: 'errorBoundary', detail: 'Error boundary node - catches errors and displays fallback UI', kind: CompletionItemKind.Class },
 ];

@@ -97,6 +97,13 @@ export type {
   MarkdownNode,
   CodeNode,
   PortalNode,
+  // Island Types
+  IslandStrategy,
+  IslandStrategyOptions,
+  IslandNode,
+  // Suspense and Error Boundary Types
+  SuspenseNode,
+  ErrorBoundaryNode,
   // Component Definition
   ParamDef,
   ComponentDef,
@@ -149,6 +156,7 @@ export {
   VALIDITY_PROPERTIES,
   AI_PROVIDER_TYPES,
   AI_OUTPUT_TYPES,
+  ISLAND_STRATEGIES,
 } from './types/ast.js';
 
 // ==================== Type Guards ====================
@@ -190,6 +198,13 @@ export {
   isCodeNode,
   isPortalNode,
   isViewNode,
+  // Island type guards
+  isIslandStrategy,
+  isIslandStrategyOptions,
+  isIslandNode,
+  // Suspense and Error Boundary type guards
+  isSuspenseNode,
+  isErrorBoundaryNode,
   // ActionStep type guards
   isSetStep,
   isUpdateStep,
@@ -286,6 +301,8 @@ export {
   // Local state error factories
   createUndefinedLocalStateError,
   createLocalActionInvalidStepError,
+  // Island error factories
+  createDuplicateIslandIdError,
 } from './types/error.js';
 
 // ==================== Validator ====================
@@ -295,3 +312,18 @@ export { validateAst } from './schema/validator.js';
 
 // ==================== Schema ====================
 export { astSchema } from './schema/ast.schema.js';
+
+// ==================== Streaming SSR Types ====================
+export type {
+  FlushStrategy,
+  StreamingRenderOptions,
+  SuspenseBoundary,
+  StreamChunk,
+  StreamChunkType,
+} from './types/streaming.js';
+
+export {
+  isStreamingRenderOptions,
+  isSuspenseBoundary,
+  isStreamChunk,
+} from './types/streaming.js';
