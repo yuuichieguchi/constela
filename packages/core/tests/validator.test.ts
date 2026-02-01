@@ -646,6 +646,174 @@ describe('validateAst - Invalid Schema', () => {
       }
     });
   });
+
+  describe('Cookie Expression Initial Values', () => {
+    it('should accept plain string initial value for string type', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: { type: 'string', initial: 'hello' },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should accept valid cookie expression for string type', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'cookie', key: 'theme', default: 'light' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return error for cookie expression missing key', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'cookie', default: 'light' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial/key');
+      }
+    });
+
+    it('should return error for cookie expression missing default', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'cookie', key: 'theme' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial/default');
+      }
+    });
+
+    it('should return error for cookie expression missing expr', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { key: 'theme', default: 'light' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial');
+        expect(result.error.message).toContain('must be a string or a valid cookie expression');
+      }
+    });
+
+    it('should return error for wrong expr value in cookie expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'state', key: 'theme', default: 'light' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial');
+      }
+    });
+
+    it('should return error for non-string key in cookie expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'cookie', key: 123, default: 'light' },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial/key');
+      }
+    });
+
+    it('should return error for non-string default in cookie expression', () => {
+      const ast = {
+        version: '1.0',
+        state: {
+          theme: {
+            type: 'string',
+            initial: { expr: 'cookie', key: 'theme', default: 123 },
+          },
+        },
+        actions: [],
+        view: { kind: 'element', tag: 'div' },
+      };
+
+      const result = validateAst(ast);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('SCHEMA_INVALID');
+        expect(result.error.path).toBe('/state/theme/initial/default');
+      }
+    });
+  });
 });
 
 // ==================== Semantic Validation Tests ====================

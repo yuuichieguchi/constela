@@ -668,11 +668,28 @@ function validateStateField(field: unknown, path: string): ValidationError | nul
         return { path: path + '/initial', message: 'must be a number' };
       }
       break;
-    case 'string':
-      if (typeof field['initial'] !== 'string') {
-        return { path: path + '/initial', message: 'must be a string' };
+    case 'string': {
+      const initial = field['initial'];
+      if (typeof initial === 'string') {
+        break; // Valid plain string
       }
-      break;
+      // Check if it looks like a cookie expression
+      if (typeof initial === 'object' && initial !== null) {
+        const obj = initial as Record<string, unknown>;
+        if (obj['expr'] !== 'cookie') {
+          return { path: path + '/initial', message: 'must be a string or a valid cookie expression' };
+        }
+        // Validate cookie expression fields
+        if (typeof obj['key'] !== 'string') {
+          return { path: path + '/initial/key', message: 'key must be a string' };
+        }
+        if (typeof obj['default'] !== 'string') {
+          return { path: path + '/initial/default', message: 'default must be a string' };
+        }
+        break;
+      }
+      return { path: path + '/initial', message: 'must be a string or a valid cookie expression' };
+    }
     case 'list':
       if (!Array.isArray(field['initial'])) {
         return { path: path + '/initial', message: 'must be an array' };
