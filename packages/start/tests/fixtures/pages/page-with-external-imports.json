@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "externalImports": {
+    "@constela/ui": "https://cdn.jsdelivr.net/npm/@constela/ui@0.4.0/+esm"
+  },
+  "state": {},
+  "actions": {},
+  "view": {
+    "kind": "element",
+    "tag": "div",
+    "props": {},
+    "children": [{ "kind": "text", "value": { "expr": "lit", "value": "Page with external imports" } }]
+  }
+}
