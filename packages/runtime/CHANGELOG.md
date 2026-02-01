@@ -1,5 +1,12 @@
 # @constela/runtime
 
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.15.5
+
 ## 1.0.4
 
 ### Patch Changes

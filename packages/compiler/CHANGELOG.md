@@ -1,5 +1,16 @@
 # @constela/compiler
 
+## 0.15.5
+
+### Patch Changes
+
+- fix: add concat expression support in transform-layout and analyze passes
+
+  - Add concat case in transformExpression (transform-layout.ts)
+  - Add concat case in validateExpression, validateExpressionStateOnly, validateExpressionInEventPayload (analyze.ts)
+
+  This fixes SSR rendering bug where concat expressions in layout props were incorrectly transformed to null.
+
 ## 0.15.4
 
 ### Patch Changes
