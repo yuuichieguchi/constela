@@ -490,6 +490,123 @@ describe('validateAst - Invalid Schema', () => {
         });
       });
     });
+
+    // ==================== Concat Expression Tests ====================
+
+    describe('Concat Expression', () => {
+      it('should accept valid concat expression', () => {
+        const ast = {
+          version: '1.0',
+          state: { name: { type: 'string', initial: 'World' } },
+          actions: [],
+          view: {
+            kind: 'text',
+            value: {
+              expr: 'concat',
+              items: [
+                { expr: 'lit', value: 'Hello, ' },
+                { expr: 'state', name: 'name' },
+              ],
+            },
+          },
+        };
+
+        const result = validateAst(ast);
+
+        expect(result.ok).toBe(true);
+      });
+
+      it('should accept concat expression with empty items', () => {
+        const ast = {
+          version: '1.0',
+          state: {},
+          actions: [],
+          view: {
+            kind: 'text',
+            value: {
+              expr: 'concat',
+              items: [],
+            },
+          },
+        };
+
+        const result = validateAst(ast);
+
+        expect(result.ok).toBe(true);
+      });
+
+      it('should return error for concat expression missing items', () => {
+        const ast = {
+          version: '1.0',
+          state: {},
+          actions: [],
+          view: {
+            kind: 'text',
+            value: {
+              expr: 'concat',
+              // missing items
+            },
+          },
+        };
+
+        const result = validateAst(ast);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe('SCHEMA_INVALID');
+          expect(result.error.path).toBe('/view/value/items');
+        }
+      });
+
+      it('should return error for concat expression with non-array items', () => {
+        const ast = {
+          version: '1.0',
+          state: {},
+          actions: [],
+          view: {
+            kind: 'text',
+            value: {
+              expr: 'concat',
+              items: 'not an array',
+            },
+          },
+        };
+
+        const result = validateAst(ast);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe('SCHEMA_INVALID');
+          expect(result.error.path).toBe('/view/value/items');
+        }
+      });
+
+      it('should return error for concat expression with invalid item', () => {
+        const ast = {
+          version: '1.0',
+          state: {},
+          actions: [],
+          view: {
+            kind: 'text',
+            value: {
+              expr: 'concat',
+              items: [
+                { expr: 'lit', value: 'Hello' },
+                { expr: 'invalid-expr' },
+              ],
+            },
+          },
+        };
+
+        const result = validateAst(ast);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe('SCHEMA_INVALID');
+          expect(result.error.path).toBe('/view/value/items/1/expr');
+        }
+      });
+    });
   });
 
   describe('Invalid Action Steps', () => {

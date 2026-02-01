@@ -40,7 +40,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array', 'concat'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if', 'storage', 'dom'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -475,6 +475,18 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
       for (let i = 0; i < expr['elements'].length; i++) {
         const elemError = validateExpression(expr['elements'][i], path + '/elements/' + i);
         if (elemError) return elemError;
+      }
+      break;
+    case 'concat':
+      if (!('items' in expr)) {
+        return { path: path + '/items', message: 'items is required' };
+      }
+      if (!Array.isArray(expr['items'])) {
+        return { path: path + '/items', message: 'items must be an array' };
+      }
+      for (let i = 0; i < expr['items'].length; i++) {
+        const itemError = validateExpression(expr['items'][i], path + '/items/' + i);
+        if (itemError) return itemError;
       }
       break;
   }
