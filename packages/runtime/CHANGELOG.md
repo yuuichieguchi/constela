@@ -1,5 +1,61 @@
 # @constela/runtime
 
+## 1.0.0
+
+### Minor Changes
+
+- feat: Constela 2026.02 Release
+
+  ## Theme System
+
+  - CSS variable-based theming with light/dark/system modes
+  - ThemeProvider with SSR support and FOUC prevention
+  - Automatic system theme detection via prefers-color-scheme
+
+  ## DatePicker & Calendar
+
+  - Calendar component with locale support and min/max constraints
+  - DatePicker with popup calendar and format options
+  - Date helper functions: getCalendarDays, getWeekDays, formatDate
+
+  ## Tree & Accordion
+
+  - Accordion with single/multiple expansion modes
+  - Tree component with nested nodes and selection
+  - Full ARIA accessibility support
+
+  ## DataTable & VirtualScroll
+
+  - DataTable with sorting, filtering, pagination, and row selection
+  - VirtualScroll for efficient rendering of large lists
+  - Table helper functions: sortBy, getPaginatedItems, getVisibleRange
+
+  ## Chart Components
+
+  - BarChart, LineChart, AreaChart, PieChart, DonutChart
+  - Curved line paths with Catmull-Rom splines
+  - CSS animations for data visualization
+
+  ## Realtime Features
+
+  - SSE connections with auto-reconnection (exponential/linear backoff)
+  - Optimistic updates with confirm/reject/rollback
+  - Realtime state bindings with JSON Patch support
+
+  ## SSR/Edge Optimization
+
+  - Streaming SSR with Web Streams API
+  - Islands Architecture with 6 hydration strategies
+  - Suspense and ErrorBoundary support
+  - Island bundling and prefetching
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.17.0
+  - @constela/compiler@0.15.0
+  - @constela/ai@2.0.0
+
 ## 0.19.7
 
 ### Patch Changes
