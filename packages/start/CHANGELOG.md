@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.9.6
+
+### Patch Changes
+
+- fix(start): merge externalImports into dev server importMap
+
 ## 1.9.5
 
 ### Patch Changes
