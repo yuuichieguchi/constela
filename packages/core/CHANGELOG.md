@@ -1,5 +1,14 @@
 # @constela/core
 
+## 0.17.3
+
+### Patch Changes
+
+- fix: support concat expression in validateExpression
+
+  Add validation for concat expression type that was missing from
+  the validator but already implemented in @constela/runtime.
+
 ## 0.17.2
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @constela/ai
 
+## 2.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.17.3
+
 ## 2.0.2
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @constela/start
 
+## 1.9.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.17.3
+  - @constela/ai@2.0.3
+  - @constela/compiler@0.15.3
+  - @constela/runtime@1.0.3
+  - @constela/server@13.0.0
+  - @constela/router@19.0.0
+
 ## 1.9.2
 
 ### Patch Changes
