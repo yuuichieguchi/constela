@@ -1,5 +1,14 @@
 # @constela/core
 
+## 0.17.2
+
+### Patch Changes
+
+- fix: support storage and dom actions in validateActionStep
+
+  Add validation for storage and dom action types that were already
+  implemented in @constela/runtime but missing from the validator.
+
 ## 0.17.1
 
 ### Patch Changes
