@@ -32,7 +32,7 @@ import type { AnalysisContext } from './analyze.js';
 
 interface TransformContext {
   components: Record<string, ComponentDef>;
-  currentParams?: Record<string, CompiledExpression>; // Current component's param values
+  currentParams?: Record<string, CompiledExpression | CompiledEventHandler>; // Current component's param values
   currentChildren?: CompiledNode[]; // Current component's children for slot
 }
 
@@ -1382,11 +1382,15 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         return { kind: 'element', tag: 'div' };
       }
 
-      // Transform props to CompiledExpressions
-      const params: Record<string, CompiledExpression> = {};
+      // Transform props to CompiledExpressions or CompiledEventHandlers
+      const params: Record<string, CompiledExpression | CompiledEventHandler> = {};
       if (node.props) {
-        for (const [name, expr] of Object.entries(node.props)) {
-          params[name] = transformExpression(expr, ctx);
+        for (const [name, propValue] of Object.entries(node.props)) {
+          if (isEventHandler(propValue)) {
+            params[name] = transformEventHandler(propValue, ctx);
+          } else {
+            params[name] = transformExpression(propValue as Expression, ctx);
+          }
         }
       }
 

@@ -42,7 +42,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
 const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array', 'concat'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
-const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if', 'storage', 'dom'];
+const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if', 'storage', 'dom', 'sseConnect', 'sseClose', 'optimistic', 'confirm', 'reject'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
 // Use constants from ast.ts to avoid duplication
 const VALID_BIN_OPS: readonly string[] = BINARY_OPERATORS;
@@ -148,8 +148,13 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
       // Check props
       if (node['props'] !== undefined && isObject(node['props'])) {
         for (const [propName, propValue] of Object.entries(node['props'])) {
-          const error = validateExpression(propValue, path + '/props/' + propName);
-          if (error) return error;
+          // Props can be Expression or EventHandler
+          if (isObject(propValue) && 'event' in propValue) {
+            // EventHandler - skip for now
+          } else {
+            const error = validateExpression(propValue, path + '/props/' + propName);
+            if (error) return error;
+          }
         }
       }
       // Check children
