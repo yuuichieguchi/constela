@@ -1,5 +1,15 @@
 # @constela/runtime
 
+## 2.0.1
+
+### Patch Changes
+
+- fix: add LocalExpr type support for component local state
+- Updated dependencies
+  - @constela/core@0.18.1
+  - @constela/compiler@0.15.7
+  - @constela/ai@3.0.1
+
 ## 2.0.0
 
 ### Patch Changes

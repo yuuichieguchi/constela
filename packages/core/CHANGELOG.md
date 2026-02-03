@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.18.1
+
+### Patch Changes
+
+- fix: add LocalExpr type support for component local state
+
 ## 0.18.0
 
 ### Minor Changes
