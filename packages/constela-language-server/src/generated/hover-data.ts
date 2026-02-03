@@ -66,7 +66,7 @@ export const EXPR_DOCS: Record<string, { signature: string; description: string 
     description: 'Validity expression - gets form element validation state',
   },
   call: {
-    signature: '{ "expr": "call", "target": Expression, "method": string, "args"?: Expression[] }',
+    signature: '{ "expr": "call", "target": Expression | null, "method": string, "args"?: Expression[] }',
     description: 'Call expression - calls a method on a target',
   },
   lambda: {

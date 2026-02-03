@@ -533,6 +533,10 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
 
     case 'call': {
       const callExpr = expr as CompiledCallExpr;
+      // target が null の場合はグローバルヘルパー関数呼び出し（SSR では未サポート）
+      if (callExpr.target === null) {
+        return undefined;
+      }
       const target = evaluate(callExpr.target, ctx);
       if (target == null) return undefined;
 

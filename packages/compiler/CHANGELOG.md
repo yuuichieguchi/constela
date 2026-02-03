@@ -1,5 +1,19 @@
 # @constela/compiler
 
+## 0.15.6
+
+### Patch Changes
+
+- fix(ui,core): align UI components with core schema
+
+  - Add support for `local`, `obj` expressions in validator
+  - Add `%` (modulo) operator to BINARY_OPERATORS
+  - Update CallExpr.target type to allow null for global helper functions
+  - Fix UI components to use correct AST structure
+
+- Updated dependencies
+  - @constela/core@0.18.0
+
 ## 0.15.5
 
 ### Patch Changes
