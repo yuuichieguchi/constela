@@ -258,9 +258,9 @@ export interface ValidityExpr {
  */
 export interface CallExpr {
   expr: 'call';
-  target: Expression;      // 対象 (配列、文字列、Math等)
-  method: string;          // メソッド名
-  args?: Expression[];     // 引数リスト
+  target: Expression | null; // 対象 (配列、文字列等)、null の場合はグローバルヘルパー関数
+  method: string;            // メソッド名
+  args?: Expression[];       // 引数リスト
 }
 
 /**
