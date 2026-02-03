@@ -506,6 +506,7 @@ export interface CompiledPortalNode {
 export type CompiledExpression =
   | CompiledLitExpr
   | CompiledStateExpr
+  | CompiledLocalExpr
   | CompiledVarExpr
   | CompiledBinExpr
   | CompiledNotExpr
@@ -533,6 +534,11 @@ export interface CompiledStateExpr {
   expr: 'state';
   name: string;
   path?: string;
+}
+
+export interface CompiledLocalExpr {
+  expr: 'local';
+  name: string;
 }
 
 export interface CompiledVarExpr {
@@ -681,6 +687,14 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         stateExpr.path = expr.path;
       }
       return stateExpr;
+    }
+
+    case 'local': {
+      const localExpr: CompiledLocalExpr = {
+        expr: 'local',
+        name: expr.name,
+      };
+      return localExpr;
     }
 
     case 'var': {

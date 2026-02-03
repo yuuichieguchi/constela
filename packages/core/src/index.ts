@@ -23,6 +23,7 @@ export type {
   Expression,
   LitExpr,
   StateExpr,
+  LocalExpr,
   VarExpr,
   BinExpr,
   NotExpr,

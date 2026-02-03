@@ -446,6 +446,9 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
     case 'state':
       return ctx.state.get(expr.name);
 
+    case 'local':
+      return ctx.locals[expr.name];
+
     case 'var': {
       let varName = expr.name;
       let pathParts: string[] = [];

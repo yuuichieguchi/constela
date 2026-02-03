@@ -952,6 +952,9 @@ export function evaluate(expr: CompiledExpression, ctx: EvaluationContext): unkn
       return stateValue;
     }
 
+    case 'local':
+      return ctx.locals[expr.name];
+
     case 'var': {
       let varName = expr.name;
       let pathParts: string[] = [];

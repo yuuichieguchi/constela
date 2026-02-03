@@ -4,6 +4,7 @@ import { CompletionItemKind } from 'vscode-languageserver';
 export const EXPR_TYPES = [
   { label: 'lit', detail: 'Literal expression - represents a constant value', kind: CompletionItemKind.Value },
   { label: 'state', detail: 'State expression - references a state field', kind: CompletionItemKind.Value },
+  { label: 'local', detail: 'Local state expression - references a component\'s local state', kind: CompletionItemKind.Value },
   { label: 'var', detail: 'Variable expression - references a loop variable or event data', kind: CompletionItemKind.Value },
   { label: 'bin', detail: 'Binary expression - arithmetic, comparison, or logical operation', kind: CompletionItemKind.Value },
   { label: 'not', detail: 'Not expression - logical negation', kind: CompletionItemKind.Value },

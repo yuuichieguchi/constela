@@ -9,6 +9,10 @@ export const EXPR_DOCS: Record<string, { signature: string; description: string 
     signature: '{ "expr": "state", "name": string, "path"?: string }',
     description: 'State expression - references a state field',
   },
+  local: {
+    signature: '{ "expr": "local", "name": string }',
+    description: 'Local state expression - references a component\'s local state',
+  },
   var: {
     signature: '{ "expr": "var", "name": string, "path"?: string }',
     description: 'Variable expression - references a loop variable or event data',

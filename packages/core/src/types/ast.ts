@@ -129,6 +129,14 @@ export interface StateExpr {
 }
 
 /**
+ * Local state expression - references a component's local state
+ */
+export interface LocalExpr {
+  expr: 'local';
+  name: string;
+}
+
+/**
  * Variable expression - references a loop variable or event data
  */
 export interface VarExpr {
@@ -281,7 +289,7 @@ export interface ArrayExpr {
   elements: Expression[];
 }
 
-export type Expression = LitExpr | StateExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr | ArrayExpr;
+export type Expression = LitExpr | StateExpr | LocalExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr | ArrayExpr;
 
 // ==================== State Fields ====================
 
