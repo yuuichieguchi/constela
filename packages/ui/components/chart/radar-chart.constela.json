@@ -53,11 +53,7 @@
         "expr": "lit",
         "value": "radar-chart-title"
       },
-      "viewBox": {
-        "expr": "call",
-        "target": null,
-        "method": "concat",
-        "args": [
+      "viewBox": { "expr": "concat", "items": [
           {
             "expr": "lit",
             "value": "0 0 "
@@ -465,11 +461,7 @@
               {
                 "expr": "lambda",
                 "param": "pt",
-                "body": {
-                  "expr": "call",
-                  "target": null,
-                  "method": "concat",
-                  "args": [
+                "body": { "expr": "concat", "items": [
                     {
                       "expr": "get",
                       "base": {

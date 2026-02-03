@@ -80,11 +80,7 @@
                   "expr": "lit",
                   "value": "w-3 h-3 rounded-sm"
                 },
-                "style": {
-                  "expr": "call",
-                  "target": null,
-                  "method": "concat",
-                  "args": [
+                "style": { "expr": "concat", "items": [
                     {
                       "expr": "lit",
                       "value": "background-color: "

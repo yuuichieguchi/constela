@@ -57,11 +57,7 @@
         "expr": "lit",
         "value": "donut-chart-title"
       },
-      "viewBox": {
-        "expr": "call",
-        "target": null,
-        "method": "concat",
-        "args": [
+      "viewBox": { "expr": "concat", "items": [
           {
             "expr": "lit",
             "value": "0 0 "
@@ -137,11 +133,7 @@
         "kind": "element",
         "tag": "g",
         "props": {
-          "transform": {
-            "expr": "call",
-            "target": null,
-            "method": "concat",
-            "args": [
+          "transform": { "expr": "concat", "items": [
               {
                 "expr": "lit",
                 "value": "translate("
@@ -641,11 +633,7 @@
                         "expr": "param",
                         "name": "showPercentage"
                       },
-                      "then": {
-                        "expr": "call",
-                        "target": null,
-                        "method": "concat",
-                        "args": [
+                      "then": { "expr": "concat", "items": [
                           {
                             "expr": "call",
                             "target": null,

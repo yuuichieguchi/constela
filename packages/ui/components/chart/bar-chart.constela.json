@@ -135,11 +135,7 @@
         "expr": "lit",
         "value": "bar-chart-title"
       },
-      "viewBox": {
-        "expr": "call",
-        "target": null,
-        "method": "concat",
-        "args": [
+      "viewBox": { "expr": "concat", "items": [
           {
             "expr": "lit",
             "value": "0 0 "

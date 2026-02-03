@@ -40,11 +40,7 @@
           "value": "true"
         }
       },
-      "style": {
-        "expr": "call",
-        "target": null,
-        "method": "concat",
-        "args": [
+      "style": { "expr": "concat", "items": [
           {
             "expr": "lit",
             "value": "left: "
