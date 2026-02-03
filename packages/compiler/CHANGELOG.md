@@ -1,5 +1,13 @@
 # @constela/compiler
 
+## 0.15.8
+
+### Patch Changes
+
+- fix: add ObjExpr type support for object literal expressions in lambda body
+- Updated dependencies
+  - @constela/core@0.18.2
+
 ## 0.15.7
 
 ### Patch Changes
