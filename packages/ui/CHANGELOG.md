@@ -1,5 +1,11 @@
 # @constela/ui
 
+## 0.4.2
+
+### Patch Changes
+
+- fix(ui): use concat expression instead of call for string concatenation in chart components
+
 ## 0.4.1
 
 ### Patch Changes
