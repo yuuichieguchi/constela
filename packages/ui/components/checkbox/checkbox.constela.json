@@ -1,33 +1,84 @@
 {
   "params": {
-    "checked": { "type": "boolean", "required": false },
-    "disabled": { "type": "boolean", "required": false },
-    "required": { "type": "boolean", "required": false },
-    "name": { "type": "string", "required": false },
-    "id": { "type": "string", "required": false },
-    "ariaLabel": { "type": "string", "required": false },
-    "value": { "type": "string", "required": false },
-    "size": { "type": "string", "required": false }
+    "checked": {
+      "type": "boolean",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "required": {
+      "type": "boolean",
+      "required": false
+    },
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "id": {
+      "type": "string",
+      "required": false
+    },
+    "ariaLabel": {
+      "type": "string",
+      "required": false
+    },
+    "value": {
+      "type": "string",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "input",
     "props": {
-      "type": { "expr": "lit", "value": "checkbox" },
+      "type": {
+        "expr": "lit",
+        "value": "checkbox"
+      },
       "className": {
         "expr": "style",
-        "preset": "checkboxStyles",
-        "props": {
-          "size": { "expr": "param", "name": "size" }
+        "name": "checkboxStyles",
+        "variants": {
+          "size": {
+            "expr": "param",
+            "name": "size"
+          }
         }
       },
-      "checked": { "expr": "param", "name": "checked" },
-      "disabled": { "expr": "param", "name": "disabled" },
-      "required": { "expr": "param", "name": "required" },
-      "name": { "expr": "param", "name": "name" },
-      "id": { "expr": "param", "name": "id" },
-      "aria-label": { "expr": "param", "name": "ariaLabel" },
-      "value": { "expr": "param", "name": "value" }
+      "checked": {
+        "expr": "param",
+        "name": "checked"
+      },
+      "disabled": {
+        "expr": "param",
+        "name": "disabled"
+      },
+      "required": {
+        "expr": "param",
+        "name": "required"
+      },
+      "name": {
+        "expr": "param",
+        "name": "name"
+      },
+      "id": {
+        "expr": "param",
+        "name": "id"
+      },
+      "aria-label": {
+        "expr": "param",
+        "name": "ariaLabel"
+      },
+      "value": {
+        "expr": "param",
+        "name": "value"
+      }
     }
   }
 }

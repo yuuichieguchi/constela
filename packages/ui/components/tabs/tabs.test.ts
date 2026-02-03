@@ -61,7 +61,7 @@ describe('Tabs Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'tabsStyles',
+        name: 'tabsStyles',
       });
     });
   });
@@ -154,7 +154,7 @@ describe('Tabs Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           variant: expect.objectContaining({ expr: 'param', name: 'variant' }),
         }),
       });

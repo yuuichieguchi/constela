@@ -1,52 +1,112 @@
 {
   "params": {
-    "content": { "type": "string", "required": true },
-    "x": { "type": "number", "required": false },
-    "y": { "type": "number", "required": false },
-    "visible": { "type": "boolean", "required": false }
+    "content": {
+      "type": "string",
+      "required": true
+    },
+    "x": {
+      "type": "number",
+      "required": false
+    },
+    "y": {
+      "type": "number",
+      "required": false
+    },
+    "visible": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "role": { "expr": "lit", "value": "tooltip" },
+      "role": {
+        "expr": "lit",
+        "value": "tooltip"
+      },
       "aria-hidden": {
         "expr": "cond",
-        "test": { "expr": "param", "name": "visible" },
-        "then": { "expr": "lit", "value": "false" },
-        "else": { "expr": "lit", "value": "true" }
+        "if": {
+          "expr": "param",
+          "name": "visible"
+        },
+        "then": {
+          "expr": "lit",
+          "value": "false"
+        },
+        "else": {
+          "expr": "lit",
+          "value": "true"
+        }
       },
       "style": {
         "expr": "call",
         "target": null,
         "method": "concat",
         "args": [
-          { "expr": "lit", "value": "left: " },
+          {
+            "expr": "lit",
+            "value": "left: "
+          },
           {
             "expr": "cond",
-            "test": { "expr": "param", "name": "x" },
-            "then": { "expr": "param", "name": "x" },
-            "else": { "expr": "lit", "value": 0 }
+            "if": {
+              "expr": "param",
+              "name": "x"
+            },
+            "then": {
+              "expr": "param",
+              "name": "x"
+            },
+            "else": {
+              "expr": "lit",
+              "value": 0
+            }
           },
-          { "expr": "lit", "value": "px; top: " },
+          {
+            "expr": "lit",
+            "value": "px; top: "
+          },
           {
             "expr": "cond",
-            "test": { "expr": "param", "name": "y" },
-            "then": { "expr": "param", "name": "y" },
-            "else": { "expr": "lit", "value": 0 }
+            "if": {
+              "expr": "param",
+              "name": "y"
+            },
+            "then": {
+              "expr": "param",
+              "name": "y"
+            },
+            "else": {
+              "expr": "lit",
+              "value": 0
+            }
           },
-          { "expr": "lit", "value": "px;" }
+          {
+            "expr": "lit",
+            "value": "px;"
+          }
         ]
       },
       "className": {
         "expr": "style",
-        "preset": "chartTooltip",
-        "props": {
+        "name": "chartTooltip",
+        "variants": {
           "visible": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "visible" },
-            "then": { "expr": "lit", "value": "true" },
-            "else": { "expr": "lit", "value": "false" }
+            "if": {
+              "expr": "param",
+              "name": "visible"
+            },
+            "then": {
+              "expr": "lit",
+              "value": "true"
+            },
+            "else": {
+              "expr": "lit",
+              "value": "false"
+            }
           }
         }
       }
@@ -54,7 +114,10 @@
     "children": [
       {
         "kind": "text",
-        "content": { "expr": "param", "name": "content" }
+        "value": {
+          "expr": "param",
+          "name": "content"
+        }
       }
     ]
   }

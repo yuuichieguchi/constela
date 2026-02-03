@@ -1,22 +1,41 @@
 {
   "params": {
-    "value": { "type": "any", "required": true },
-    "column": { "type": "object", "required": true },
-    "align": { "type": "string", "required": false }
+    "value": {
+      "type": "json",
+      "required": true
+    },
+    "column": {
+      "type": "json",
+      "required": true
+    },
+    "align": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "td",
     "props": {
-      "role": { "expr": "lit", "value": "cell" },
+      "role": {
+        "expr": "lit",
+        "value": "cell"
+      },
       "className": {
         "expr": "style",
-        "preset": "dataTableCell",
+        "name": "dataTableCell",
         "variants": {
-          "align": { "expr": "param", "name": "align" }
+          "align": {
+            "expr": "param",
+            "name": "align"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

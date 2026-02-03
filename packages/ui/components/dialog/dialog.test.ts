@@ -63,7 +63,7 @@ describe('Dialog Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'dialogStyles',
+        name: 'dialogStyles',
       });
     });
   });

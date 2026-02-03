@@ -1,8 +1,17 @@
 {
   "params": {
-    "type": { "type": "string", "required": false },
-    "collapsible": { "type": "boolean", "required": false },
-    "disabled": { "type": "boolean", "required": false }
+    "type": {
+      "type": "string",
+      "required": false
+    },
+    "collapsible": {
+      "type": "boolean",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -10,9 +19,13 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "accordionStyles"
+        "name": "accordionStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

@@ -1,8 +1,17 @@
 {
   "params": {
-    "cols": { "type": "string", "required": false },
-    "gap": { "type": "string", "required": false },
-    "className": { "type": "string", "required": false }
+    "cols": {
+      "type": "string",
+      "required": false
+    },
+    "gap": {
+      "type": "string",
+      "required": false
+    },
+    "className": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -10,14 +19,23 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "gridStyles",
-        "props": {
-          "cols": { "expr": "param", "name": "cols" },
-          "gap": { "expr": "param", "name": "gap" },
-          "className": { "expr": "param", "name": "className" }
+        "name": "gridStyles",
+        "variants": {
+          "cols": {
+            "expr": "param",
+            "name": "cols"
+          },
+          "gap": {
+            "expr": "param",
+            "name": "gap"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

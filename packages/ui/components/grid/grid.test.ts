@@ -55,7 +55,7 @@ describe('Grid Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'gridStyles',
+        name: 'gridStyles',
       });
     });
   });
@@ -164,7 +164,7 @@ describe('Grid Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           cols: expect.objectContaining({ expr: 'param', name: 'cols' }),
         }),
       });
@@ -174,18 +174,20 @@ describe('Grid Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           gap: expect.objectContaining({ expr: 'param', name: 'gap' }),
         }),
       });
     });
 
-    it('should pass className to StyleExpr', () => {
+    it('should pass cols and gap to StyleExpr variants', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
-          className: expect.objectContaining({ expr: 'param', name: 'className' }),
+        name: 'gridStyles',
+        variants: expect.objectContaining({
+          cols: expect.objectContaining({ expr: 'param', name: 'cols' }),
+          gap: expect.objectContaining({ expr: 'param', name: 'gap' }),
         }),
       });
     });

@@ -1,8 +1,17 @@
 {
   "params": {
-    "width": { "type": "string", "required": false },
-    "height": { "type": "string", "required": false },
-    "className": { "type": "string", "required": false }
+    "width": {
+      "type": "string",
+      "required": false
+    },
+    "height": {
+      "type": "string",
+      "required": false
+    },
+    "className": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -10,14 +19,20 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "skeletonStyles",
-        "props": {
-          "className": { "expr": "param", "name": "className" }
-        }
+        "name": "skeletonStyles"
       },
       "style": {
-        "width": { "expr": "param", "name": "width" },
-        "height": { "expr": "param", "name": "height" }
+        "expr": "obj",
+        "props": {
+          "width": {
+            "expr": "param",
+            "name": "width"
+          },
+          "height": {
+            "expr": "param",
+            "name": "height"
+          }
+        }
       }
     }
   }

@@ -40,7 +40,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 // ==================== Recursive Validation ====================
 
 const VALID_VIEW_KINDS = ['element', 'text', 'if', 'each', 'component', 'slot', 'markdown', 'code', 'portal', 'island'];
-const VALID_EXPR_TYPES = ['lit', 'state', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array', 'concat'];
+const VALID_EXPR_TYPES = ['lit', 'state', 'local', 'var', 'bin', 'not', 'param', 'cond', 'get', 'style', 'validity', 'index', 'call', 'lambda', 'array', 'concat', 'obj'];
 const VALID_PARAM_TYPES = ['string', 'number', 'boolean', 'json'];
 const VALID_ACTION_TYPES = ['set', 'update', 'setPath', 'fetch', 'delay', 'interval', 'clearTimer', 'focus', 'if', 'storage', 'dom', 'sseConnect', 'sseClose', 'optimistic', 'confirm', 'reject'];
 const VALID_STATE_TYPES = ['number', 'string', 'list', 'boolean', 'object'];
@@ -322,6 +322,7 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
       break;
 
     case 'state':
+    case 'local':
     case 'var':
       if (typeof expr['name'] !== 'string') {
         return { path: path + '/name', message: 'name is required' };
@@ -439,8 +440,11 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
         return { path: path + '/method', message: 'method is required' };
       }
       {
-        const targetError = validateExpression(expr['target'], path + '/target');
-        if (targetError) return targetError;
+        // target が null の場合はグローバルヘルパー関数呼び出し（runtime と整合性を取る）
+        if (expr['target'] !== null) {
+          const targetError = validateExpression(expr['target'], path + '/target');
+          if (targetError) return targetError;
+        }
         if ('args' in expr && expr['args'] !== undefined) {
           if (!Array.isArray(expr['args'])) {
             return { path: path + '/args', message: 'args must be an array' };
@@ -492,6 +496,19 @@ function validateExpression(expr: unknown, path: string): ValidationError | null
       for (let i = 0; i < expr['items'].length; i++) {
         const itemError = validateExpression(expr['items'][i], path + '/items/' + i);
         if (itemError) return itemError;
+      }
+      break;
+
+    case 'obj':
+      if (!('props' in expr)) {
+        return { path: path + '/props', message: 'props is required' };
+      }
+      if (!isObject(expr['props'])) {
+        return { path: path + '/props', message: 'props must be an object' };
+      }
+      for (const [propKey, propValue] of Object.entries(expr['props'])) {
+        const propError = validateExpression(propValue, path + '/props/' + propKey);
+        if (propError) return propError;
       }
       break;
   }

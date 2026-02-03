@@ -1,10 +1,25 @@
 {
   "params": {
-    "variant": { "type": "string", "required": false },
-    "size": { "type": "string", "required": false },
-    "disabled": { "type": "boolean", "required": false },
-    "type": { "type": "string", "required": false },
-    "ariaLabel": { "type": "string", "required": false }
+    "variant": {
+      "type": "string",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "type": {
+      "type": "string",
+      "required": false
+    },
+    "ariaLabel": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -12,16 +27,35 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "buttonStyles",
-        "props": {
-          "variant": { "expr": "param", "name": "variant" },
-          "size": { "expr": "param", "name": "size" }
+        "name": "buttonStyles",
+        "variants": {
+          "variant": {
+            "expr": "param",
+            "name": "variant"
+          },
+          "size": {
+            "expr": "param",
+            "name": "size"
+          }
         }
       },
-      "disabled": { "expr": "param", "name": "disabled" },
-      "type": { "expr": "param", "name": "type" },
-      "aria-label": { "expr": "param", "name": "ariaLabel" }
+      "disabled": {
+        "expr": "param",
+        "name": "disabled"
+      },
+      "type": {
+        "expr": "param",
+        "name": "type"
+      },
+      "aria-label": {
+        "expr": "param",
+        "name": "ariaLabel"
+      }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

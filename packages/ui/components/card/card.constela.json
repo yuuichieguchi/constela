@@ -1,7 +1,13 @@
 {
   "params": {
-    "variant": { "type": "string", "required": false },
-    "className": { "type": "string", "required": false }
+    "variant": {
+      "type": "string",
+      "required": false
+    },
+    "className": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -9,13 +15,19 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "cardStyles",
-        "props": {
-          "variant": { "expr": "param", "name": "variant" },
-          "className": { "expr": "param", "name": "className" }
+        "name": "cardStyles",
+        "variants": {
+          "variant": {
+            "expr": "param",
+            "name": "variant"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

@@ -63,7 +63,7 @@ describe('Breadcrumb Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'breadcrumbStyles',
+        name: 'breadcrumbStyles',
       });
     });
   });

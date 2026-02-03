@@ -55,7 +55,7 @@ describe('Stack Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'stackStyles',
+        name: 'stackStyles',
       });
     });
   });
@@ -212,7 +212,7 @@ describe('Stack Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           direction: expect.objectContaining({ expr: 'param', name: 'direction' }),
         }),
       });
@@ -222,7 +222,7 @@ describe('Stack Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           gap: expect.objectContaining({ expr: 'param', name: 'gap' }),
         }),
       });
@@ -232,7 +232,7 @@ describe('Stack Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           align: expect.objectContaining({ expr: 'param', name: 'align' }),
         }),
       });
@@ -242,18 +242,22 @@ describe('Stack Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           justify: expect.objectContaining({ expr: 'param', name: 'justify' }),
         }),
       });
     });
 
-    it('should pass className to StyleExpr', () => {
+    it('should pass direction, gap, align, justify to StyleExpr variants', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
-          className: expect.objectContaining({ expr: 'param', name: 'className' }),
+        name: 'stackStyles',
+        variants: expect.objectContaining({
+          direction: expect.objectContaining({ expr: 'param', name: 'direction' }),
+          gap: expect.objectContaining({ expr: 'param', name: 'gap' }),
+          align: expect.objectContaining({ expr: 'param', name: 'align' }),
+          justify: expect.objectContaining({ expr: 'param', name: 'justify' }),
         }),
       });
     });

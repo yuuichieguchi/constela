@@ -1,27 +1,65 @@
 {
   "params": {
-    "items": { "type": "list", "required": true },
-    "itemHeight": { "type": "number", "required": true },
-    "containerHeight": { "type": "number", "required": true },
-    "overscan": { "type": "number", "required": false },
-    "keyField": { "type": "string", "required": false }
+    "items": {
+      "type": "json",
+      "required": true
+    },
+    "itemHeight": {
+      "type": "number",
+      "required": true
+    },
+    "containerHeight": {
+      "type": "number",
+      "required": true
+    },
+    "overscan": {
+      "type": "number",
+      "required": false
+    },
+    "keyField": {
+      "type": "string",
+      "required": false
+    }
   },
   "localState": {
-    "scrollTop": { "type": "number", "initial": 0 }
+    "scrollTop": {
+      "type": "number",
+      "initial": 0
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "role": { "expr": "lit", "value": "listbox" },
-      "aria-setsize": { "expr": "call", "target": { "expr": "param", "name": "items" }, "method": "length" },
-      "aria-live": { "expr": "lit", "value": "polite" },
-      "tabindex": { "expr": "lit", "value": "0" },
+      "role": {
+        "expr": "lit",
+        "value": "listbox"
+      },
+      "aria-setsize": {
+        "expr": "call",
+        "target": {
+          "expr": "param",
+          "name": "items"
+        },
+        "method": "length"
+      },
+      "aria-live": {
+        "expr": "lit",
+        "value": "polite"
+      },
+      "tabindex": {
+        "expr": "lit",
+        "value": "0"
+      },
       "className": {
         "expr": "style",
-        "preset": "virtualScrollContainer"
+        "name": "virtualScrollContainer"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

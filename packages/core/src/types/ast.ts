@@ -14,6 +14,7 @@ export const BINARY_OPERATORS = [
   '-',
   '*',
   '/',
+  '%',
   '==',
   '!=',
   '<',

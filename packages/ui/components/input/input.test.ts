@@ -57,7 +57,7 @@ describe('Input Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'inputStyles',
+        name: 'inputStyles',
       });
     });
   });

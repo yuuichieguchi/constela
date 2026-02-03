@@ -1,29 +1,68 @@
 {
   "params": {
-    "checked": { "type": "boolean", "required": false },
-    "disabled": { "type": "boolean", "required": false },
-    "name": { "type": "string", "required": false },
-    "id": { "type": "string", "required": false },
-    "ariaLabel": { "type": "string", "required": false },
-    "size": { "type": "string", "required": false }
+    "checked": {
+      "type": "boolean",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "id": {
+      "type": "string",
+      "required": false
+    },
+    "ariaLabel": {
+      "type": "string",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "button",
     "props": {
-      "role": { "expr": "lit", "value": "switch" },
+      "role": {
+        "expr": "lit",
+        "value": "switch"
+      },
       "className": {
         "expr": "style",
-        "preset": "switchStyles",
-        "props": {
-          "size": { "expr": "param", "name": "size" }
+        "name": "switchStyles",
+        "variants": {
+          "size": {
+            "expr": "param",
+            "name": "size"
+          }
         }
       },
-      "aria-checked": { "expr": "param", "name": "checked" },
-      "aria-label": { "expr": "param", "name": "ariaLabel" },
-      "disabled": { "expr": "param", "name": "disabled" },
-      "name": { "expr": "param", "name": "name" },
-      "id": { "expr": "param", "name": "id" }
+      "aria-checked": {
+        "expr": "param",
+        "name": "checked"
+      },
+      "aria-label": {
+        "expr": "param",
+        "name": "ariaLabel"
+      },
+      "disabled": {
+        "expr": "param",
+        "name": "disabled"
+      },
+      "name": {
+        "expr": "param",
+        "name": "name"
+      },
+      "id": {
+        "expr": "param",
+        "name": "id"
+      }
     }
   }
 }

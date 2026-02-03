@@ -62,7 +62,7 @@ describe('Tooltip Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'tooltipStyles',
+        name: 'tooltipStyles',
       });
     });
   });
@@ -155,7 +155,7 @@ describe('Tooltip Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           position: expect.objectContaining({ expr: 'param', name: 'position' }),
         }),
       });

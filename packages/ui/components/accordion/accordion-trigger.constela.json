@@ -1,21 +1,47 @@
 {
   "params": {
-    "contentId": { "type": "string", "required": false },
-    "disabled": { "type": "boolean", "required": false }
+    "contentId": {
+      "type": "string",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "isExpanded": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "button",
     "props": {
-      "type": { "expr": "lit", "value": "button" },
-      "disabled": { "expr": "param", "name": "disabled" },
-      "aria-expanded": { "expr": "state", "name": "isExpanded" },
-      "aria-controls": { "expr": "param", "name": "contentId" },
+      "type": {
+        "expr": "lit",
+        "value": "button"
+      },
+      "disabled": {
+        "expr": "param",
+        "name": "disabled"
+      },
+      "aria-expanded": {
+        "expr": "param",
+        "name": "isExpanded"
+      },
+      "aria-controls": {
+        "expr": "param",
+        "name": "contentId"
+      },
       "className": {
         "expr": "style",
-        "preset": "accordionTriggerStyles"
+        "name": "accordionTriggerStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

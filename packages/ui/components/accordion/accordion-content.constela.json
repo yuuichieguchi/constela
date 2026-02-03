@@ -1,20 +1,39 @@
 {
   "params": {
-    "id": { "type": "string", "required": false },
-    "triggerId": { "type": "string", "required": false }
+    "id": {
+      "type": "string",
+      "required": false
+    },
+    "triggerId": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "id": { "expr": "param", "name": "id" },
-      "role": { "expr": "lit", "value": "region" },
-      "aria-labelledby": { "expr": "param", "name": "triggerId" },
+      "id": {
+        "expr": "param",
+        "name": "id"
+      },
+      "role": {
+        "expr": "lit",
+        "value": "region"
+      },
+      "aria-labelledby": {
+        "expr": "param",
+        "name": "triggerId"
+      },
       "className": {
         "expr": "style",
-        "preset": "accordionContentStyles"
+        "name": "accordionContentStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

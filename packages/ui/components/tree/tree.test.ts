@@ -159,7 +159,7 @@ describe('Tree Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'treeStyles',
+          name: 'treeStyles',
         });
       });
 
@@ -182,8 +182,8 @@ describe('Tree Component Suite', () => {
           expect(isRequiredParam(ctx.tree, 'items')).toBe(true);
         });
 
-        it('should have type list', () => {
-          expect(hasParamType(ctx.tree, 'items', 'list')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.tree, 'items', 'json')).toBe(true);
         });
       });
 
@@ -279,7 +279,7 @@ describe('Tree Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'treeNodeStyles',
+          name: 'treeNodeStyles',
         });
       });
     });
@@ -298,8 +298,8 @@ describe('Tree Component Suite', () => {
           expect(isRequiredParam(ctx.treeNode, 'node')).toBe(true);
         });
 
-        it('should have type object', () => {
-          expect(hasParamType(ctx.treeNode, 'node', 'object')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.treeNode, 'node', 'json')).toBe(true);
         });
       });
 
@@ -318,8 +318,8 @@ describe('Tree Component Suite', () => {
           expect(isRequiredParam(ctx.treeNode, 'expandedNodes')).toBe(true);
         });
 
-        it('should have type list', () => {
-          expect(hasParamType(ctx.treeNode, 'expandedNodes', 'list')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.treeNode, 'expandedNodes', 'json')).toBe(true);
         });
       });
 
@@ -328,8 +328,8 @@ describe('Tree Component Suite', () => {
           expect(isRequiredParam(ctx.treeNode, 'selectedNodes')).toBe(true);
         });
 
-        it('should have type list', () => {
-          expect(hasParamType(ctx.treeNode, 'selectedNodes', 'list')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.treeNode, 'selectedNodes', 'json')).toBe(true);
         });
       });
 

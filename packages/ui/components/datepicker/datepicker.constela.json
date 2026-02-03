@@ -1,15 +1,57 @@
 {
   "params": {
-    "value": { "type": "string", "required": false },
-    "placeholder": { "type": "string", "required": false },
-    "format": { "type": "string", "required": false },
-    "min": { "type": "string", "required": false },
-    "max": { "type": "string", "required": false },
-    "disabled": { "type": "boolean", "required": false },
-    "required": { "type": "boolean", "required": false },
-    "name": { "type": "string", "required": false },
-    "id": { "type": "string", "required": false },
-    "locale": { "type": "string", "required": false }
+    "value": {
+      "type": "string",
+      "required": false
+    },
+    "placeholder": {
+      "type": "string",
+      "required": false
+    },
+    "format": {
+      "type": "string",
+      "required": false
+    },
+    "min": {
+      "type": "string",
+      "required": false
+    },
+    "max": {
+      "type": "string",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "required": {
+      "type": "boolean",
+      "required": false
+    },
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "id": {
+      "type": "string",
+      "required": false
+    },
+    "locale": {
+      "type": "string",
+      "required": false
+    },
+    "open": {
+      "type": "boolean",
+      "required": false
+    },
+    "currentYear": {
+      "type": "number",
+      "required": false
+    },
+    "currentMonth": {
+      "type": "number",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -17,58 +59,122 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "datepickerStyles",
-        "props": {
-          "size": { "expr": "lit", "value": "default" }
+        "name": "datepickerStyles",
+        "variants": {
+          "size": {
+            "expr": "lit",
+            "value": "default"
+          }
         }
       },
-      "aria-label": { "expr": "lit", "value": "Date picker" },
-      "aria-haspopup": { "expr": "lit", "value": "dialog" },
-      "aria-expanded": { "expr": "state", "name": "open" }
+      "aria-label": {
+        "expr": "lit",
+        "value": "Date picker"
+      },
+      "aria-haspopup": {
+        "expr": "lit",
+        "value": "dialog"
+      },
+      "aria-expanded": {
+        "expr": "param",
+        "name": "open"
+      }
     },
     "children": [
       {
         "kind": "element",
         "tag": "input",
         "props": {
-          "type": { "expr": "lit", "value": "text" },
-          "readOnly": { "expr": "lit", "value": true },
+          "type": {
+            "expr": "lit",
+            "value": "text"
+          },
+          "readOnly": {
+            "expr": "lit",
+            "value": true
+          },
           "className": {
             "expr": "style",
-            "preset": "datepickerInputStyles",
-            "props": {
+            "name": "datepickerInputStyles",
+            "variants": {
               "state": {
                 "expr": "cond",
-                "test": { "expr": "param", "name": "disabled" },
-                "then": { "expr": "lit", "value": "disabled" },
-                "else": { "expr": "lit", "value": "default" }
+                "if": {
+                  "expr": "param",
+                  "name": "disabled"
+                },
+                "then": {
+                  "expr": "lit",
+                  "value": "disabled"
+                },
+                "else": {
+                  "expr": "lit",
+                  "value": "default"
+                }
               },
-              "size": { "expr": "lit", "value": "default" }
+              "size": {
+                "expr": "lit",
+                "value": "default"
+              }
             }
           },
-          "placeholder": { "expr": "param", "name": "placeholder" },
+          "placeholder": {
+            "expr": "param",
+            "name": "placeholder"
+          },
           "value": {
             "expr": "call",
-            "fn": "formatDate",
+            "target": null,
+            "method": "formatDate",
             "args": [
-              { "expr": "param", "name": "value" },
-              { "expr": "param", "name": "format" },
-              { "expr": "param", "name": "locale" }
+              {
+                "expr": "param",
+                "name": "value"
+              },
+              {
+                "expr": "param",
+                "name": "format"
+              },
+              {
+                "expr": "param",
+                "name": "locale"
+              }
             ]
           },
-          "disabled": { "expr": "param", "name": "disabled" },
-          "id": { "expr": "param", "name": "id" },
-          "aria-label": { "expr": "lit", "value": "Selected date" }
+          "disabled": {
+            "expr": "param",
+            "name": "disabled"
+          },
+          "id": {
+            "expr": "param",
+            "name": "id"
+          },
+          "aria-label": {
+            "expr": "lit",
+            "value": "Selected date"
+          }
         }
       },
       {
         "kind": "element",
         "tag": "input",
         "props": {
-          "type": { "expr": "lit", "value": "hidden" },
-          "name": { "expr": "param", "name": "name" },
-          "value": { "expr": "param", "name": "value" },
-          "required": { "expr": "param", "name": "required" }
+          "type": {
+            "expr": "lit",
+            "value": "hidden"
+          },
+          "name": {
+            "expr": "param",
+            "name": "name"
+          },
+          "value": {
+            "expr": "param",
+            "name": "value"
+          },
+          "required": {
+            "expr": "param",
+            "name": "required"
+          }
         }
       },
       {
@@ -77,47 +183,92 @@
         "props": {
           "className": {
             "expr": "style",
-            "preset": "datepickerIconStyles",
-            "props": {
+            "name": "datepickerIconStyles",
+            "variants": {
               "state": {
                 "expr": "cond",
-                "test": { "expr": "param", "name": "disabled" },
-                "then": { "expr": "lit", "value": "disabled" },
-                "else": { "expr": "lit", "value": "default" }
+                "if": {
+                  "expr": "param",
+                  "name": "disabled"
+                },
+                "then": {
+                  "expr": "lit",
+                  "value": "disabled"
+                },
+                "else": {
+                  "expr": "lit",
+                  "value": "default"
+                }
               }
             }
           },
-          "aria-hidden": { "expr": "lit", "value": "true" }
+          "aria-hidden": {
+            "expr": "lit",
+            "value": "true"
+          }
         },
         "children": [
           {
             "kind": "text",
-            "content": { "expr": "lit", "value": "📅" }
+            "value": {
+              "expr": "lit",
+              "value": "\ud83d\udcc5"
+            }
           }
         ]
       },
       {
         "kind": "if",
-        "test": { "expr": "state", "name": "open" },
+        "condition": {
+          "expr": "param",
+          "name": "open"
+        },
         "then": {
           "kind": "component",
           "name": "Popover",
           "props": {
-            "open": { "expr": "state", "name": "open" },
-            "position": { "expr": "lit", "value": "bottom" }
+            "open": {
+              "expr": "param",
+              "name": "open"
+            },
+            "position": {
+              "expr": "lit",
+              "value": "bottom"
+            }
           },
           "children": [
             {
               "kind": "component",
               "name": "Calendar",
               "props": {
-                "value": { "expr": "param", "name": "value" },
-                "year": { "expr": "state", "name": "currentYear" },
-                "month": { "expr": "state", "name": "currentMonth" },
-                "min": { "expr": "param", "name": "min" },
-                "max": { "expr": "param", "name": "max" },
-                "disabled": { "expr": "param", "name": "disabled" },
-                "locale": { "expr": "param", "name": "locale" }
+                "value": {
+                  "expr": "param",
+                  "name": "value"
+                },
+                "year": {
+                  "expr": "param",
+                  "name": "currentYear"
+                },
+                "month": {
+                  "expr": "param",
+                  "name": "currentMonth"
+                },
+                "min": {
+                  "expr": "param",
+                  "name": "min"
+                },
+                "max": {
+                  "expr": "param",
+                  "name": "max"
+                },
+                "disabled": {
+                  "expr": "param",
+                  "name": "disabled"
+                },
+                "locale": {
+                  "expr": "param",
+                  "name": "locale"
+                }
               }
             }
           ]

@@ -56,7 +56,7 @@ describe('Button Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'buttonStyles',
+        name: 'buttonStyles',
       });
     });
   });
@@ -214,7 +214,7 @@ describe('Button Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           variant: expect.objectContaining({ expr: 'param', name: 'variant' }),
         }),
       });
@@ -224,7 +224,7 @@ describe('Button Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           size: expect.objectContaining({ expr: 'param', name: 'size' }),
         }),
       });

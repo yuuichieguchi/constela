@@ -1,36 +1,93 @@
 {
   "params": {
-    "data": { "type": "list", "required": true },
-    "valueKey": { "type": "string", "required": true },
-    "labelKey": { "type": "string", "required": false },
-    "width": { "type": "number", "required": false },
-    "height": { "type": "number", "required": false },
-    "colors": { "type": "list", "required": false },
-    "showGrid": { "type": "boolean", "required": false },
-    "showLabels": { "type": "boolean", "required": false },
-    "curved": { "type": "boolean", "required": false },
-    "showPoints": { "type": "boolean", "required": false },
-    "pointRadius": { "type": "number", "required": false },
-    "strokeWidth": { "type": "number", "required": false },
-    "fillOpacity": { "type": "number", "required": false }
+    "data": {
+      "type": "json",
+      "required": true
+    },
+    "valueKey": {
+      "type": "string",
+      "required": true
+    },
+    "labelKey": {
+      "type": "string",
+      "required": false
+    },
+    "width": {
+      "type": "number",
+      "required": false
+    },
+    "height": {
+      "type": "number",
+      "required": false
+    },
+    "colors": {
+      "type": "json",
+      "required": false
+    },
+    "showGrid": {
+      "type": "boolean",
+      "required": false
+    },
+    "showLabels": {
+      "type": "boolean",
+      "required": false
+    },
+    "curved": {
+      "type": "boolean",
+      "required": false
+    },
+    "showPoints": {
+      "type": "boolean",
+      "required": false
+    },
+    "pointRadius": {
+      "type": "number",
+      "required": false
+    },
+    "strokeWidth": {
+      "type": "number",
+      "required": false
+    },
+    "fillOpacity": {
+      "type": "number",
+      "required": false
+    }
   },
   "localState": {
     "_width": {
       "type": "number",
       "initial": {
         "expr": "cond",
-        "test": { "expr": "param", "name": "width" },
-        "then": { "expr": "param", "name": "width" },
-        "else": { "expr": "lit", "value": 400 }
+        "if": {
+          "expr": "param",
+          "name": "width"
+        },
+        "then": {
+          "expr": "param",
+          "name": "width"
+        },
+        "else": {
+          "expr": "lit",
+          "value": 400
+        }
       }
     },
     "_height": {
       "type": "number",
       "initial": {
         "expr": "cond",
-        "test": { "expr": "param", "name": "height" },
-        "then": { "expr": "param", "name": "height" },
-        "else": { "expr": "lit", "value": 300 }
+        "if": {
+          "expr": "param",
+          "name": "height"
+        },
+        "then": {
+          "expr": "param",
+          "name": "height"
+        },
+        "else": {
+          "expr": "lit",
+          "value": 300
+        }
       }
     }
   },
@@ -38,25 +95,49 @@
     "kind": "element",
     "tag": "svg",
     "props": {
-      "role": { "expr": "lit", "value": "img" },
-      "aria-label": { "expr": "lit", "value": "Area Chart" },
-      "aria-labelledby": { "expr": "lit", "value": "area-chart-title" },
+      "role": {
+        "expr": "lit",
+        "value": "img"
+      },
+      "aria-label": {
+        "expr": "lit",
+        "value": "Area Chart"
+      },
+      "aria-labelledby": {
+        "expr": "lit",
+        "value": "area-chart-title"
+      },
       "viewBox": {
         "expr": "call",
         "target": null,
         "method": "concat",
         "args": [
-          { "expr": "lit", "value": "0 0 " },
-          { "expr": "local", "name": "_width" },
-          { "expr": "lit", "value": " " },
-          { "expr": "local", "name": "_height" }
+          {
+            "expr": "lit",
+            "value": "0 0 "
+          },
+          {
+            "expr": "local",
+            "name": "_width"
+          },
+          {
+            "expr": "lit",
+            "value": " "
+          },
+          {
+            "expr": "local",
+            "name": "_height"
+          }
         ]
       },
       "className": {
         "expr": "style",
-        "preset": "chartSvg",
-        "props": {
-          "size": { "expr": "lit", "value": "default" }
+        "name": "chartSvg",
+        "variants": {
+          "size": {
+            "expr": "lit",
+            "value": "default"
+          }
         }
       }
     },
@@ -65,24 +146,39 @@
         "kind": "element",
         "tag": "title",
         "props": {
-          "id": { "expr": "lit", "value": "area-chart-title" }
+          "id": {
+            "expr": "lit",
+            "value": "area-chart-title"
+          }
         },
         "children": [
-          { "kind": "text", "content": { "expr": "lit", "value": "Area Chart" } }
+          {
+            "kind": "text",
+            "value": {
+              "expr": "lit",
+              "value": "Area Chart"
+            }
+          }
         ]
       },
       {
         "kind": "if",
-        "test": { "expr": "param", "name": "showGrid" },
+        "condition": {
+          "expr": "param",
+          "name": "showGrid"
+        },
         "then": {
           "kind": "element",
           "tag": "g",
           "props": {
             "className": {
               "expr": "style",
-              "preset": "chartGrid",
-              "props": {
-                "axis": { "expr": "lit", "value": "both" }
+              "name": "chartGrid",
+              "variants": {
+                "axis": {
+                  "expr": "lit",
+                  "value": "both"
+                }
               }
             }
           },
@@ -91,10 +187,22 @@
               "kind": "element",
               "tag": "line",
               "props": {
-                "x1": { "expr": "lit", "value": "40" },
-                "y1": { "expr": "lit", "value": "0" },
-                "x2": { "expr": "lit", "value": "40" },
-                "y2": { "expr": "local", "name": "_height" }
+                "x1": {
+                  "expr": "lit",
+                  "value": "40"
+                },
+                "y1": {
+                  "expr": "lit",
+                  "value": "0"
+                },
+                "x2": {
+                  "expr": "lit",
+                  "value": "40"
+                },
+                "y2": {
+                  "expr": "local",
+                  "name": "_height"
+                }
               }
             }
           ]
@@ -111,42 +219,64 @@
             "args": [
               {
                 "expr": "call",
-                "target": { "expr": "param", "name": "data" },
+                "target": {
+                  "expr": "param",
+                  "name": "data"
+                },
                 "method": "map",
                 "args": [
                   {
                     "expr": "lambda",
-                    "params": ["item", "idx"],
+                    "param": "item",
+                    "index": "idx",
                     "body": {
                       "expr": "obj",
                       "props": {
                         "x": {
                           "expr": "bin",
                           "op": "+",
-                          "left": { "expr": "lit", "value": 40 },
+                          "left": {
+                            "expr": "lit",
+                            "value": 40
+                          },
                           "right": {
                             "expr": "bin",
                             "op": "*",
-                            "left": { "expr": "var", "name": "idx" },
+                            "left": {
+                              "expr": "var",
+                              "name": "idx"
+                            },
                             "right": {
                               "expr": "bin",
                               "op": "/",
                               "left": {
                                 "expr": "bin",
                                 "op": "-",
-                                "left": { "expr": "local", "name": "_width" },
-                                "right": { "expr": "lit", "value": 80 }
+                                "left": {
+                                  "expr": "local",
+                                  "name": "_width"
+                                },
+                                "right": {
+                                  "expr": "lit",
+                                  "value": 80
+                                }
                               },
                               "right": {
                                 "expr": "bin",
                                 "op": "-",
                                 "left": {
                                   "expr": "call",
-                                  "target": { "expr": "param", "name": "data" },
+                                  "target": {
+                                    "expr": "param",
+                                    "name": "data"
+                                  },
                                   "method": "length",
                                   "args": []
                                 },
-                                "right": { "expr": "lit", "value": 1 }
+                                "right": {
+                                  "expr": "lit",
+                                  "value": 1
+                                }
                               }
                             }
                           }
@@ -154,16 +284,26 @@
                         "y": {
                           "expr": "bin",
                           "op": "-",
-                          "left": { "expr": "local", "name": "_height" },
+                          "left": {
+                            "expr": "local",
+                            "name": "_height"
+                          },
                           "right": {
                             "expr": "bin",
                             "op": "*",
                             "left": {
-                              "expr": "get",
-                              "obj": { "expr": "var", "name": "item" },
-                              "key": { "expr": "param", "name": "valueKey" }
+                              "expr": "index", "base": {
+                                "expr": "var",
+                                "name": "item"
+                              }, "key": {
+                                "expr": "param",
+                                "name": "valueKey"
+                              }
                             },
-                            "right": { "expr": "lit", "value": 2 }
+                            "right": {
+                              "expr": "lit",
+                              "value": 2
+                            }
                           }
                         }
                       }
@@ -171,32 +311,64 @@
                   }
                 ]
               },
-              { "expr": "local", "name": "_height" },
-              { "expr": "param", "name": "curved" }
+              {
+                "expr": "local",
+                "name": "_height"
+              },
+              {
+                "expr": "param",
+                "name": "curved"
+              }
             ]
           },
           "fill": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "colors" },
+            "if": {
+              "expr": "param",
+              "name": "colors"
+            },
             "then": {
               "expr": "call",
-              "target": { "expr": "param", "name": "colors" },
+              "target": {
+                "expr": "param",
+                "name": "colors"
+              },
               "method": "at",
-              "args": [{ "expr": "lit", "value": 0 }]
+              "args": [
+                {
+                  "expr": "lit",
+                  "value": 0
+                }
+              ]
             },
-            "else": { "expr": "lit", "value": "#3b82f6" }
+            "else": {
+              "expr": "lit",
+              "value": "#3b82f6"
+            }
           },
           "fill-opacity": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "fillOpacity" },
-            "then": { "expr": "param", "name": "fillOpacity" },
-            "else": { "expr": "lit", "value": 0.3 }
+            "if": {
+              "expr": "param",
+              "name": "fillOpacity"
+            },
+            "then": {
+              "expr": "param",
+              "name": "fillOpacity"
+            },
+            "else": {
+              "expr": "lit",
+              "value": 0.3
+            }
           },
           "className": {
             "expr": "style",
-            "preset": "chartArea",
-            "props": {
-              "opacity": { "expr": "lit", "value": "default" }
+            "name": "chartArea",
+            "variants": {
+              "opacity": {
+                "expr": "lit",
+                "value": "default"
+              }
             }
           }
         }
@@ -212,42 +384,64 @@
             "args": [
               {
                 "expr": "call",
-                "target": { "expr": "param", "name": "data" },
+                "target": {
+                  "expr": "param",
+                  "name": "data"
+                },
                 "method": "map",
                 "args": [
                   {
                     "expr": "lambda",
-                    "params": ["item", "idx"],
+                    "param": "item",
+                    "index": "idx",
                     "body": {
                       "expr": "obj",
                       "props": {
                         "x": {
                           "expr": "bin",
                           "op": "+",
-                          "left": { "expr": "lit", "value": 40 },
+                          "left": {
+                            "expr": "lit",
+                            "value": 40
+                          },
                           "right": {
                             "expr": "bin",
                             "op": "*",
-                            "left": { "expr": "var", "name": "idx" },
+                            "left": {
+                              "expr": "var",
+                              "name": "idx"
+                            },
                             "right": {
                               "expr": "bin",
                               "op": "/",
                               "left": {
                                 "expr": "bin",
                                 "op": "-",
-                                "left": { "expr": "local", "name": "_width" },
-                                "right": { "expr": "lit", "value": 80 }
+                                "left": {
+                                  "expr": "local",
+                                  "name": "_width"
+                                },
+                                "right": {
+                                  "expr": "lit",
+                                  "value": 80
+                                }
                               },
                               "right": {
                                 "expr": "bin",
                                 "op": "-",
                                 "left": {
                                   "expr": "call",
-                                  "target": { "expr": "param", "name": "data" },
+                                  "target": {
+                                    "expr": "param",
+                                    "name": "data"
+                                  },
                                   "method": "length",
                                   "args": []
                                 },
-                                "right": { "expr": "lit", "value": 1 }
+                                "right": {
+                                  "expr": "lit",
+                                  "value": 1
+                                }
                               }
                             }
                           }
@@ -255,16 +449,26 @@
                         "y": {
                           "expr": "bin",
                           "op": "-",
-                          "left": { "expr": "local", "name": "_height" },
+                          "left": {
+                            "expr": "local",
+                            "name": "_height"
+                          },
                           "right": {
                             "expr": "bin",
                             "op": "*",
                             "left": {
-                              "expr": "get",
-                              "obj": { "expr": "var", "name": "item" },
-                              "key": { "expr": "param", "name": "valueKey" }
+                              "expr": "index", "base": {
+                                "expr": "var",
+                                "name": "item"
+                              }, "key": {
+                                "expr": "param",
+                                "name": "valueKey"
+                              }
                             },
-                            "right": { "expr": "lit", "value": 2 }
+                            "right": {
+                              "expr": "lit",
+                              "value": 2
+                            }
                           }
                         }
                       }
@@ -272,35 +476,64 @@
                   }
                 ]
               },
-              { "expr": "param", "name": "curved" }
+              {
+                "expr": "param",
+                "name": "curved"
+              }
             ]
           },
           "stroke": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "colors" },
+            "if": {
+              "expr": "param",
+              "name": "colors"
+            },
             "then": {
               "expr": "call",
-              "target": { "expr": "param", "name": "colors" },
+              "target": {
+                "expr": "param",
+                "name": "colors"
+              },
               "method": "at",
-              "args": [{ "expr": "lit", "value": 0 }]
+              "args": [
+                {
+                  "expr": "lit",
+                  "value": 0
+                }
+              ]
             },
-            "else": { "expr": "lit", "value": "#3b82f6" }
+            "else": {
+              "expr": "lit",
+              "value": "#3b82f6"
+            }
           },
           "stroke-width": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "strokeWidth" },
-            "then": { "expr": "param", "name": "strokeWidth" },
-            "else": { "expr": "lit", "value": 2 }
+            "if": {
+              "expr": "param",
+              "name": "strokeWidth"
+            },
+            "then": {
+              "expr": "param",
+              "name": "strokeWidth"
+            },
+            "else": {
+              "expr": "lit",
+              "value": 2
+            }
           },
           "className": {
             "expr": "style",
-            "preset": "chartLine"
+            "name": "chartLine"
           }
         }
       },
       {
         "kind": "if",
-        "test": { "expr": "param", "name": "showPoints" },
+        "condition": {
+          "expr": "param",
+          "name": "showPoints"
+        },
         "then": {
           "kind": "element",
           "tag": "g",
@@ -308,7 +541,10 @@
           "children": [
             {
               "kind": "each",
-              "items": { "expr": "param", "name": "data" },
+              "items": {
+                "expr": "param",
+                "name": "data"
+              },
               "as": "item",
               "index": "idx",
               "body": {
@@ -318,30 +554,48 @@
                   "cx": {
                     "expr": "bin",
                     "op": "+",
-                    "left": { "expr": "lit", "value": 40 },
+                    "left": {
+                      "expr": "lit",
+                      "value": 40
+                    },
                     "right": {
                       "expr": "bin",
                       "op": "*",
-                      "left": { "expr": "var", "name": "idx" },
+                      "left": {
+                        "expr": "var",
+                        "name": "idx"
+                      },
                       "right": {
                         "expr": "bin",
                         "op": "/",
                         "left": {
                           "expr": "bin",
                           "op": "-",
-                          "left": { "expr": "local", "name": "_width" },
-                          "right": { "expr": "lit", "value": 80 }
+                          "left": {
+                            "expr": "local",
+                            "name": "_width"
+                          },
+                          "right": {
+                            "expr": "lit",
+                            "value": 80
+                          }
                         },
                         "right": {
                           "expr": "bin",
                           "op": "-",
                           "left": {
                             "expr": "call",
-                            "target": { "expr": "param", "name": "data" },
+                            "target": {
+                              "expr": "param",
+                              "name": "data"
+                            },
                             "method": "length",
                             "args": []
                           },
-                          "right": { "expr": "lit", "value": 1 }
+                          "right": {
+                            "expr": "lit",
+                            "value": 1
+                          }
                         }
                       }
                     }
@@ -349,42 +603,84 @@
                   "cy": {
                     "expr": "bin",
                     "op": "-",
-                    "left": { "expr": "local", "name": "_height" },
+                    "left": {
+                      "expr": "local",
+                      "name": "_height"
+                    },
                     "right": {
                       "expr": "bin",
                       "op": "*",
                       "left": {
-                        "expr": "get",
-                        "obj": { "expr": "var", "name": "item" },
-                        "key": { "expr": "param", "name": "valueKey" }
+                        "expr": "index", "base": {
+                          "expr": "var",
+                          "name": "item"
+                        }, "key": {
+                          "expr": "param",
+                          "name": "valueKey"
+                        }
                       },
-                      "right": { "expr": "lit", "value": 2 }
+                      "right": {
+                        "expr": "lit",
+                        "value": 2
+                      }
                     }
                   },
                   "r": {
                     "expr": "cond",
-                    "test": { "expr": "param", "name": "pointRadius" },
-                    "then": { "expr": "param", "name": "pointRadius" },
-                    "else": { "expr": "lit", "value": 4 }
+                    "if": {
+                      "expr": "param",
+                      "name": "pointRadius"
+                    },
+                    "then": {
+                      "expr": "param",
+                      "name": "pointRadius"
+                    },
+                    "else": {
+                      "expr": "lit",
+                      "value": 4
+                    }
                   },
                   "fill": {
                     "expr": "cond",
-                    "test": { "expr": "param", "name": "colors" },
+                    "if": {
+                      "expr": "param",
+                      "name": "colors"
+                    },
                     "then": {
                       "expr": "call",
-                      "target": { "expr": "param", "name": "colors" },
+                      "target": {
+                        "expr": "param",
+                        "name": "colors"
+                      },
                       "method": "at",
-                      "args": [{ "expr": "lit", "value": 0 }]
+                      "args": [
+                        {
+                          "expr": "lit",
+                          "value": 0
+                        }
+                      ]
                     },
-                    "else": { "expr": "lit", "value": "#3b82f6" }
+                    "else": {
+                      "expr": "lit",
+                      "value": "#3b82f6"
+                    }
                   },
-                  "tabindex": { "expr": "lit", "value": "0" },
+                  "tabindex": {
+                    "expr": "lit",
+                    "value": "0"
+                  },
                   "className": {
                     "expr": "style",
-                    "preset": "chartPoint",
-                    "props": {
-                      "size": { "expr": "lit", "value": "default" },
-                      "state": { "expr": "lit", "value": "default" }
+                    "name": "chartPoint",
+                    "variants": {
+                      "size": {
+                        "expr": "lit",
+                        "value": "default"
+                      },
+                      "state": {
+                        "expr": "lit",
+                        "value": "default"
+                      }
                     }
                   }
                 }
@@ -395,23 +691,32 @@
       },
       {
         "kind": "if",
-        "test": { "expr": "param", "name": "showLabels" },
+        "condition": {
+          "expr": "param",
+          "name": "showLabels"
+        },
         "then": {
           "kind": "element",
           "tag": "g",
           "props": {
             "className": {
               "expr": "style",
-              "preset": "chartLabel",
-              "props": {
-                "type": { "expr": "lit", "value": "axis" }
+              "name": "chartLabel",
+              "variants": {
+                "type": {
+                  "expr": "lit",
+                  "value": "axis"
+                }
               }
             }
           },
           "children": [
             {
               "kind": "each",
-              "items": { "expr": "param", "name": "data" },
+              "items": {
+                "expr": "param",
+                "name": "data"
+              },
               "as": "item",
               "index": "idx",
               "body": {
@@ -421,30 +726,48 @@
                   "x": {
                     "expr": "bin",
                     "op": "+",
-                    "left": { "expr": "lit", "value": 40 },
+                    "left": {
+                      "expr": "lit",
+                      "value": 40
+                    },
                     "right": {
                       "expr": "bin",
                       "op": "*",
-                      "left": { "expr": "var", "name": "idx" },
+                      "left": {
+                        "expr": "var",
+                        "name": "idx"
+                      },
                       "right": {
                         "expr": "bin",
                         "op": "/",
                         "left": {
                           "expr": "bin",
                           "op": "-",
-                          "left": { "expr": "local", "name": "_width" },
-                          "right": { "expr": "lit", "value": 80 }
+                          "left": {
+                            "expr": "local",
+                            "name": "_width"
+                          },
+                          "right": {
+                            "expr": "lit",
+                            "value": 80
+                          }
                         },
                         "right": {
                           "expr": "bin",
                           "op": "-",
                           "left": {
                             "expr": "call",
-                            "target": { "expr": "param", "name": "data" },
+                            "target": {
+                              "expr": "param",
+                              "name": "data"
+                            },
                             "method": "length",
                             "args": []
                           },
-                          "right": { "expr": "lit", "value": 1 }
+                          "right": {
+                            "expr": "lit",
+                            "value": 1
+                          }
                         }
                       }
                     }
@@ -452,23 +775,42 @@
                   "y": {
                     "expr": "bin",
                     "op": "+",
-                    "left": { "expr": "local", "name": "_height" },
-                    "right": { "expr": "lit", "value": 15 }
+                    "left": {
+                      "expr": "local",
+                      "name": "_height"
+                    },
+                    "right": {
+                      "expr": "lit",
+                      "value": 15
+                    }
                   },
-                  "text-anchor": { "expr": "lit", "value": "middle" }
+                  "text-anchor": {
+                    "expr": "lit",
+                    "value": "middle"
+                  }
                 },
                 "children": [
                   {
                     "kind": "text",
-                    "content": {
+                    "value": {
                       "expr": "cond",
-                      "test": { "expr": "param", "name": "labelKey" },
-                      "then": {
-                        "expr": "get",
-                        "obj": { "expr": "var", "name": "item" },
-                        "key": { "expr": "param", "name": "labelKey" }
+                      "if": {
+                        "expr": "param",
+                        "name": "labelKey"
                       },
-                      "else": { "expr": "var", "name": "idx" }
+                      "then": {
+                        "expr": "index", "base": {
+                          "expr": "var",
+                          "name": "item"
+                        }, "key": {
+                          "expr": "param",
+                          "name": "labelKey"
+                        }
+                      },
+                      "else": {
+                        "expr": "var",
+                        "name": "idx"
+                      }
                     }
                   }
                 ]

@@ -59,7 +59,7 @@ describe('Switch Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'switchStyles',
+        name: 'switchStyles',
       });
     });
   });

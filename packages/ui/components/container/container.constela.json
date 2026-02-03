@@ -1,7 +1,13 @@
 {
   "params": {
-    "maxWidth": { "type": "string", "required": false },
-    "className": { "type": "string", "required": false }
+    "maxWidth": {
+      "type": "string",
+      "required": false
+    },
+    "className": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -9,13 +15,19 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "containerStyles",
-        "props": {
-          "maxWidth": { "expr": "param", "name": "maxWidth" },
-          "className": { "expr": "param", "name": "className" }
+        "name": "containerStyles",
+        "variants": {
+          "maxWidth": {
+            "expr": "param",
+            "name": "maxWidth"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

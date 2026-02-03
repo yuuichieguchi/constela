@@ -56,7 +56,7 @@ describe('DatePicker Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'datepickerStyles',
+        name: 'datepickerStyles',
       });
     });
 

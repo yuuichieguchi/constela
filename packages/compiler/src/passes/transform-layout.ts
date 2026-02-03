@@ -233,10 +233,10 @@ function transformExpression(expr: Expression, ctx?: TransformContext): Compiled
     case 'ref':
       return { expr: 'ref', name: expr.name };
     case 'call': {
-      const callExpr = expr as { expr: 'call'; target: Expression; method: string; args?: Expression[] };
+      const callExpr = expr as { expr: 'call'; target: Expression | null; method: string; args?: Expression[] };
       const result: CompiledExpression = {
         expr: 'call',
-        target: transformExpression(callExpr.target, ctx),
+        target: callExpr.target === null ? null : transformExpression(callExpr.target, ctx),
         method: callExpr.method,
       } as CompiledExpression;
       if (callExpr.args && callExpr.args.length > 0) {

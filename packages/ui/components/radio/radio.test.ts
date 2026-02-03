@@ -67,7 +67,7 @@ describe('Radio Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'radioStyles',
+        name: 'radioStyles',
       });
     });
   });

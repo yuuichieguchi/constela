@@ -1,10 +1,25 @@
 {
   "params": {
-    "direction": { "type": "string", "required": false },
-    "gap": { "type": "string", "required": false },
-    "align": { "type": "string", "required": false },
-    "justify": { "type": "string", "required": false },
-    "className": { "type": "string", "required": false }
+    "direction": {
+      "type": "string",
+      "required": false
+    },
+    "gap": {
+      "type": "string",
+      "required": false
+    },
+    "align": {
+      "type": "string",
+      "required": false
+    },
+    "justify": {
+      "type": "string",
+      "required": false
+    },
+    "className": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -12,16 +27,31 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "stackStyles",
-        "props": {
-          "direction": { "expr": "param", "name": "direction" },
-          "gap": { "expr": "param", "name": "gap" },
-          "align": { "expr": "param", "name": "align" },
-          "justify": { "expr": "param", "name": "justify" },
-          "className": { "expr": "param", "name": "className" }
+        "name": "stackStyles",
+        "variants": {
+          "direction": {
+            "expr": "param",
+            "name": "direction"
+          },
+          "gap": {
+            "expr": "param",
+            "name": "gap"
+          },
+          "align": {
+            "expr": "param",
+            "name": "align"
+          },
+          "justify": {
+            "expr": "param",
+            "name": "justify"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

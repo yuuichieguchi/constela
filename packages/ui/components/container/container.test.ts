@@ -55,7 +55,7 @@ describe('Container Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'containerStyles',
+        name: 'containerStyles',
       });
     });
   });
@@ -145,18 +145,19 @@ describe('Container Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           maxWidth: expect.objectContaining({ expr: 'param', name: 'maxWidth' }),
         }),
       });
     });
 
-    it('should pass className to StyleExpr', () => {
+    it('should pass maxWidth to StyleExpr variants', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
-          className: expect.objectContaining({ expr: 'param', name: 'className' }),
+        name: 'containerStyles',
+        variants: expect.objectContaining({
+          maxWidth: expect.objectContaining({ expr: 'param', name: 'maxWidth' }),
         }),
       });
     });

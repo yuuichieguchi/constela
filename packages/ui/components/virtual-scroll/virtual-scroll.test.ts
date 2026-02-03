@@ -160,7 +160,7 @@ describe('VirtualScroll Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'virtualScrollContainer',
+        name: 'virtualScrollContainer',
       });
     });
   });
@@ -179,8 +179,8 @@ describe('VirtualScroll Component', () => {
         expect(isRequiredParam(ctx.component, 'items')).toBe(true);
       });
 
-      it('should have type list', () => {
-        expect(hasParamType(ctx.component, 'items', 'list')).toBe(true);
+      it('should have type json', () => {
+        expect(hasParamType(ctx.component, 'items', 'json')).toBe(true);
       });
     });
 

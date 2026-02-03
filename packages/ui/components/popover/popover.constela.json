@@ -1,7 +1,13 @@
 {
   "params": {
-    "open": { "type": "boolean", "required": false },
-    "position": { "type": "string", "required": false }
+    "open": {
+      "type": "boolean",
+      "required": false
+    },
+    "position": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -9,12 +15,19 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "popoverStyles",
-        "props": {
-          "position": { "expr": "param", "name": "position" }
+        "name": "popoverStyles",
+        "variants": {
+          "position": {
+            "expr": "param",
+            "name": "position"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

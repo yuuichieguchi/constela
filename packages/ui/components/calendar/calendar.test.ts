@@ -62,7 +62,7 @@ describe('Calendar Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'calendarStyles',
+        name: 'calendarStyles',
       });
     });
 

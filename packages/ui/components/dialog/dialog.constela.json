@@ -1,19 +1,35 @@
 {
   "params": {
-    "open": { "type": "boolean", "required": false },
-    "title": { "type": "string", "required": false }
+    "open": {
+      "type": "boolean",
+      "required": false
+    },
+    "title": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "role": { "expr": "lit", "value": "dialog" },
-      "aria-modal": { "expr": "lit", "value": "true" },
+      "role": {
+        "expr": "lit",
+        "value": "dialog"
+      },
+      "aria-modal": {
+        "expr": "lit",
+        "value": "true"
+      },
       "className": {
         "expr": "style",
-        "preset": "dialogStyles"
+        "name": "dialogStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

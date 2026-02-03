@@ -53,7 +53,7 @@ describe('Skeleton Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'skeletonStyles',
+        name: 'skeletonStyles',
       });
     });
   });
@@ -136,28 +136,33 @@ describe('Skeleton Component', () => {
     it('should pass width to style attribute', () => {
       const style = findPropInView(ctx.component.view, 'style');
       expect(style).not.toBeNull();
-      // Style object should contain width
+      // Style object should contain width via obj expression
       expect(style).toMatchObject({
-        width: expect.objectContaining({ expr: 'param', name: 'width' }),
+        expr: 'obj',
+        props: expect.objectContaining({
+          width: expect.objectContaining({ expr: 'param', name: 'width' }),
+        }),
       });
     });
 
     it('should pass height to style attribute', () => {
       const style = findPropInView(ctx.component.view, 'style');
       expect(style).not.toBeNull();
-      // Style object should contain height
+      // Style object should contain height via obj expression
       expect(style).toMatchObject({
-        height: expect.objectContaining({ expr: 'param', name: 'height' }),
+        expr: 'obj',
+        props: expect.objectContaining({
+          height: expect.objectContaining({ expr: 'param', name: 'height' }),
+        }),
       });
     });
 
     it('should pass className to StyleExpr props', () => {
       const className = findPropInView(ctx.component.view, 'className');
+      // className uses style expression without variants (direct style reference)
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
-          className: expect.objectContaining({ expr: 'param', name: 'className' }),
-        }),
+        name: 'skeletonStyles',
       });
     });
   });

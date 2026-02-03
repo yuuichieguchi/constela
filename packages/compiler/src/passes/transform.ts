@@ -615,7 +615,7 @@ export interface CompiledValidityExpr {
 
 export interface CompiledCallExpr {
   expr: 'call';
-  target: CompiledExpression;
+  target: CompiledExpression | null;
   method: string;
   args?: CompiledExpression[];
 }
@@ -842,7 +842,7 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
       const callExpr = expr as CallExpr;
       const result: CompiledCallExpr = {
         expr: 'call',
-        target: transformExpression(callExpr.target, ctx),
+        target: callExpr.target === null ? null : transformExpression(callExpr.target, ctx),
         method: callExpr.method,
       };
       if (callExpr.args && callExpr.args.length > 0) {

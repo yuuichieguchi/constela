@@ -1,21 +1,37 @@
 {
   "params": {
-    "activeTab": { "type": "string", "required": false },
-    "variant": { "type": "string", "required": false }
+    "activeTab": {
+      "type": "string",
+      "required": false
+    },
+    "variant": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "role": { "expr": "lit", "value": "tablist" },
+      "role": {
+        "expr": "lit",
+        "value": "tablist"
+      },
       "className": {
         "expr": "style",
-        "preset": "tabsStyles",
-        "props": {
-          "variant": { "expr": "param", "name": "variant" }
+        "name": "tabsStyles",
+        "variants": {
+          "variant": {
+            "expr": "param",
+            "name": "variant"
+          }
         }
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

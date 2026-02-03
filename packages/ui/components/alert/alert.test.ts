@@ -62,7 +62,7 @@ describe('Alert Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'alertStyles',
+        name: 'alertStyles',
       });
     });
   });
@@ -164,7 +164,7 @@ describe('Alert Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           variant: expect.objectContaining({ expr: 'param', name: 'variant' }),
         }),
       });

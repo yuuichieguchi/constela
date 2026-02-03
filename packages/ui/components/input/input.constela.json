@@ -1,14 +1,41 @@
 {
   "params": {
-    "value": { "type": "string", "required": false },
-    "placeholder": { "type": "string", "required": false },
-    "disabled": { "type": "boolean", "required": false },
-    "required": { "type": "boolean", "required": false },
-    "type": { "type": "string", "required": false },
-    "name": { "type": "string", "required": false },
-    "id": { "type": "string", "required": false },
-    "ariaLabel": { "type": "string", "required": false },
-    "size": { "type": "string", "required": false }
+    "value": {
+      "type": "string",
+      "required": false
+    },
+    "placeholder": {
+      "type": "string",
+      "required": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    },
+    "required": {
+      "type": "boolean",
+      "required": false
+    },
+    "type": {
+      "type": "string",
+      "required": false
+    },
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "id": {
+      "type": "string",
+      "required": false
+    },
+    "ariaLabel": {
+      "type": "string",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -16,19 +43,46 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "inputStyles",
-        "props": {
-          "size": { "expr": "param", "name": "size" }
+        "name": "inputStyles",
+        "variants": {
+          "size": {
+            "expr": "param",
+            "name": "size"
+          }
         }
       },
-      "value": { "expr": "param", "name": "value" },
-      "placeholder": { "expr": "param", "name": "placeholder" },
-      "disabled": { "expr": "param", "name": "disabled" },
-      "required": { "expr": "param", "name": "required" },
-      "type": { "expr": "param", "name": "type" },
-      "name": { "expr": "param", "name": "name" },
-      "id": { "expr": "param", "name": "id" },
-      "aria-label": { "expr": "param", "name": "ariaLabel" }
+      "value": {
+        "expr": "param",
+        "name": "value"
+      },
+      "placeholder": {
+        "expr": "param",
+        "name": "placeholder"
+      },
+      "disabled": {
+        "expr": "param",
+        "name": "disabled"
+      },
+      "required": {
+        "expr": "param",
+        "name": "required"
+      },
+      "type": {
+        "expr": "param",
+        "name": "type"
+      },
+      "name": {
+        "expr": "param",
+        "name": "name"
+      },
+      "id": {
+        "expr": "param",
+        "name": "id"
+      },
+      "aria-label": {
+        "expr": "param",
+        "name": "ariaLabel"
+      }
     }
   }
 }

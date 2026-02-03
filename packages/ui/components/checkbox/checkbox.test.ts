@@ -67,7 +67,7 @@ describe('Checkbox Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'checkboxStyles',
+        name: 'checkboxStyles',
       });
     });
 

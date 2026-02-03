@@ -55,7 +55,7 @@ describe('Card Component', () => {
       expect(className).not.toBeNull();
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'cardStyles',
+        name: 'cardStyles',
       });
     });
   });
@@ -135,18 +135,19 @@ describe('Card Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           variant: expect.objectContaining({ expr: 'param', name: 'variant' }),
         }),
       });
     });
 
-    it('should pass className to StyleExpr', () => {
+    it('should pass variant to StyleExpr variants', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
-          className: expect.objectContaining({ expr: 'param', name: 'className' }),
+        name: 'cardStyles',
+        variants: expect.objectContaining({
+          variant: expect.objectContaining({ expr: 'param', name: 'variant' }),
         }),
       });
     });

@@ -165,7 +165,7 @@ describe('DataTable Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'dataTableContainer',
+          name: 'dataTableContainer',
         });
       });
     });
@@ -193,8 +193,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTable, 'columns')).toBe(true);
         });
 
-        it('should have type list', () => {
-          expect(hasParamType(ctx.dataTable, 'columns', 'list')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTable, 'columns', 'json')).toBe(true);
         });
       });
 
@@ -203,8 +203,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTable, 'data')).toBe(true);
         });
 
-        it('should have type list', () => {
-          expect(hasParamType(ctx.dataTable, 'data', 'list')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTable, 'data', 'json')).toBe(true);
         });
       });
 
@@ -398,7 +398,7 @@ describe('DataTable Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'dataTableHeaderCell',
+          name: 'dataTableHeaderCell',
         });
       });
     });
@@ -417,8 +417,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTableHeader, 'column')).toBe(true);
         });
 
-        it('should have type object', () => {
-          expect(hasParamType(ctx.dataTableHeader, 'column', 'object')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTableHeader, 'column', 'json')).toBe(true);
         });
       });
 
@@ -545,7 +545,7 @@ describe('DataTable Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'dataTableRow',
+          name: 'dataTableRow',
         });
       });
     });
@@ -564,8 +564,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTableRow, 'row')).toBe(true);
         });
 
-        it('should have type object', () => {
-          expect(hasParamType(ctx.dataTableRow, 'row', 'object')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTableRow, 'row', 'json')).toBe(true);
         });
       });
 
@@ -676,7 +676,7 @@ describe('DataTable Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'dataTableCell',
+          name: 'dataTableCell',
         });
       });
     });
@@ -695,8 +695,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTableCell, 'value')).toBe(true);
         });
 
-        it('should have type any', () => {
-          expect(hasParamType(ctx.dataTableCell, 'value', 'any')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTableCell, 'value', 'json')).toBe(true);
         });
       });
 
@@ -705,8 +705,8 @@ describe('DataTable Component Suite', () => {
           expect(isRequiredParam(ctx.dataTableCell, 'column')).toBe(true);
         });
 
-        it('should have type object', () => {
-          expect(hasParamType(ctx.dataTableCell, 'column', 'object')).toBe(true);
+        it('should have type json', () => {
+          expect(hasParamType(ctx.dataTableCell, 'column', 'json')).toBe(true);
         });
       });
 
@@ -795,7 +795,7 @@ describe('DataTable Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'dataTablePagination',
+          name: 'dataTablePagination',
         });
       });
     });

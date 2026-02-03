@@ -1,24 +1,49 @@
 {
   "params": {
-    "items": { "type": "list", "required": true },
-    "selectable": { "type": "boolean", "required": false },
-    "multiSelect": { "type": "boolean", "required": false }
+    "items": {
+      "type": "json",
+      "required": true
+    },
+    "selectable": {
+      "type": "boolean",
+      "required": false
+    },
+    "multiSelect": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "localState": {
-    "expandedNodes": { "type": "list", "initial": [] },
-    "selectedNodes": { "type": "list", "initial": [] }
+    "expandedNodes": {
+      "type": "list",
+      "initial": []
+    },
+    "selectedNodes": {
+      "type": "list",
+      "initial": []
+    }
   },
   "view": {
     "kind": "element",
     "tag": "ul",
     "props": {
-      "role": { "expr": "lit", "value": "tree" },
-      "aria-multiselectable": { "expr": "param", "name": "multiSelect" },
+      "role": {
+        "expr": "lit",
+        "value": "tree"
+      },
+      "aria-multiselectable": {
+        "expr": "param",
+        "name": "multiSelect"
+      },
       "className": {
         "expr": "style",
-        "preset": "treeStyles"
+        "name": "treeStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

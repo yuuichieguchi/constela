@@ -1,17 +1,28 @@
 {
   "params": {
-    "separator": { "type": "string", "required": false, "default": "/" }
+    "separator": {
+      "type": "string",
+      "required": false,
+      "default": "/"
+    }
   },
   "view": {
     "kind": "element",
     "tag": "nav",
     "props": {
-      "aria-label": { "expr": "lit", "value": "Breadcrumb" },
+      "aria-label": {
+        "expr": "lit",
+        "value": "Breadcrumb"
+      },
       "className": {
         "expr": "style",
-        "preset": "breadcrumbStyles"
+        "name": "breadcrumbStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

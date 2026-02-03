@@ -121,8 +121,8 @@ function hasCondInitialPattern(
   if (initExpr['expr'] !== 'cond') {
     return false;
   }
-  // Check test is param reference
-  const test = initExpr['test'] as Record<string, unknown> | undefined;
+  // Check if/test is param reference (supports both 'if' and 'test' keys)
+  const test = (initExpr['if'] || initExpr['test']) as Record<string, unknown> | undefined;
   if (!test || test['expr'] !== 'param' || test['name'] !== paramName) {
     return false;
   }
@@ -316,10 +316,16 @@ function findExpressionCall(view: unknown, methodName: string): unknown | null {
     if (bodyResult) return bodyResult;
   }
 
-  // Search in get expression obj
-  if (node['expr'] === 'get' && node['obj']) {
-    const objResult = findExpressionCall(node['obj'], methodName);
-    if (objResult) return objResult;
+  // Search in get expression base (or obj for backwards compatibility)
+  if (node['expr'] === 'get') {
+    if (node['base']) {
+      const baseResult = findExpressionCall(node['base'], methodName);
+      if (baseResult) return baseResult;
+    }
+    if (node['obj']) {
+      const objResult = findExpressionCall(node['obj'], methodName);
+      if (objResult) return objResult;
+    }
   }
 
   // Search in call expression target and args
@@ -351,7 +357,7 @@ function usesStylePreset(view: unknown, presetName: string): boolean {
     const props = node['props'] as Record<string, unknown>;
     if (props['className'] && typeof props['className'] === 'object') {
       const className = props['className'] as Record<string, unknown>;
-      if (className['expr'] === 'style' && className['preset'] === presetName) {
+      if (className['expr'] === 'style' && className['name'] === presetName) {
         return true;
       }
     }
@@ -441,7 +447,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -456,7 +462,7 @@ describe('Chart Component Suite', () => {
       describe('required params', () => {
         it('should have data param as required with type list', () => {
           expect(isRequiredParam(ctx.barChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.barChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.barChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -470,7 +476,7 @@ describe('Chart Component Suite', () => {
           { name: 'labelKey', type: 'string' },
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'showGrid', type: 'boolean' },
           { name: 'showLabels', type: 'boolean' },
           { name: 'orientation', type: 'string' },
@@ -482,7 +488,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.barChart, name)).toBe(true);
-            expect(hasParamType(ctx.barChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.barChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -565,7 +571,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.barChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -601,7 +607,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -620,7 +626,7 @@ describe('Chart Component Suite', () => {
       describe('required params', () => {
         it('should have data param as required with type list', () => {
           expect(isRequiredParam(ctx.lineChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.lineChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.lineChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -634,7 +640,7 @@ describe('Chart Component Suite', () => {
           { name: 'labelKey', type: 'string' },
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'showGrid', type: 'boolean' },
           { name: 'showLabels', type: 'boolean' },
           { name: 'curved', type: 'boolean' },
@@ -647,7 +653,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.lineChart, name)).toBe(true);
-            expect(hasParamType(ctx.lineChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.lineChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -759,7 +765,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.lineChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -799,7 +805,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -812,9 +818,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have data param as required with type list', () => {
+        it('should have data param as required with type json', () => {
           expect(isRequiredParam(ctx.areaChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.areaChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.areaChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -828,7 +834,7 @@ describe('Chart Component Suite', () => {
           { name: 'labelKey', type: 'string' },
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'showGrid', type: 'boolean' },
           { name: 'showLabels', type: 'boolean' },
           { name: 'curved', type: 'boolean' },
@@ -842,7 +848,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.areaChart, name)).toBe(true);
-            expect(hasParamType(ctx.areaChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.areaChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -976,7 +982,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.areaChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1020,7 +1026,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1033,9 +1039,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have data param as required with type list', () => {
+        it('should have data param as required with type json', () => {
           expect(isRequiredParam(ctx.pieChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.pieChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.pieChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -1049,7 +1055,7 @@ describe('Chart Component Suite', () => {
           { name: 'labelKey', type: 'string' },
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'showLabels', type: 'boolean' },
           { name: 'showPercentage', type: 'boolean' },
         ];
@@ -1058,7 +1064,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.pieChart, name)).toBe(true);
-            expect(hasParamType(ctx.pieChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.pieChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1136,7 +1142,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.pieChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1172,7 +1178,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1189,9 +1195,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have data param as required with type list', () => {
+        it('should have data param as required with type json', () => {
           expect(isRequiredParam(ctx.donutChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.donutChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.donutChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -1205,7 +1211,7 @@ describe('Chart Component Suite', () => {
           { name: 'labelKey', type: 'string' },
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'showLabels', type: 'boolean' },
           { name: 'showPercentage', type: 'boolean' },
           { name: 'innerRadius', type: 'number' },
@@ -1216,7 +1222,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.donutChart, name)).toBe(true);
-            expect(hasParamType(ctx.donutChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.donutChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1304,7 +1310,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.donutChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1344,7 +1350,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1357,9 +1363,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have data param as required with type list', () => {
+        it('should have data param as required with type json', () => {
           expect(isRequiredParam(ctx.scatterChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.scatterChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.scatterChart, 'data', 'json')).toBe(true);
         });
 
         it('should have xKey param as required with type string', () => {
@@ -1377,7 +1383,7 @@ describe('Chart Component Suite', () => {
         const optionalParams = [
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'sizeKey', type: 'string' },
           { name: 'colorKey', type: 'string' },
           { name: 'pointRadius', type: 'number' },
@@ -1389,7 +1395,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.scatterChart, name)).toBe(true);
-            expect(hasParamType(ctx.scatterChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.scatterChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1468,7 +1474,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.scatterChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1504,7 +1510,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1517,9 +1523,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have data param as required with type list', () => {
+        it('should have data param as required with type json', () => {
           expect(isRequiredParam(ctx.radarChart, 'data')).toBe(true);
-          expect(hasParamType(ctx.radarChart, 'data', 'list')).toBe(true);
+          expect(hasParamType(ctx.radarChart, 'data', 'json')).toBe(true);
         });
 
         it('should have valueKey param as required with type string', () => {
@@ -1537,7 +1543,7 @@ describe('Chart Component Suite', () => {
         const optionalParams = [
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
-          { name: 'colors', type: 'list' },
+          { name: 'colors', type: 'json' },
           { name: 'maxValue', type: 'number' },
           { name: 'showGrid', type: 'boolean' },
           { name: 'fillOpacity', type: 'number' },
@@ -1547,7 +1553,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.radarChart, name)).toBe(true);
-            expect(hasParamType(ctx.radarChart, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.radarChart, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1630,7 +1636,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.radarChart.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartSvg',
+          name: 'chartSvg',
         });
       });
 
@@ -1666,7 +1672,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartLegend',
+          name: 'chartLegend',
         });
       });
 
@@ -1680,9 +1686,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have items param as required with type list', () => {
+        it('should have items param as required with type json', () => {
           expect(isRequiredParam(ctx.chartLegend, 'items')).toBe(true);
-          expect(hasParamType(ctx.chartLegend, 'items', 'list')).toBe(true);
+          expect(hasParamType(ctx.chartLegend, 'items', 'json')).toBe(true);
         });
       });
 
@@ -1696,7 +1702,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.chartLegend, name)).toBe(true);
-            expect(hasParamType(ctx.chartLegend, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.chartLegend, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1766,7 +1772,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.chartLegend.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartLegend',
+          name: 'chartLegend',
         });
       });
 
@@ -1802,7 +1808,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartTooltip',
+          name: 'chartTooltip',
         });
       });
     });
@@ -1828,7 +1834,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.chartTooltip, name)).toBe(true);
-            expect(hasParamType(ctx.chartTooltip, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.chartTooltip, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -1894,7 +1900,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.chartTooltip.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartTooltip',
+          name: 'chartTooltip',
         });
       });
     });
@@ -1922,7 +1928,7 @@ describe('Chart Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartAxis',
+          name: 'chartAxis',
         });
       });
 
@@ -1939,9 +1945,9 @@ describe('Chart Component Suite', () => {
 
     describe('Params Validation', () => {
       describe('required params', () => {
-        it('should have ticks param as required with type list', () => {
+        it('should have ticks param as required with type json', () => {
           expect(isRequiredParam(ctx.chartAxis, 'ticks')).toBe(true);
-          expect(hasParamType(ctx.chartAxis, 'ticks', 'list')).toBe(true);
+          expect(hasParamType(ctx.chartAxis, 'ticks', 'json')).toBe(true);
         });
 
         it('should have orientation param as required with type string', () => {
@@ -1962,7 +1968,7 @@ describe('Chart Component Suite', () => {
           'should have $name param as optional with type $type',
           ({ name, type }) => {
             expect(isOptionalParam(ctx.chartAxis, name)).toBe(true);
-            expect(hasParamType(ctx.chartAxis, name, type as 'string' | 'number' | 'boolean' | 'list')).toBe(true);
+            expect(hasParamType(ctx.chartAxis, name, type as 'string' | 'number' | 'boolean' | 'json')).toBe(true);
           }
         );
       });
@@ -2025,7 +2031,7 @@ describe('Chart Component Suite', () => {
         const className = findPropInView(ctx.chartAxis.view, 'className');
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'chartAxis',
+          name: 'chartAxis',
         });
       });
 
@@ -3031,9 +3037,9 @@ describe('Chart Component Suite', () => {
       if (!view || typeof view !== 'object') return null;
       const node = view as Record<string, unknown>;
 
-      // Check if this is the showLabels conditional (kind: "if" with test for showLabels param)
+      // Check if this is the showLabels conditional (kind: "if" with condition/test for showLabels param)
       if (node['kind'] === 'if') {
-        const test = node['test'] as Record<string, unknown> | undefined;
+        const test = (node['condition'] || node['test']) as Record<string, unknown> | undefined;
         if (test && test['expr'] === 'param' && test['name'] === 'showLabels') {
           // Found the showLabels if block, now find the text element in then branch
           const thenBranch = node['then'] as Record<string, unknown>;

@@ -1,9 +1,21 @@
 {
   "params": {
-    "src": { "type": "string", "required": false },
-    "alt": { "type": "string", "required": false },
-    "fallback": { "type": "string", "required": false },
-    "size": { "type": "string", "required": false }
+    "src": {
+      "type": "string",
+      "required": false
+    },
+    "alt": {
+      "type": "string",
+      "required": false
+    },
+    "fallback": {
+      "type": "string",
+      "required": false
+    },
+    "size": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
@@ -11,9 +23,12 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "avatarStyles",
-        "props": {
-          "size": { "expr": "param", "name": "size" }
+        "name": "avatarStyles",
+        "variants": {
+          "size": {
+            "expr": "param",
+            "name": "size"
+          }
         }
       }
     },
@@ -22,9 +37,18 @@
         "kind": "element",
         "tag": "img",
         "props": {
-          "src": { "expr": "param", "name": "src" },
-          "alt": { "expr": "param", "name": "alt" },
-          "className": { "expr": "lit", "value": "aspect-square h-full w-full" }
+          "src": {
+            "expr": "param",
+            "name": "src"
+          },
+          "alt": {
+            "expr": "param",
+            "name": "alt"
+          },
+          "className": {
+            "expr": "lit",
+            "value": "aspect-square h-full w-full"
+          }
         }
       }
     ]

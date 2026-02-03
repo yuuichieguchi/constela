@@ -1,23 +1,44 @@
 {
   "params": {
-    "items": { "type": "list", "required": true },
-    "orientation": { "type": "string", "required": false },
-    "position": { "type": "string", "required": false }
+    "items": {
+      "type": "json",
+      "required": true
+    },
+    "orientation": {
+      "type": "string",
+      "required": false
+    },
+    "position": {
+      "type": "string",
+      "required": false
+    }
   },
   "view": {
     "kind": "element",
     "tag": "div",
     "props": {
-      "role": { "expr": "lit", "value": "list" },
+      "role": {
+        "expr": "lit",
+        "value": "list"
+      },
       "className": {
         "expr": "style",
-        "preset": "chartLegend",
-        "props": {
+        "name": "chartLegend",
+        "variants": {
           "orientation": {
             "expr": "cond",
-            "test": { "expr": "param", "name": "orientation" },
-            "then": { "expr": "param", "name": "orientation" },
-            "else": { "expr": "lit", "value": "horizontal" }
+            "if": {
+              "expr": "param",
+              "name": "orientation"
+            },
+            "then": {
+              "expr": "param",
+              "name": "orientation"
+            },
+            "else": {
+              "expr": "lit",
+              "value": "horizontal"
+            }
           }
         }
       }
@@ -25,19 +46,28 @@
     "children": [
       {
         "kind": "each",
-        "items": { "expr": "param", "name": "items" },
+        "items": {
+          "expr": "param",
+          "name": "items"
+        },
         "as": "item",
         "index": "idx",
         "body": {
           "kind": "element",
           "tag": "div",
           "props": {
-            "role": { "expr": "lit", "value": "listitem" },
+            "role": {
+              "expr": "lit",
+              "value": "listitem"
+            },
             "className": {
               "expr": "style",
-              "preset": "chartLegendItem",
-              "props": {
-                "state": { "expr": "lit", "value": "default" }
+              "name": "chartLegendItem",
+              "variants": {
+                "state": {
+                  "expr": "lit",
+                  "value": "default"
+                }
               }
             }
           },
@@ -46,18 +76,41 @@
               "kind": "element",
               "tag": "span",
               "props": {
-                "className": { "expr": "lit", "value": "w-3 h-3 rounded-sm" },
+                "className": {
+                  "expr": "lit",
+                  "value": "w-3 h-3 rounded-sm"
+                },
                 "style": {
                   "expr": "call",
                   "target": null,
                   "method": "concat",
                   "args": [
-                    { "expr": "lit", "value": "background-color: " },
+                    {
+                      "expr": "lit",
+                      "value": "background-color: "
+                    },
                     {
                       "expr": "cond",
-                      "test": { "expr": "get", "obj": { "expr": "var", "name": "item" }, "key": "color" },
-                      "then": { "expr": "get", "obj": { "expr": "var", "name": "item" }, "key": "color" },
-                      "else": { "expr": "lit", "value": "#3b82f6" }
+                      "if": {
+                        "expr": "get",
+                        "base": {
+                          "expr": "var",
+                          "name": "item"
+                        },
+                        "path": "color"
+                      },
+                      "then": {
+                        "expr": "get",
+                        "base": {
+                          "expr": "var",
+                          "name": "item"
+                        },
+                        "path": "color"
+                      },
+                      "else": {
+                        "expr": "lit",
+                        "value": "#3b82f6"
+                      }
                     }
                   ]
                 }
@@ -70,7 +123,14 @@
               "children": [
                 {
                   "kind": "text",
-                  "content": { "expr": "get", "obj": { "expr": "var", "name": "item" }, "key": "label" }
+                  "value": {
+                    "expr": "get",
+                    "base": {
+                      "expr": "var",
+                      "name": "item"
+                    },
+                    "path": "label"
+                  }
                 }
               ]
             }

@@ -380,7 +380,9 @@ function validateExpression(
 
     case 'call': {
       const callExpr = expr as CallExpr;
-      errors.push(...validateExpression(callExpr.target, buildPath(path, 'target'), context, scope, paramScope));
+      if (callExpr.target !== null) {
+        errors.push(...validateExpression(callExpr.target, buildPath(path, 'target'), context, scope, paramScope));
+      }
       if (callExpr.args) {
         for (let i = 0; i < callExpr.args.length; i++) {
           const arg = callExpr.args[i];
@@ -869,7 +871,9 @@ function validateExpressionStateOnly(
 
     case 'call': {
       const callExpr = expr as CallExpr;
-      errors.push(...validateExpressionStateOnly(callExpr.target, buildPath(path, 'target'), context));
+      if (callExpr.target !== null) {
+        errors.push(...validateExpressionStateOnly(callExpr.target, buildPath(path, 'target'), context));
+      }
       if (callExpr.args) {
         for (let i = 0; i < callExpr.args.length; i++) {
           const arg = callExpr.args[i];
@@ -1082,7 +1086,9 @@ function validateExpressionInEventPayload(
 
     case 'call': {
       const callExpr = expr as CallExpr;
-      errors.push(...validateExpressionInEventPayload(callExpr.target, buildPath(path, 'target'), context, scope));
+      if (callExpr.target !== null) {
+        errors.push(...validateExpressionInEventPayload(callExpr.target, buildPath(path, 'target'), context, scope));
+      }
       if (callExpr.args) {
         for (let i = 0; i < callExpr.args.length; i++) {
           const arg = callExpr.args[i];

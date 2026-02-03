@@ -159,7 +159,7 @@ describe('Accordion Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'accordionStyles',
+          name: 'accordionStyles',
         });
       });
     });
@@ -247,7 +247,7 @@ describe('Accordion Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'accordionItemStyles',
+          name: 'accordionItemStyles',
         });
       });
     });
@@ -359,7 +359,7 @@ describe('Accordion Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'accordionTriggerStyles',
+          name: 'accordionTriggerStyles',
         });
       });
     });
@@ -511,7 +511,7 @@ describe('Accordion Component Suite', () => {
         expect(className).not.toBeNull();
         expect(className).toMatchObject({
           expr: 'style',
-          preset: 'accordionContentStyles',
+          name: 'accordionContentStyles',
         });
       });
     });

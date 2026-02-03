@@ -1,10 +1,19 @@
 {
   "params": {
-    "value": { "type": "string", "required": true },
-    "disabled": { "type": "boolean", "required": false }
+    "value": {
+      "type": "string",
+      "required": true
+    },
+    "disabled": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "localState": {
-    "isExpanded": { "type": "boolean", "initial": false }
+    "isExpanded": {
+      "type": "boolean",
+      "initial": false
+    }
   },
   "view": {
     "kind": "element",
@@ -12,9 +21,13 @@
     "props": {
       "className": {
         "expr": "style",
-        "preset": "accordionItemStyles"
+        "name": "accordionItemStyles"
       }
     },
-    "children": [{ "kind": "slot" }]
+    "children": [
+      {
+        "kind": "slot"
+      }
+    ]
   }
 }

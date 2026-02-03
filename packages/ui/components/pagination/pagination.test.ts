@@ -57,7 +57,7 @@ describe('Pagination Component', () => {
       // StyleExpr should have expr: 'style' and preset reference
       expect(className).toMatchObject({
         expr: 'style',
-        preset: 'paginationStyles',
+        name: 'paginationStyles',
       });
     });
   });
@@ -161,7 +161,7 @@ describe('Pagination Component', () => {
       const className = findPropInView(ctx.component.view, 'className');
       expect(className).toMatchObject({
         expr: 'style',
-        props: expect.objectContaining({
+        variants: expect.objectContaining({
           size: expect.objectContaining({ expr: 'param', name: 'size' }),
         }),
       });
