@@ -41,6 +41,7 @@ export type {
   CallExpr,
   LambdaExpr,
   ArrayExpr,
+  ObjExpr,
   // State Fields
   StateField,
   NumberField,

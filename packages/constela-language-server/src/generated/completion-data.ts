@@ -22,6 +22,7 @@ export const EXPR_TYPES = [
   { label: 'call', detail: 'Call expression - calls a method on a target', kind: CompletionItemKind.Method },
   { label: 'lambda', detail: 'Lambda expression - anonymous function for array methods', kind: CompletionItemKind.Method },
   { label: 'array', detail: 'Array expression - constructs an array from expressions', kind: CompletionItemKind.Value },
+  { label: 'obj', detail: 'Object expression - constructs an object from key-value pairs', kind: CompletionItemKind.Value },
 ];
 
 export const ACTION_STEPS = [

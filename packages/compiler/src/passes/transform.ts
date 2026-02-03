@@ -19,6 +19,7 @@ import type {
   CallExpr,
   LambdaExpr,
   ArrayExpr,
+  ObjExpr,
   IslandStrategy,
   IslandStrategyOptions,
   IslandNode,
@@ -523,7 +524,8 @@ export type CompiledExpression =
   | CompiledValidityExpr
   | CompiledCallExpr
   | CompiledLambdaExpr
-  | CompiledArrayExpr;
+  | CompiledArrayExpr
+  | CompiledObjExpr;
 
 export interface CompiledLitExpr {
   expr: 'lit';
@@ -636,6 +638,11 @@ export interface CompiledLambdaExpr {
 export interface CompiledArrayExpr {
   expr: 'array';
   elements: CompiledExpression[];
+}
+
+export interface CompiledObjExpr {
+  expr: 'obj';
+  props: Record<string, CompiledExpression>;
 }
 
 // ==================== Compiled Event Handler ====================
@@ -884,6 +891,18 @@ function transformExpression(expr: Expression, ctx: TransformContext): CompiledE
         expr: 'array',
         elements: arrayExpr.elements.map(elem => transformExpression(elem, ctx)),
       };
+    }
+
+    case 'obj': {
+      const objExpr = expr as ObjExpr;
+      const props: Record<string, CompiledExpression> = {};
+      for (const [key, value] of Object.entries(objExpr.props)) {
+        props[key] = transformExpression(value, ctx);
+      }
+      return {
+        expr: 'obj',
+        props,
+      } as CompiledObjExpr;
     }
   }
 }

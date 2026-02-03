@@ -289,7 +289,15 @@ export interface ArrayExpr {
   elements: Expression[];
 }
 
-export type Expression = LitExpr | StateExpr | LocalExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr | ArrayExpr;
+/**
+ * Object expression - constructs an object from key-value pairs
+ */
+export interface ObjExpr {
+  expr: 'obj';
+  props: Record<string, Expression>;
+}
+
+export type Expression = LitExpr | StateExpr | LocalExpr | VarExpr | BinExpr | NotExpr | ParamExpr | CondExpr | GetExpr | RouteExpr | ImportExpr | DataExpr | RefExpr | IndexExpr | StyleExpr | ConcatExpr | ValidityExpr | CallExpr | LambdaExpr | ArrayExpr | ObjExpr;
 
 // ==================== State Fields ====================
 

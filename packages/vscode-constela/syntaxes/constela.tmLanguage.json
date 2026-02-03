@@ -104,7 +104,7 @@
       }
     },
     "expr-key": {
-      "match": "\"(expr)\"\\s*:\\s*\"(array|bin|call|concat|cond|data|get|import|index|lambda|lit|local|not|param|ref|route|state|style|validity|var)\"",
+      "match": "\"(expr)\"\\s*:\\s*\"(array|bin|call|concat|cond|data|get|import|index|lambda|lit|local|not|obj|param|ref|route|state|style|validity|var)\"",
       "captures": {
         "1": {
           "name": "keyword.control.constela"

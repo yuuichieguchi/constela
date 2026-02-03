@@ -81,6 +81,10 @@ export const EXPR_DOCS: Record<string, { signature: string; description: string 
     signature: '{ "expr": "array", "elements": Expression[] }',
     description: 'Array expression - constructs an array from expressions',
   },
+  obj: {
+    signature: '{ "expr": "obj", "props": Record<string, Expression> }',
+    description: 'Object expression - constructs an object from key-value pairs',
+  },
 };
 
 export const ACTION_DOCS: Record<string, { signature: string; description: string }> = {

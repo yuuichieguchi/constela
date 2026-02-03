@@ -587,6 +587,15 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
       return arrayExpr.elements.map(elem => evaluate(elem, ctx));
     }
 
+    case 'obj': {
+      const objExpr = expr as { expr: 'obj'; props: Record<string, CompiledExpression> };
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(objExpr.props)) {
+        result[key] = evaluate(value, ctx);
+      }
+      return result;
+    }
+
     default: {
       const _exhaustiveCheck: never = expr;
       throw new Error(`Unknown expression type: ${JSON.stringify(_exhaustiveCheck)}`);
