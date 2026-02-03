@@ -948,12 +948,27 @@ function renderPortal(node: CompiledPortalNode, ctx: RenderContext): Node {
  * Creates a local state store with reactive signals for each state property
  */
 function createLocalStateStore(
-  stateDefs: Record<string, { type: string; initial: unknown }>
+  stateDefs: Record<string, { type: string; initial: unknown }>,
+  ctx: RenderContext
 ): LocalStateStore {
   const signals: Record<string, Signal<unknown>> = {};
 
   for (const [name, def] of Object.entries(stateDefs)) {
-    signals[name] = createSignal<unknown>(def.initial);
+    // def.initial may be a CompiledExpression or a literal value
+    const initial = def.initial;
+    let initialValue: unknown;
+    if (initial && typeof initial === 'object' && 'expr' in (initial as object)) {
+      const evalCtx: Parameters<typeof evaluate>[1] = {
+        state: ctx.state,
+        locals: ctx.locals,
+      };
+      if (ctx.route) evalCtx.route = ctx.route;
+      if (ctx.imports) evalCtx.imports = ctx.imports;
+      initialValue = evaluate(initial as CompiledExpression, evalCtx);
+    } else {
+      initialValue = initial;
+    }
+    signals[name] = createSignal<unknown>(initialValue);
   }
 
   return {
@@ -1069,7 +1084,7 @@ interface ExtendedAction extends CompiledAction {
  */
 function renderLocalState(node: CompiledLocalStateNode, ctx: RenderContext): Node {
   // Create local state store with signals
-  const localStore = createLocalStateStore(node.state);
+  const localStore = createLocalStateStore(node.state, ctx);
 
   // Create merged locals with local state
   const mergedLocals = createLocalsWithLocalState(ctx.locals, localStore);

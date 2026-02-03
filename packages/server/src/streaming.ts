@@ -1146,10 +1146,16 @@ async function renderPortalToStream(node: CompiledPortalNode, ctx: StreamingCont
  * Renders a local state node to the stream
  */
 async function renderLocalStateToStream(node: CompiledLocalStateNode, ctx: StreamingContext): Promise<void> {
-  // Create a map of local state with initial values
+  // Create a map of local state with initial values (evaluate expressions)
   const localStateValues: Record<string, unknown> = {};
   for (const [name, field] of Object.entries(node.state)) {
-    localStateValues[name] = (field as { initial: unknown }).initial;
+    const initial = (field as { initial: unknown }).initial;
+    // field.initial may be a CompiledExpression or a literal value
+    if (initial && typeof initial === 'object' && 'expr' in (initial as object)) {
+      localStateValues[name] = evaluate(initial as CompiledExpression, ctx);
+    } else {
+      localStateValues[name] = initial;
+    }
   }
 
   // Create a new context with local state merged into locals

@@ -1009,10 +1009,16 @@ async function renderPortal(node: CompiledPortalNode, ctx: SSRContext): Promise<
  * The local state is made available to the child node via the context.
  */
 async function renderLocalState(node: CompiledLocalStateNode, ctx: SSRContext): Promise<string> {
-  // Create a map of local state with initial values
+  // Create a map of local state with initial values (evaluate expressions)
   const localStateValues: Record<string, unknown> = {};
   for (const [name, field] of Object.entries(node.state)) {
-    localStateValues[name] = field.initial;
+    // field.initial may be a CompiledExpression or a literal value
+    const initial = field.initial;
+    if (initial && typeof initial === 'object' && 'expr' in initial) {
+      localStateValues[name] = evaluate(initial as CompiledExpression, ctx);
+    } else {
+      localStateValues[name] = initial;
+    }
   }
 
   // Create a new context with local state merged into locals
