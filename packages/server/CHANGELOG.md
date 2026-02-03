@@ -1,5 +1,11 @@
 # @constela/server
 
+## 14.0.3
+
+### Patch Changes
+
+- fix: evaluate localState initial expressions instead of using them as literal values
+
 ## 14.0.2
 
 ### Patch Changes
