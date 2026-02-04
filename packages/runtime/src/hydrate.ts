@@ -551,36 +551,33 @@ function hydrateElement(
 }
 
 /**
- * Finds an SSR if branch marker in the DOM.
- * Searches for <!--if:then-->, <!--if:else-->, or <!--if:none--> comments.
- *
- * @param parent - The parent node to search in
- * @param beforeNode - Search for markers before this node (or at end of parent if null)
- * @returns The marker info or null if not found
+ * Information about an SSR if branch marker
  */
-function findSsrIfBranchMarker(
-  parent: Node,
-  beforeNode: Node | null
-): { branch: 'then' | 'else' | 'none'; marker: Comment } | null {
-  // Search backwards from beforeNode (or from end of parent)
-  let current: Node | null = beforeNode
-    ? beforeNode.previousSibling
-    : parent.lastChild;
+interface IfMarkerInfo {
+  branch: 'then' | 'else' | 'none';
+  marker: Comment;
+}
 
-  while (current) {
-    if (current.nodeType === Node.COMMENT_NODE) {
-      const comment = current as Comment;
-      const text = comment.textContent;
-      if (text === 'if:then') return { branch: 'then', marker: comment };
-      if (text === 'if:else') return { branch: 'else', marker: comment };
-      if (text === 'if:none') return { branch: 'none', marker: comment };
+/**
+ * Collects all SSR if branch markers from a parent node in document order.
+ * This is used to match markers with if nodes sequentially.
+ */
+function collectIfMarkers(parent: Node): IfMarkerInfo[] {
+  const markers: IfMarkerInfo[] = [];
+  for (let i = 0; i < parent.childNodes.length; i++) {
+    const child = parent.childNodes[i]!;
+    if (child.nodeType === Node.COMMENT_NODE) {
+      const text = (child as Comment).textContent;
+      if (text === 'if:then') {
+        markers.push({ branch: 'then', marker: child as Comment });
+      } else if (text === 'if:else') {
+        markers.push({ branch: 'else', marker: child as Comment });
+      } else if (text === 'if:none') {
+        markers.push({ branch: 'none', marker: child as Comment });
+      }
     }
-    // Stop at element nodes - marker should be immediately before if content
-    if (current.nodeType === Node.ELEMENT_NODE) break;
-    current = current.previousSibling;
   }
-
-  return null; // No marker found (backward compatibility)
+  return markers;
 }
 
 /**
@@ -602,6 +599,10 @@ function hydrateChildren(
       domChildren.push(child);
     }
   }
+
+  // Collect all if markers upfront to consume sequentially
+  const ifMarkers = collectIfMarkers(parent);
+  let ifMarkerIndex = 0;
 
   let domIndex = 0;
 
@@ -655,31 +656,29 @@ function hydrateChildren(
           ? 'else'
           : 'none';
 
-      // Find SSR marker
-      const domChild = domChildren[domIndex];
-      const ssrInfo = findSsrIfBranchMarker(parent, domChild || null);
-      const ssrBranch = ssrInfo?.branch ?? null;
+      // Get SSR marker by consuming from collected markers in order
+      const ssrInfo = ifMarkerIndex < ifMarkers.length ? ifMarkers[ifMarkerIndex] : null;
+      ifMarkerIndex++;
 
-      // Determine if SSR produced DOM
+      const ssrBranch = ssrInfo?.branch ?? null;
       const ssrHasDom = ssrBranch === 'then' || ssrBranch === 'else';
 
       if (ssrInfo?.marker) {
-        // Remove the marker comment
         ssrInfo.marker.remove();
       }
 
-      if (ssrHasDom && domChild) {
-        // SSR rendered content - hydrate with branch info
+      if (ssrHasDom && domChildren[domIndex]) {
+        const domChild = domChildren[domIndex]!;
         hydrateIf(ifNode, domChild, ctx, { ssrBranch: ssrBranch!, clientBranch });
         domIndex++;
       } else if (ssrBranch === 'none') {
-        // SSR rendered nothing
         hydrateIfWithoutDom(ifNode, parent, domChildren[domIndex] || null, ctx, {
           clientBranch,
         });
       } else {
-        // No marker (backward compatibility) - use existing logic
+        // No marker (backward compatibility)
         const hasDomForIf = Boolean(clientCondition) || Boolean(ifNode.else);
+        const domChild = domChildren[domIndex];
         if (hasDomForIf && domChild) {
           hydrate(childNode, domChild, ctx);
           domIndex++;

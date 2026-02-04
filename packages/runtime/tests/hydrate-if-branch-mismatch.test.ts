@@ -845,4 +845,230 @@ describe('hydrateIf SSR/Client branch mismatch', () => {
       expect(container.querySelector('#content')?.textContent).toBe('Content');
     });
   });
+
+  // ==================== Consecutive If Nodes ====================
+
+  describe('consecutive if nodes', () => {
+    it('should handle consecutive if nodes with none followed by then', async () => {
+      /**
+       * Scenario: Two consecutive if nodes
+       * - First if: condition false, no else -> none (no DOM)
+       * - Second if: condition true -> then (has DOM)
+       *
+       * Bug: When first if has "none", the marker search for second if
+       * may incorrectly find the first if's marker due to domChildren
+       * array excluding comment nodes.
+       *
+       * SSR output: <!--if:none--><!--if:then--><div>Loading...</div>
+       * Expected: First if should have no DOM, second if should hydrate the Loading div
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          errorMsg: { type: 'string', initial: '' }, // falsy -> first if is none
+          isLoading: { type: 'number', initial: 1 }, // truthy -> second if is then
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'errorMsg' },
+              then: {
+                kind: 'element',
+                tag: 'span',
+                props: {},
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Error' } }],
+              },
+              // No else branch
+            },
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'isLoading' },
+              then: {
+                kind: 'element',
+                tag: 'div',
+                props: { id: { expr: 'lit', value: 'loading' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Loading...' } }],
+              },
+              // No else branch
+            },
+          ],
+        },
+      });
+
+      // SSR output: first if rendered nothing (none), second if rendered then branch
+      container.innerHTML = '<div><!--if:none--><!--if:then--><div id="loading">Loading...</div></div>';
+
+      // Get reference to the existing div to verify it's hydrated (not replaced)
+      const existingDiv = container.querySelector('#loading');
+
+      // Act
+      const app = hydrateApp({ program, container });
+      await Promise.resolve();
+
+      // Assert
+      // First if should have inserted nothing (errorMsg is empty string = falsy)
+      // Second if should have hydrated the existing Loading div
+      expect(container.querySelector('#loading')).not.toBeNull();
+      expect(container.querySelector('#loading')?.textContent).toBe('Loading...');
+
+      // Verify the Loading div is still the same element (hydrated, not replaced)
+      expect(container.querySelector('#loading')).toBe(existingDiv);
+    });
+
+    it('should handle consecutive if nodes with then followed by none', async () => {
+      /**
+       * Scenario: Two consecutive if nodes
+       * - First if: condition true -> then (has DOM)
+       * - Second if: condition false, no else -> none (no DOM)
+       *
+       * SSR output: <!--if:then--><span>Visible</span><!--if:none-->
+       * Expected: First if should hydrate the span, second if should have no DOM
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          showFirst: { type: 'number', initial: 1 }, // truthy -> first if is then
+          showSecond: { type: 'number', initial: 0 }, // falsy -> second if is none
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'showFirst' },
+              then: {
+                kind: 'element',
+                tag: 'span',
+                props: { id: { expr: 'lit', value: 'visible' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Visible' } }],
+              },
+              // No else branch
+            },
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'showSecond' },
+              then: {
+                kind: 'element',
+                tag: 'div',
+                props: { id: { expr: 'lit', value: 'hidden' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Hidden' } }],
+              },
+              // No else branch
+            },
+          ],
+        },
+      });
+
+      // SSR output: first if rendered then branch, second if rendered nothing (none)
+      container.innerHTML = '<div><!--if:then--><span id="visible">Visible</span><!--if:none--></div>';
+
+      // Get reference to the existing span to verify it's hydrated (not replaced)
+      const existingSpan = container.querySelector('#visible');
+
+      // Act
+      const app = hydrateApp({ program, container });
+      await Promise.resolve();
+
+      // Assert
+      // First if should have hydrated the span
+      expect(container.querySelector('#visible')).not.toBeNull();
+      expect(container.querySelector('#visible')?.textContent).toBe('Visible');
+      expect(container.querySelector('#visible')).toBe(existingSpan);
+
+      // Second if should have inserted nothing
+      expect(container.querySelector('#hidden')).toBeNull();
+    });
+
+    it('should handle three consecutive if nodes with mixed branches', async () => {
+      /**
+       * Scenario: Three consecutive if nodes
+       * - First if: condition false, no else -> none
+       * - Second if: condition true -> then
+       * - Third if: condition false, no else -> none
+       *
+       * This tests the most complex case where multiple "none" markers
+       * surround a "then" marker. The marker detection must correctly
+       * associate each marker with its corresponding if node.
+       *
+       * SSR output: <!--if:none--><!--if:then--><p>Middle</p><!--if:none-->
+       * Expected: Only the middle paragraph should be hydrated
+       */
+
+      // Arrange
+      const program = createMinimalProgram({
+        state: {
+          first: { type: 'number', initial: 0 }, // falsy -> none
+          second: { type: 'number', initial: 1 }, // truthy -> then
+          third: { type: 'number', initial: 0 }, // falsy -> none
+        },
+        view: {
+          kind: 'element',
+          tag: 'div',
+          children: [
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'first' },
+              then: {
+                kind: 'element',
+                tag: 'span',
+                props: { id: { expr: 'lit', value: 'first' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'First' } }],
+              },
+              // No else branch
+            },
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'second' },
+              then: {
+                kind: 'element',
+                tag: 'p',
+                props: { id: { expr: 'lit', value: 'middle' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Middle' } }],
+              },
+              // No else branch
+            },
+            {
+              kind: 'if',
+              condition: { expr: 'state', name: 'third' },
+              then: {
+                kind: 'element',
+                tag: 'div',
+                props: { id: { expr: 'lit', value: 'third' } },
+                children: [{ kind: 'text', value: { expr: 'lit', value: 'Third' } }],
+              },
+              // No else branch
+            },
+          ],
+        },
+      });
+
+      // SSR output: first none, second then, third none
+      container.innerHTML = '<div><!--if:none--><!--if:then--><p id="middle">Middle</p><!--if:none--></div>';
+
+      // Get reference to the existing paragraph to verify it's hydrated (not replaced)
+      const existingP = container.querySelector('#middle');
+
+      // Act
+      const app = hydrateApp({ program, container });
+      await Promise.resolve();
+
+      // Assert
+      // First if should have no DOM
+      expect(container.querySelector('#first')).toBeNull();
+
+      // Second if should have hydrated the paragraph
+      expect(container.querySelector('#middle')).not.toBeNull();
+      expect(container.querySelector('#middle')?.textContent).toBe('Middle');
+      expect(container.querySelector('#middle')).toBe(existingP);
+
+      // Third if should have no DOM
+      expect(container.querySelector('#third')).toBeNull();
+    });
+  });
 });
