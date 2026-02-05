@@ -1,5 +1,16 @@
 # @constela/ui
 
+## 0.4.9
+
+### Patch Changes
+
+- fix(ui): implement DataTable auto-generation from columns/data params
+
+  - Replace slot-only view with full table structure (thead/tbody)
+  - Add localActions for state management (handleSort, handleFilter, handlePageChange, handleSelectionChange, toggleRowSelection)
+  - Use each nodes to iterate over columns/data params
+  - Use IndexExpr for dynamic cell value access (row[col.key])
+
 ## 0.4.8
 
 ### Patch Changes
