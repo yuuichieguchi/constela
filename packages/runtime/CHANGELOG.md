@@ -1,5 +1,51 @@
 # @constela/runtime
 
+## 2.0.8
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+
+## 2.0.7
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.5
+  - @constela/ai@3.0.5
+  - @constela/compiler@0.15.11
+
+## 2.0.6
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.4
+  - @constela/ai@3.0.4
+  - @constela/compiler@0.15.10
+
+## 2.0.5
+
+### Patch Changes
+
+- revert: LineChart/AreaChart の不完全な修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.3
+  - @constela/ai@3.0.3
+  - @constela/compiler@0.15.9
+
+## 2.0.4
+
+### Patch Changes
+
+- Fix consecutive if nodes hydration marker detection
+
+  SSR markers were misaligned when multiple consecutive if nodes existed.
+  The fix pre-collects all if markers and consumes them sequentially,
+  ensuring correct marker-to-if-node matching regardless of branch types.
+
 ## 2.0.3
 
 ### Patch Changes

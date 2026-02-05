@@ -1,5 +1,26 @@
 # @constela/ai
 
+## 3.0.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.5
+
+## 3.0.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.4
+
+## 3.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.3
+
 ## 3.0.2
 
 ### Patch Changes

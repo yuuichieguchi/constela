@@ -1,5 +1,35 @@
 # @constela/ui
 
+## 0.4.8
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+
+## 0.4.7
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.5
+
+## 0.4.6
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.4
+
+## 0.4.5
+
+### Patch Changes
+
+- revert: LineChart/AreaChart の不完全な修正を取り消し
+- Updated dependencies
+  - @constela/core@0.18.3
+
 ## 0.4.4
 
 ### Patch Changes

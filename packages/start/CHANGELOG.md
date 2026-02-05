@@ -1,5 +1,57 @@
 # @constela/start
 
+## 1.9.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@2.0.8
+  - @constela/router@20.0.0
+
+## 1.9.14
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.5
+  - @constela/runtime@2.0.7
+  - @constela/server@14.0.6
+  - @constela/ai@3.0.5
+  - @constela/compiler@0.15.11
+  - @constela/router@20.0.0
+
+## 1.9.13
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.4
+  - @constela/runtime@2.0.6
+  - @constela/server@14.0.5
+  - @constela/ai@3.0.4
+  - @constela/compiler@0.15.10
+  - @constela/router@20.0.0
+
+## 1.9.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.18.3
+  - @constela/runtime@2.0.5
+  - @constela/server@14.0.4
+  - @constela/ai@3.0.3
+  - @constela/compiler@0.15.9
+  - @constela/router@20.0.0
+
+## 1.9.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@2.0.4
+  - @constela/router@20.0.0
+
 ## 1.9.10
 
 ### Patch Changes

@@ -1,5 +1,23 @@
 # @constela/core
 
+## 0.18.5
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+
+## 0.18.4
+
+### Patch Changes
+
+- revert: 不完全な LineChart 修正を取り消し
+
+## 0.18.3
+
+### Patch Changes
+
+- revert: LineChart/AreaChart の不完全な修正を取り消し
+
 ## 0.18.2
 
 ### Patch Changes
