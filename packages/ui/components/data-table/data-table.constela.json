@@ -55,30 +55,212 @@
       "initial": []
     }
   },
+  "localActions": [
+    {
+      "name": "handleSort",
+      "steps": [
+        {
+          "do": "set",
+          "target": "sortColumn",
+          "value": { "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "key" }
+        },
+        {
+          "do": "set",
+          "target": "sortDirection",
+          "value": { "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "direction" }
+        }
+      ]
+    },
+    {
+      "name": "handleFilter",
+      "steps": [
+        {
+          "do": "set",
+          "target": "filterText",
+          "value": { "expr": "var", "name": "payload" }
+        }
+      ]
+    },
+    {
+      "name": "handlePageChange",
+      "steps": [
+        {
+          "do": "set",
+          "target": "currentPage",
+          "value": { "expr": "var", "name": "payload" }
+        }
+      ]
+    },
+    {
+      "name": "handleSelectionChange",
+      "steps": [
+        {
+          "do": "set",
+          "target": "selectedRows",
+          "value": { "expr": "var", "name": "payload" }
+        }
+      ]
+    },
+    {
+      "name": "toggleRowSelection",
+      "steps": [
+        {
+          "do": "set",
+          "target": "selectedRows",
+          "value": {
+            "expr": "cond",
+            "if": {
+              "expr": "call",
+              "target": { "expr": "local", "name": "selectedRows" },
+              "method": "includes",
+              "args": [{ "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "rowId" }]
+            },
+            "then": {
+              "expr": "call",
+              "target": { "expr": "local", "name": "selectedRows" },
+              "method": "filter",
+              "args": [{
+                "expr": "lambda",
+                "param": "id",
+                "body": {
+                  "expr": "bin",
+                  "op": "!=",
+                  "left": { "expr": "var", "name": "id" },
+                  "right": { "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "rowId" }
+                }
+              }]
+            },
+            "else": {
+              "expr": "call",
+              "target": { "expr": "local", "name": "selectedRows" },
+              "method": "concat",
+              "args": [{ "expr": "get", "base": { "expr": "var", "name": "payload" }, "path": "rowId" }]
+            }
+          }
+        }
+      ]
+    }
+  ],
   "view": {
     "kind": "element",
     "tag": "table",
     "props": {
-      "role": {
-        "expr": "lit",
-        "value": "table"
-      },
+      "role": { "expr": "lit", "value": "table" },
       "aria-rowcount": {
         "expr": "call",
-        "target": {
-          "expr": "param",
-          "name": "data"
-        },
+        "target": { "expr": "param", "name": "data" },
         "method": "length"
       },
-      "className": {
-        "expr": "style",
-        "name": "dataTableContainer"
-      }
+      "className": { "expr": "style", "name": "dataTableContainer" }
     },
     "children": [
       {
-        "kind": "slot"
+        "kind": "element",
+        "tag": "thead",
+        "props": {
+          "className": {
+            "expr": "style",
+            "name": "dataTableHeader",
+            "variants": {
+              "sticky": { "expr": "param", "name": "stickyHeader" }
+            }
+          }
+        },
+        "children": [{
+          "kind": "element",
+          "tag": "tr",
+          "props": {
+            "className": { "expr": "style", "name": "dataTableHeaderRow" }
+          },
+          "children": [{
+            "kind": "each",
+            "items": { "expr": "param", "name": "columns" },
+            "as": "col",
+            "body": {
+              "kind": "element",
+              "tag": "th",
+              "props": {
+                "role": { "expr": "lit", "value": "columnheader" },
+                "className": {
+                  "expr": "style",
+                  "name": "dataTableHeaderCell",
+                  "variants": {
+                    "sortable": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "sortable" },
+                    "align": {
+                      "expr": "cond",
+                      "if": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "align" },
+                      "then": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "align" },
+                      "else": { "expr": "lit", "value": "left" }
+                    }
+                  }
+                }
+              },
+              "children": [{
+                "kind": "text",
+                "value": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "title" }
+              }]
+            }
+          }]
+        }]
+      },
+      {
+        "kind": "element",
+        "tag": "tbody",
+        "props": {
+          "className": { "expr": "style", "name": "dataTableBody" }
+        },
+        "children": [{
+          "kind": "each",
+          "items": { "expr": "param", "name": "data" },
+          "as": "row",
+          "index": "rowIdx",
+          "body": {
+            "kind": "element",
+            "tag": "tr",
+            "props": {
+              "role": { "expr": "lit", "value": "row" },
+              "aria-rowindex": {
+                "expr": "bin",
+                "op": "+",
+                "left": { "expr": "var", "name": "rowIdx" },
+                "right": { "expr": "lit", "value": 1 }
+              },
+              "className": { "expr": "style", "name": "dataTableRow" }
+            },
+            "children": [{
+              "kind": "each",
+              "items": { "expr": "param", "name": "columns" },
+              "as": "col",
+              "body": {
+                "kind": "element",
+                "tag": "td",
+                "props": {
+                  "role": { "expr": "lit", "value": "cell" },
+                  "className": {
+                    "expr": "style",
+                    "name": "dataTableCell",
+                    "variants": {
+                      "align": {
+                        "expr": "cond",
+                        "if": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "align" },
+                        "then": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "align" },
+                        "else": { "expr": "lit", "value": "left" }
+                      }
+                    }
+                  }
+                },
+                "children": [{
+                  "kind": "text",
+                  "value": {
+                    "expr": "index",
+                    "base": { "expr": "var", "name": "row" },
+                    "key": { "expr": "get", "base": { "expr": "var", "name": "col" }, "path": "key" }
+                  }
+                }]
+              }
+            }]
+          }
+        }]
       }
     ]
   }

@@ -37,6 +37,65 @@ import {
 // ==================== Test Utilities ====================
 
 /**
+ * Find a child element by tag in the view tree
+ */
+function findChildByTag(view: any, tag: string): any {
+  if (!view || !view.children) return null;
+  for (const child of view.children) {
+    if (child.kind === 'element' && child.tag === tag) {
+      return child;
+    }
+    // Recursively search
+    const found = findChildByTag(child, tag);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Check if view contains an each node iterating over a specific param
+ */
+function hasEachNode(view: any, paramName: string): boolean {
+  if (!view) return false;
+  if (view.kind === 'each') {
+    if (view.items?.expr === 'param' && view.items?.name === paramName) {
+      return true;
+    }
+  }
+  if (view.children) {
+    return view.children.some((child: any) => hasEachNode(child, paramName));
+  }
+  if (view.body) {
+    return hasEachNode(view.body, paramName);
+  }
+  if (view.then) {
+    return hasEachNode(view.then, paramName);
+  }
+  return false;
+}
+
+/**
+ * Check if view contains an IndexExpr node
+ */
+function hasIndexExpr(view: any): boolean {
+  if (!view) return false;
+  if (typeof view === 'object') {
+    if (view.expr === 'index') {
+      return true;
+    }
+    for (const key of Object.keys(view)) {
+      if (hasIndexExpr(view[key])) {
+        return true;
+      }
+    }
+  }
+  if (Array.isArray(view)) {
+    return view.some(hasIndexExpr);
+  }
+  return false;
+}
+
+/**
  * Get the path to a component file in the data-table directory
  */
 function getDataTableComponentPath(fileName: string): string {
@@ -370,6 +429,88 @@ describe('DataTable Component Suite', () => {
         const dataTableWrapper = ctx.styles['dataTableWrapper'];
         expect(dataTableWrapper).toBeDefined();
         assertValidStylePreset(dataTableWrapper);
+      });
+    });
+
+    // ==================== View Auto-generation Tests ====================
+
+    describe('View Auto-generation', () => {
+      it('should have thead element with column headers', () => {
+        // Verify view has a thead element
+        const thead = findChildByTag(ctx.dataTable.view, 'thead');
+        expect(thead).not.toBeNull();
+        // Check that thead contains tr with th elements generated from columns param
+        expect(thead.children).toBeDefined();
+        expect(thead.children.length).toBeGreaterThan(0);
+      });
+
+      it('should have tbody element with data rows', () => {
+        // Verify view has a tbody element
+        const tbody = findChildByTag(ctx.dataTable.view, 'tbody');
+        expect(tbody).not.toBeNull();
+        // Check that tbody uses each node to iterate over data param
+        expect(hasEachNode(tbody, 'data')).toBe(true);
+      });
+
+      it('should iterate over columns param in thead', () => {
+        // The thead should have an each node iterating over columns
+        const thead = findChildByTag(ctx.dataTable.view, 'thead');
+        expect(thead).not.toBeNull();
+        expect(hasEachNode(thead, 'columns')).toBe(true);
+      });
+
+      it('should use IndexExpr for dynamic column access in cells', () => {
+        // Verify that cells use { "expr": "index", "base": ..., "key": ... } pattern
+        // to dynamically access row[col.key]
+        const tbody = findChildByTag(ctx.dataTable.view, 'tbody');
+        expect(tbody).not.toBeNull();
+        expect(hasIndexExpr(tbody)).toBe(true);
+      });
+
+      it('should not have slot as direct child of table', () => {
+        // The view should generate content, not just have a slot
+        const hasSlotAsChild = ctx.dataTable.view.children?.some(
+          (child: any) => child.kind === 'slot'
+        );
+        expect(hasSlotAsChild).toBe(false);
+      });
+    });
+
+    // ==================== Local Actions Tests ====================
+
+    describe('Local Actions', () => {
+      it('should have handleSort local action', () => {
+        expect(ctx.dataTable.localActions).toBeDefined();
+        const handleSort = ctx.dataTable.localActions?.find((a: any) => a.name === 'handleSort');
+        expect(handleSort).toBeDefined();
+      });
+
+      it('should have handleFilter local action', () => {
+        const handleFilter = ctx.dataTable.localActions?.find(
+          (a: any) => a.name === 'handleFilter'
+        );
+        expect(handleFilter).toBeDefined();
+      });
+
+      it('should have handlePageChange local action', () => {
+        const handlePageChange = ctx.dataTable.localActions?.find(
+          (a: any) => a.name === 'handlePageChange'
+        );
+        expect(handlePageChange).toBeDefined();
+      });
+
+      it('should have handleSelectionChange local action', () => {
+        const handleSelectionChange = ctx.dataTable.localActions?.find(
+          (a: any) => a.name === 'handleSelectionChange'
+        );
+        expect(handleSelectionChange).toBeDefined();
+      });
+
+      it('should have toggleRowSelection local action', () => {
+        const toggleRowSelection = ctx.dataTable.localActions?.find(
+          (a: any) => a.name === 'toggleRowSelection'
+        );
+        expect(toggleRowSelection).toBeDefined();
       });
     });
   });
