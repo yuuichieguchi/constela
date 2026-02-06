@@ -23,7 +23,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "@constela/compiler": "^0.15.11",
+    "@constela/compiler": "^0.15.12",
     "@constela/core": "^0.18.5"
   },
   "dependencies": {

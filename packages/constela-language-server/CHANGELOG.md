@@ -1,5 +1,12 @@
 # @constela/language-server
 
+## 0.1.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.15.12
+
 ## 0.1.21
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @constela/runtime
 
+## 2.0.9
+
+### Patch Changes
+
+- fix(runtime): pass styles through context chain for client-side style expressions
+- Updated dependencies
+  - @constela/compiler@0.15.12
+
 ## 2.0.8
 
 ### Patch Changes
