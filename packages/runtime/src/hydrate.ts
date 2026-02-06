@@ -23,7 +23,7 @@ import { hydrateIsland, detectIslandsInDOM } from './hydrate-island.js';
 import { createStateStore, type StateStore } from './state/store.js';
 import { createEffect } from './reactive/effect.js';
 import { createSignal, type Signal } from './reactive/signal.js';
-import { evaluate, evaluatePayload } from './expression/evaluator.js';
+import { evaluate, evaluatePayload, type StylePreset } from './expression/evaluator.js';
 import { executeAction } from './action/executor.js';
 import { render, type RenderContext } from './renderer/index.js';
 
@@ -79,6 +79,7 @@ interface HydrateContext {
     store: LocalStateStore;
     actions: Record<string, CompiledLocalAction>;
   };
+  styles?: Record<string, StylePreset>;
 }
 
 /**
@@ -151,6 +152,7 @@ function createLocalStateStore(
       };
       if (ctx.route) evalCtx.route = ctx.route;
       if (ctx.imports) evalCtx.imports = ctx.imports;
+      if (ctx.styles) evalCtx.styles = ctx.styles;
       initialValue = evaluate(initial as CompiledExpression, evalCtx);
     } else {
       initialValue = initial;
@@ -319,6 +321,7 @@ export function hydrateApp(options: HydrateOptions): AppInstance {
     refs,
     ...(program.importData && { imports: program.importData }),
     ...(route && { route }),
+    ...(program.styles && { styles: program.styles }),
   };
 
   // Hydrate the existing DOM (before onMount so refs are available)
@@ -536,6 +539,7 @@ function hydrateElement(
             locals: ctx.locals,
             ...(ctx.imports && { imports: ctx.imports }),
             ...(ctx.route && { route: ctx.route }),
+            ...(ctx.styles && { styles: ctx.styles }),
           });
           applyProp(el, propName, value);
         });
@@ -649,6 +653,7 @@ function hydrateChildren(
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
         ...(ctx.route && { route: ctx.route }),
+        ...(ctx.styles && { styles: ctx.styles }),
       });
       const clientBranch: 'then' | 'else' | 'none' = Boolean(clientCondition)
         ? 'then'
@@ -693,6 +698,7 @@ function hydrateChildren(
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
         ...(ctx.route && { route: ctx.route }),
+        ...(ctx.styles && { styles: ctx.styles }),
       }) as unknown[];
       const itemCount = Array.isArray(items) ? items.length : 0;
 
@@ -734,6 +740,7 @@ function hydrateTextGroup(
         locals: ctx.locals,
         ...(ctx.imports && { imports: ctx.imports }),
         ...(ctx.route && { route: ctx.route }),
+        ...(ctx.styles && { styles: ctx.styles }),
       });
       combinedText += formatValue(value);
     }
@@ -788,6 +795,7 @@ function hydrateText(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     });
     textNode.textContent = formatValue(value);
   });
@@ -848,6 +856,7 @@ function hydrateIf(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     });
     currentBranch = Boolean(initialCondition) ? 'then' : node.else ? 'else' : 'none';
   }
@@ -875,6 +884,7 @@ function hydrateIf(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
@@ -911,6 +921,7 @@ function hydrateIf(
         locals: ctx.locals,
         cleanups: localCleanups,
         ...(ctx.imports && { imports: ctx.imports }),
+        ...(ctx.styles && { styles: ctx.styles }),
       };
 
       // Render new branch (create fresh DOM)
@@ -984,6 +995,7 @@ function hydrateIfWithoutDom(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     });
     const shouldShowThen = Boolean(condition);
     const newBranch = shouldShowThen ? 'then' : node.else ? 'else' : 'none';
@@ -1021,6 +1033,7 @@ function hydrateIfWithoutDom(
         cleanups: localCleanups,
         ...(ctx.imports && { imports: ctx.imports }),
         ...(ctx.route && { route: ctx.route }),
+        ...(ctx.styles && { styles: ctx.styles }),
       };
 
       // Render new branch (create fresh DOM)
@@ -1086,6 +1099,7 @@ function hydrateEachEmpty(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     }) as unknown[];
 
     if (!hasKey || !node.key) {
@@ -1122,6 +1136,7 @@ function hydrateEachEmpty(
             locals: itemLocals,
             cleanups: localCleanups,
             ...(ctx.imports && { imports: ctx.imports }),
+            ...(ctx.styles && { styles: ctx.styles }),
           };
 
           const itemNode = render(node.body, itemCtx);
@@ -1162,6 +1177,7 @@ function hydrateEachEmpty(
           locals: tempLocals,
           ...(ctx.imports && { imports: ctx.imports }),
           ...(ctx.route && { route: ctx.route }),
+          ...(ctx.styles && { styles: ctx.styles }),
         });
 
         // Duplicate key warning
@@ -1201,6 +1217,7 @@ function hydrateEachEmpty(
             locals: reactiveLocals,
             cleanups: localCleanups,
             ...(ctx.imports && { imports: ctx.imports }),
+            ...(ctx.styles && { styles: ctx.styles }),
           };
 
           const itemNode = render(node.body, itemCtx);
@@ -1291,6 +1308,7 @@ function hydrateEach(
     locals: ctx.locals,
     ...(ctx.imports && { imports: ctx.imports }),
     ...(ctx.route && { route: ctx.route }),
+    ...(ctx.styles && { styles: ctx.styles }),
   }) as unknown[];
 
   // Track if this is the first run of the effect
@@ -1318,6 +1336,7 @@ function hydrateEach(
           locals: tempLocals,
           ...(ctx.imports && { imports: ctx.imports }),
           ...(ctx.route && { route: ctx.route }),
+          ...(ctx.styles && { styles: ctx.styles }),
         });
 
         // Duplicate key warning
@@ -1415,6 +1434,7 @@ function hydrateEach(
       locals: ctx.locals,
       ...(ctx.imports && { imports: ctx.imports }),
       ...(ctx.route && { route: ctx.route }),
+      ...(ctx.styles && { styles: ctx.styles }),
     }) as unknown[];
 
     // Skip the first run - initial hydration already done above
@@ -1457,6 +1477,7 @@ function hydrateEach(
             locals: itemLocals,
             cleanups: localCleanups,
             ...(ctx.imports && { imports: ctx.imports }),
+            ...(ctx.styles && { styles: ctx.styles }),
           };
 
           const itemNode = render(node.body, itemCtx);
@@ -1497,6 +1518,7 @@ function hydrateEach(
           locals: tempLocals,
           ...(ctx.imports && { imports: ctx.imports }),
           ...(ctx.route && { route: ctx.route }),
+          ...(ctx.styles && { styles: ctx.styles }),
         });
 
         // Duplicate key warning
@@ -1537,6 +1559,7 @@ function hydrateEach(
             locals: reactiveLocals,
             cleanups: localCleanups,
             ...(ctx.imports && { imports: ctx.imports }),
+            ...(ctx.styles && { styles: ctx.styles }),
           };
 
           const itemNode = render(node.body, itemCtx);

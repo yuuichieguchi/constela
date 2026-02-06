@@ -61,6 +61,8 @@ export function createApp(
     locals: {},
     cleanups,
     refs,
+    ...(program.importData && { imports: program.importData }),
+    ...(program.styles && { styles: program.styles }),
   };
 
   // Render view (before onMount so refs are available)

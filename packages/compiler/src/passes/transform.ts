@@ -25,6 +25,7 @@ import type {
   IslandNode,
   SuspenseNode,
   ErrorBoundaryNode,
+  StylePreset,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -77,6 +78,7 @@ export interface CompiledProgram {
   actions: Record<string, CompiledAction>;
   view: CompiledNode;
   importData?: Record<string, unknown>;  // Resolved import data
+  styles?: Record<string, StylePreset>;  // Style presets for style expressions
 }
 
 export interface CompiledAction {
@@ -1769,6 +1771,11 @@ export function transformPass(
   // Include import data if provided and non-empty
   if (importData && Object.keys(importData).length > 0) {
     result.importData = importData;
+  }
+
+  // Include styles if defined
+  if (ast.styles && Object.keys(ast.styles).length > 0) {
+    result.styles = ast.styles;
   }
 
   return result;
