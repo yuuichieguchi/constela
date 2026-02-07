@@ -1252,7 +1252,7 @@ describe('Chart Helper Functions', () => {
         const result = evaluate(expr, ctx) as string;
 
         // Assert
-        expect(result).toMatch(/^M[\d.]+,[\d.]+ A50,50 0 0,1 [\d.]+,[\d.]+$/);
+        expect(result).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+ A50,50 0 0,1 [\d.]+,[\d.]+ Z$/);
       });
 
       it('should generate arc path for half circle', () => {

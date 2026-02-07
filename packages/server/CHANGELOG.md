@@ -1,5 +1,14 @@
 # @constela/server
 
+## 18.0.0
+
+### Patch Changes
+
+- refactor: unify SSR/CSR evaluate() into @constela/core
+- Updated dependencies
+  - @constela/core@0.22.0
+  - @constela/compiler@0.15.21
+
 ## 17.0.1
 
 ### Patch Changes

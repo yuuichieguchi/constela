@@ -1,6 +1,6 @@
 {
   "name": "@constela/compiler",
-  "version": "0.15.20",
+  "version": "0.15.21",
   "description": "Compiler for Constela UI framework - AST to Program transformation",
   "type": "module",
   "main": "./dist/index.js",

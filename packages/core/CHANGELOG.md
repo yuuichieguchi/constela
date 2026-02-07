@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.22.0
+
+### Minor Changes
+
+- refactor: unify SSR/CSR evaluate() into @constela/core
+
 ## 0.21.4
 
 ### Patch Changes

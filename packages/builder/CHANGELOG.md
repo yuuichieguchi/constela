@@ -1,5 +1,12 @@
 # @constela/builder
 
+## 0.2.35
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.22.0
+
 ## 0.2.34
 
 ### Patch Changes

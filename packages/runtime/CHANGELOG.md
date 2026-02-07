@@ -1,5 +1,15 @@
 # @constela/runtime
 
+## 6.0.0
+
+### Patch Changes
+
+- refactor: unify SSR/CSR evaluate() into @constela/core
+- Updated dependencies
+  - @constela/core@0.22.0
+  - @constela/ai@7.0.0
+  - @constela/compiler@0.15.21
+
 ## 5.0.6
 
 ### Patch Changes
