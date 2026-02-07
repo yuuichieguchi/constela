@@ -1,5 +1,11 @@
 # @constela/start
 
+## 1.10.0
+
+### Minor Changes
+
+- Auto-fallback to next available port when EADDRINUSE
+
 ## 1.9.28
 
 ### Patch Changes
