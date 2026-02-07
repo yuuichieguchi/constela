@@ -75,7 +75,7 @@ components/
 - **Skeleton** - Loading placeholder
 - **DataTable** - Advanced data table with sorting, filtering, and pagination
 - **VirtualScroll** - Virtualized list for large datasets
-- **Chart** - 12 chart types (line, bar, pie, area, scatter, radar, doughnut, polar, bubble, histogram, candlestick, treemap)
+- **Chart** - 7 chart types (bar, line, pie, donut, area, radar, scatter)
 
 ### Date & Time (2)
 - **DatePicker** - Date selection with calendar popup
@@ -250,49 +250,46 @@ Virtualized list for large datasets:
 
 ### Chart
 
-12 chart types with animations:
+7 chart types with Apple Health-inspired design:
 
 ```json
 {
   "kind": "component",
-  "name": "Chart",
+  "name": "BarChart",
   "props": {
-    "type": { "expr": "lit", "value": "line" },
     "data": { "expr": "state", "name": "chartData" },
-    "options": { "expr": "lit", "value": {
-      "responsive": true,
-      "animation": { "duration": 750, "easing": "easeOutQuart" },
-      "scales": {
-        "y": { "beginAtZero": true }
-      },
-      "plugins": {
-        "legend": { "position": "top" },
-        "tooltip": { "enabled": true }
-      }
-    }},
-    "width": { "expr": "lit", "value": 600 },
-    "height": { "expr": "lit", "value": 400 }
+    "valueKey": { "expr": "lit", "value": "value" },
+    "labelKey": { "expr": "lit", "value": "label" },
+    "showGrid": { "expr": "lit", "value": true },
+    "showLabels": { "expr": "lit", "value": true }
   }
 }
 ```
 
-**Supported Chart Types:**
+**Chart Components:**
 
-| Type | Description |
-|------|-------------|
-| `line` | Line chart with optional curved paths |
-| `bar` | Vertical bar chart |
-| `horizontalBar` | Horizontal bar chart |
-| `pie` | Pie chart |
-| `doughnut` | Doughnut chart |
-| `area` | Area chart with fill |
-| `scatter` | Scatter plot |
-| `radar` | Radar/spider chart |
-| `polar` | Polar area chart |
-| `bubble` | Bubble chart |
-| `histogram` | Histogram |
-| `candlestick` | Candlestick chart for financial data |
-| `treemap` | Treemap visualization |
+| Component | Description |
+|-----------|-------------|
+| `BarChart` | Vertical bar chart with rounded corners |
+| `LineChart` | Line chart with optional data points |
+| `PieChart` | Pie chart |
+| `DonutChart` | Donut chart with center cutout |
+| `AreaChart` | Area chart with gradient fill |
+| `RadarChart` | Radar/spider chart |
+| `ScatterChart` | Scatter plot |
+
+**Common Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `data` | `Expression` | Chart data array |
+| `valueKey` | `Expression` | Key for data values |
+| `labelKey` | `Expression` | Key for labels |
+| `width` | `Expression` | Chart width |
+| `height` | `Expression` | Chart height |
+| `colors` | `Expression` | Color palette array |
+| `showGrid` | `Expression` | Show grid lines |
+| `showLabels` | `Expression` | Show axis labels |
 
 ## Accessibility
 
