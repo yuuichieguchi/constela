@@ -39,6 +39,7 @@ const ssrAdapter: EnvironmentAdapter = {
     };
     return safeGlobals[name];
   },
+  bindFunction: (fn: Function, parent: unknown) => fn.bind(parent),
 };
 
 /**
@@ -601,6 +602,62 @@ describe('SSR/CSR Parity', () => {
         ),
       );
       expect(results[0]).toBe('btn text-sm');
+      expect(results[0]).toEqual(results[1]);
+    });
+  });
+
+  // ==================== function binding via var expressions ====================
+
+  describe('function binding via var expressions', () => {
+    it('should bind method to parent object when accessed via var dot notation', () => {
+      const locals = {
+        obj: {
+          greet() {
+            return this.name;
+          },
+          name: 'Alice',
+        },
+      };
+
+      const results = adapters.map(({ adapter }) => {
+        const fn = evaluate(
+          { expr: 'var', name: 'obj.greet' },
+          makeCtx(adapter, { locals }),
+        );
+        expect(typeof fn).toBe('function');
+        return (fn as Function)();
+      });
+
+      // Both adapters should return 'Alice' — the bound this.name
+      expect(results[0]).toBe('Alice');
+      expect(results[1]).toBe('Alice');
+      expect(results[0]).toEqual(results[1]);
+    });
+
+    it('should bind nested method to correct parent', () => {
+      const locals = {
+        a: {
+          b: {
+            getName() {
+              return this.value;
+            },
+            value: 42,
+          },
+        },
+      };
+
+      const results = adapters.map(({ adapter }) => {
+        const fn = evaluate(
+          { expr: 'var', name: 'a.b.getName' },
+          makeCtx(adapter, { locals }),
+        );
+        expect(typeof fn).toBe('function');
+        return (fn as Function)();
+      });
+
+      // Both adapters should return 42 — the bound this.value
+      expect(results[0]).toBe(42);
+      expect(results[1]).toBe(42);
       expect(results[0]).toEqual(results[1]);
     });
   });

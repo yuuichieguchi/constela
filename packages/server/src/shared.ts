@@ -42,6 +42,7 @@ export const ssrAdapter: EnvironmentAdapter = {
     };
     return safeGlobals[name];
   },
+  bindFunction: (fn: Function, parent: unknown) => fn.bind(parent),
 };
 
 // ==================== Context Converter ====================
