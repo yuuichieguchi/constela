@@ -1,6 +1,6 @@
 {
   "name": "@constela/ai",
-  "version": "3.0.5",
+  "version": "6.0.4",
   "description": "AI provider abstraction layer for Constela DSL",
   "type": "module",
   "main": "./dist/index.js",

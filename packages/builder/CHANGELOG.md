@@ -1,5 +1,54 @@
 # @constela/builder
 
+## 0.2.34
+
+### Patch Changes
+
+- Updated dependencies [6e8ae3d]
+  - @constela/core@0.21.4
+
+## 0.2.33
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.3
+
+## 0.2.32
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.2
+
+## 0.2.31
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.1
+
+## 0.2.30
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+
+## 0.2.29
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+
+## 0.2.28
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.19.0
+
 ## 0.2.27
 
 ### Patch Changes

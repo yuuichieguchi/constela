@@ -45,6 +45,62 @@
       "required": false
     }
   },
+  "localState": {
+    "_width": {
+      "type": "number",
+      "initial": {
+        "expr": "cond",
+        "if": { "expr": "param", "name": "width" },
+        "then": { "expr": "param", "name": "width" },
+        "else": { "expr": "lit", "value": 400 }
+      }
+    },
+    "_height": {
+      "type": "number",
+      "initial": {
+        "expr": "cond",
+        "if": { "expr": "param", "name": "height" },
+        "then": { "expr": "param", "name": "height" },
+        "else": { "expr": "lit", "value": 300 }
+      }
+    },
+    "_paddingTop": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 20 }
+    },
+    "_paddingBottom": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 40 }
+    },
+    "_bounds": {
+      "type": "json",
+      "initial": {
+        "expr": "call",
+        "target": null,
+        "method": "getChartBounds",
+        "args": [
+          { "expr": "param", "name": "data" },
+          { "expr": "param", "name": "yKey" }
+        ]
+      }
+    },
+    "_gridLines": {
+      "type": "json",
+      "initial": {
+        "expr": "call",
+        "target": null,
+        "method": "getChartGridLines",
+        "args": [
+          { "expr": "get", "base": { "expr": "local", "name": "_bounds" }, "path": "min" },
+          { "expr": "get", "base": { "expr": "local", "name": "_bounds" }, "path": "max" },
+          { "expr": "local", "name": "_height" },
+          { "expr": "local", "name": "_paddingTop" },
+          { "expr": "local", "name": "_paddingBottom" },
+          { "expr": "lit", "value": 5 }
+        ]
+      }
+    }
+  },
   "view": {
     "kind": "element",
     "tag": "svg",
@@ -134,128 +190,112 @@
         ]
       },
       {
+        "kind": "element",
+        "tag": "defs",
+        "props": {},
+        "children": [
+          {
+            "kind": "element",
+            "tag": "radialGradient",
+            "props": {
+              "id": { "expr": "lit", "value": "scatterGradient0" }
+            },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "stop",
+                "props": {
+                  "offset": { "expr": "lit", "value": "0%" },
+                  "stop-color": { "expr": "lit", "value": "#5AC8FA" }
+                }
+              },
+              {
+                "kind": "element",
+                "tag": "stop",
+                "props": {
+                  "offset": { "expr": "lit", "value": "100%" },
+                  "stop-color": { "expr": "lit", "value": "#007AFF" }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "filter",
+            "props": {
+              "id": { "expr": "lit", "value": "scatterShadow" }
+            },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "feGaussianBlur",
+                "props": {
+                  "in": { "expr": "lit", "value": "SourceAlpha" },
+                  "stdDeviation": { "expr": "lit", "value": "2" }
+                }
+              },
+              {
+                "kind": "element",
+                "tag": "feOffset",
+                "props": {
+                  "dx": { "expr": "lit", "value": "0" },
+                  "dy": { "expr": "lit", "value": "1" }
+                }
+              },
+              {
+                "kind": "element",
+                "tag": "feComponentTransfer",
+                "props": {},
+                "children": [
+                  { "kind": "element", "tag": "feFuncA", "props": { "type": { "expr": "lit", "value": "linear" }, "slope": { "expr": "lit", "value": "0.2" } } }
+                ]
+              },
+              {
+                "kind": "element",
+                "tag": "feMerge",
+                "props": {},
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "feMergeNode",
+                    "props": {}
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "feMergeNode",
+                    "props": {
+                      "in": { "expr": "lit", "value": "SourceGraphic" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
         "kind": "if",
-        "condition": {
-          "expr": "param",
-          "name": "showGrid"
-        },
+        "condition": { "expr": "param", "name": "showGrid" },
         "then": {
           "kind": "element",
           "tag": "g",
-          "props": {
-            "className": {
-              "expr": "style",
-              "name": "chartGrid",
-              "variants": {
-                "axis": {
-                  "expr": "lit",
-                  "value": "both"
-                }
-              }
-            }
-          },
+          "props": {},
           "children": [
             {
-              "kind": "element",
-              "tag": "line",
-              "props": {
-                "x1": {
-                  "expr": "lit",
-                  "value": "40"
-                },
-                "y1": {
-                  "expr": "lit",
-                  "value": "0"
-                },
-                "x2": {
-                  "expr": "lit",
-                  "value": "40"
-                },
-                "y2": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "height"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "height"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 300
-                  }
-                }
-              }
-            },
-            {
-              "kind": "element",
-              "tag": "line",
-              "props": {
-                "x1": {
-                  "expr": "lit",
-                  "value": "40"
-                },
-                "y1": {
-                  "expr": "bin",
-                  "op": "-",
-                  "left": {
-                    "expr": "cond",
-                    "if": {
-                      "expr": "param",
-                      "name": "height"
-                    },
-                    "then": {
-                      "expr": "param",
-                      "name": "height"
-                    },
-                    "else": {
-                      "expr": "lit",
-                      "value": 300
-                    }
-                  },
-                  "right": {
-                    "expr": "lit",
-                    "value": 40
-                  }
-                },
-                "x2": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "width"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "width"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 400
-                  }
-                },
-                "y2": {
-                  "expr": "bin",
-                  "op": "-",
-                  "left": {
-                    "expr": "cond",
-                    "if": {
-                      "expr": "param",
-                      "name": "height"
-                    },
-                    "then": {
-                      "expr": "param",
-                      "name": "height"
-                    },
-                    "else": {
-                      "expr": "lit",
-                      "value": 300
-                    }
-                  },
-                  "right": {
-                    "expr": "lit",
-                    "value": 40
-                  }
+              "kind": "each",
+              "items": { "expr": "local", "name": "_gridLines" },
+              "as": "gl",
+              "body": {
+                "kind": "element",
+                "tag": "line",
+                "props": {
+                  "x1": { "expr": "lit", "value": "40" },
+                  "y1": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "y" },
+                  "x2": { "expr": "local", "name": "_width" },
+                  "y2": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "y" },
+                  "stroke": { "expr": "lit", "value": "#d1d5db" },
+                  "stroke-width": { "expr": "lit", "value": "0.5" },
+                  "stroke-opacity": { "expr": "lit", "value": "0.25" }
                 }
               }
             }
@@ -305,48 +345,17 @@
                   }
                 },
                 "cy": {
-                  "expr": "bin",
-                  "op": "-",
-                  "left": {
-                    "expr": "bin",
-                    "op": "-",
-                    "left": {
-                      "expr": "cond",
-                      "if": {
-                        "expr": "param",
-                        "name": "height"
-                      },
-                      "then": {
-                        "expr": "param",
-                        "name": "height"
-                      },
-                      "else": {
-                        "expr": "lit",
-                        "value": 300
-                      }
-                    },
-                    "right": {
-                      "expr": "lit",
-                      "value": 40
-                    }
-                  },
-                  "right": {
-                    "expr": "bin",
-                    "op": "*",
-                    "left": {
-                      "expr": "index", "base": {
-                        "expr": "var",
-                        "name": "item"
-                      }, "key": {
-                        "expr": "param",
-                        "name": "yKey"
-                      }
-                    },
-                    "right": {
-                      "expr": "lit",
-                      "value": 2
-                    }
-                  }
+                  "expr": "call",
+                  "target": null,
+                  "method": "scaleChartY",
+                  "args": [
+                    { "expr": "index", "base": { "expr": "var", "name": "item" }, "key": { "expr": "param", "name": "yKey" } },
+                    { "expr": "get", "base": { "expr": "local", "name": "_bounds" }, "path": "min" },
+                    { "expr": "get", "base": { "expr": "local", "name": "_bounds" }, "path": "max" },
+                    { "expr": "local", "name": "_height" },
+                    { "expr": "local", "name": "_paddingTop" },
+                    { "expr": "local", "name": "_paddingBottom" }
+                  ]
                 },
                 "r": {
                   "expr": "cond",
@@ -369,7 +378,7 @@
                       },
                       "else": {
                         "expr": "lit",
-                        "value": 4
+                        "value": 6
                       }
                     },
                     "right": {
@@ -394,7 +403,7 @@
                     },
                     "else": {
                       "expr": "lit",
-                      "value": 4
+                      "value": 6
                     }
                   }
                 },
@@ -433,8 +442,20 @@
                   },
                   "else": {
                     "expr": "lit",
-                    "value": "#3b82f6"
+                    "value": "#007AFF"
                   }
+                },
+                "stroke": {
+                  "expr": "lit",
+                  "value": "white"
+                },
+                "stroke-width": {
+                  "expr": "lit",
+                  "value": "1.5"
+                },
+                "filter": {
+                  "expr": "lit",
+                  "value": "url(#scatterShadow)"
                 },
                 "tabindex": {
                   "expr": "lit",

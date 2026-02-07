@@ -36,6 +36,12 @@ const SVG_TAGS = new Set([
   'svg', 'path', 'line', 'circle', 'rect', 'ellipse', 'polyline', 'polygon',
   'g', 'defs', 'use', 'text', 'tspan', 'clipPath', 'mask', 'linearGradient',
   'radialGradient', 'stop', 'pattern', 'symbol', 'marker', 'image', 'filter',
+  'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite',
+  'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap',
+  'feDistantLight', 'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB',
+  'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge',
+  'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight',
+  'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence',
   'foreignObject', 'animate', 'animateTransform', 'desc', 'title',
 ]);
 function isSvgTag(tag: string): boolean { return SVG_TAGS.has(tag); }
@@ -955,6 +961,7 @@ function createLocalStateStore(
   ctx: RenderContext
 ): LocalStateStore {
   const signals: Record<string, Signal<unknown>> = {};
+  const progressiveLocals = { ...ctx.locals };
 
   for (const [name, def] of Object.entries(stateDefs)) {
     // def.initial may be a CompiledExpression or a literal value
@@ -963,7 +970,7 @@ function createLocalStateStore(
     if (initial && typeof initial === 'object' && 'expr' in (initial as object)) {
       const evalCtx: Parameters<typeof evaluate>[1] = {
         state: ctx.state,
-        locals: ctx.locals,
+        locals: progressiveLocals,
       };
       if (ctx.route) evalCtx.route = ctx.route;
       if (ctx.imports) evalCtx.imports = ctx.imports;
@@ -973,6 +980,7 @@ function createLocalStateStore(
       initialValue = initial;
     }
     signals[name] = createSignal<unknown>(initialValue);
+    progressiveLocals[name] = initialValue;
   }
 
   return {

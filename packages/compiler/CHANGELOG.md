@@ -1,5 +1,64 @@
 # @constela/compiler
 
+## 0.15.20
+
+### Patch Changes
+
+- Updated dependencies [6e8ae3d]
+  - @constela/core@0.21.4
+
+## 0.15.19
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.3
+
+## 0.15.18
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.2
+
+## 0.15.17
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.1
+
+## 0.15.16
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+
+## 0.15.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+
+## 0.15.14
+
+### Patch Changes
+
+- fix(compiler,start): transform expression objects in localState field.initial
+
+  transformLocalState now passes expression objects (e.g. call, cond) through
+  transformExpression to resolve param references. Also adds call, lambda,
+  array, obj, concat cases to substituteParamExpr in json-page-loader.
+
+## 0.15.13
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.19.0
+
 ## 0.15.12
 
 ### Patch Changes

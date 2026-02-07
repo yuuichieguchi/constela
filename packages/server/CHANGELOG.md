@@ -1,5 +1,42 @@
 # @constela/server
 
+## 17.0.1
+
+### Patch Changes
+
+- Add modulo (%) operator to expression evaluators
+
+## 17.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+  - @constela/compiler@0.15.16
+
+## 16.0.1
+
+### Patch Changes
+
+- fix: support inter-field dependencies in localState initialization
+
+## 16.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+  - @constela/compiler@0.15.15
+
+## 15.0.0
+
+### Patch Changes
+
+- feat: move global helper functions to @constela/core for SSR support, enabling chart Y-axis scaling in server-side rendering
+- Updated dependencies
+  - @constela/core@0.19.0
+  - @constela/compiler@0.15.13
+
 ## 14.0.6
 
 ### Patch Changes

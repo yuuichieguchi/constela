@@ -1,6 +1,6 @@
 {
   "chartContainer": {
-    "base": "relative w-full"
+    "base": "relative w-full rounded-2xl dark:bg-gray-900"
   },
   "chartSvg": {
     "base": "overflow-visible",
@@ -29,15 +29,15 @@
     }
   },
   "chartLine": {
-    "base": "fill-none stroke-2 stroke-current"
+    "base": "fill-none stroke-[2.5] stroke-current stroke-linecap-round stroke-linejoin-round"
   },
   "chartArea": {
     "base": "stroke-none",
     "variants": {
       "opacity": {
         "light": "opacity-20",
-        "default": "opacity-30",
-        "dark": "opacity-50"
+        "default": "opacity-40",
+        "dark": "opacity-60"
       }
     },
     "defaultVariants": {
@@ -45,7 +45,7 @@
     }
   },
   "chartPoint": {
-    "base": "transition-transform duration-200",
+    "base": "transition-transform duration-200 drop-shadow-sm",
     "variants": {
       "size": {
         "sm": "",
@@ -63,7 +63,7 @@
     }
   },
   "chartGrid": {
-    "base": "stroke-gray-200 stroke-1",
+    "base": "stroke-gray-300/25 dark:stroke-gray-600/25 stroke-[0.5]",
     "variants": {
       "axis": {
         "x": "",
@@ -76,7 +76,7 @@
     }
   },
   "chartAxis": {
-    "base": "stroke-gray-400 stroke-1",
+    "base": "stroke-gray-400 stroke-1 dark:stroke-gray-600",
     "variants": {
       "position": {
         "top": "",
@@ -90,7 +90,7 @@
     }
   },
   "chartLabel": {
-    "base": "text-xs fill-gray-600",
+    "base": "text-xs fill-gray-600 dark:fill-gray-400",
     "variants": {
       "type": {
         "axis": "font-normal",
@@ -109,7 +109,7 @@
     }
   },
   "chartSlice": {
-    "base": "transition-all duration-200 cursor-pointer",
+    "base": "transition-all duration-200 cursor-pointer stroke-white dark:stroke-gray-900 stroke-[2] drop-shadow-sm",
     "variants": {
       "state": {
         "default": "opacity-100",
@@ -126,7 +126,7 @@
     "variants": {
       "opacity": {
         "light": "fill-opacity-20",
-        "default": "fill-opacity-30",
+        "default": "fill-opacity-35",
         "dark": "fill-opacity-50"
       }
     },
@@ -147,7 +147,7 @@
     }
   },
   "chartLegendItem": {
-    "base": "flex items-center gap-2 cursor-pointer transition-opacity duration-200",
+    "base": "flex items-center gap-2 cursor-pointer transition-opacity duration-200 text-gray-700 dark:text-gray-300",
     "variants": {
       "state": {
         "default": "opacity-100",
@@ -160,7 +160,7 @@
     }
   },
   "chartTooltip": {
-    "base": "absolute z-50 px-3 py-2 bg-gray-900 text-white text-sm rounded-md shadow-lg pointer-events-none transition-opacity duration-150",
+    "base": "absolute z-50 px-3 py-2 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-gray-100 text-sm rounded-xl shadow-lg pointer-events-none transition-opacity duration-150 backdrop-blur-sm",
     "variants": {
       "visible": {
         "true": "opacity-100",
@@ -179,5 +179,20 @@
   },
   "chartSliceAnimated": {
     "base": "origin-center animate-[slice-rotate_0.5s_ease-out_forwards]"
+  },
+  "chartGridLine": {
+    "base": "stroke-gray-300/25 dark:stroke-gray-600/25 stroke-[0.5]"
+  },
+  "chartYLabel": {
+    "base": "text-[10px] fill-gray-400 dark:fill-gray-500 font-medium"
+  },
+  "chartDataPoint": {
+    "base": "transition-transform duration-200 drop-shadow-sm"
+  },
+  "chartActivityRing": {
+    "base": "transition-all duration-300 drop-shadow-md"
+  },
+  "chartActivityRingTrack": {
+    "base": "opacity-20"
   }
 }

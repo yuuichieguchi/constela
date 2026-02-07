@@ -1458,7 +1458,7 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
       if (def.localState && Object.keys(def.localState).length > 0) {
         return {
           kind: 'localState',
-          state: transformLocalState(def.localState),
+          state: transformLocalState(def.localState, newCtx),
           actions: transformLocalActions(def.localActions ?? []),
           child: expandedView,
         };
@@ -1588,11 +1588,16 @@ function transformState(
  * Transforms local state definitions
  */
 function transformLocalState(
-  localState: Record<string, StateField>
+  localState: Record<string, StateField>,
+  ctx?: TransformContext
 ): Record<string, { type: string; initial: unknown }> {
   const result: Record<string, { type: string; initial: unknown }> = {};
   for (const [name, field] of Object.entries(localState)) {
-    result[name] = { type: field.type, initial: field.initial };
+    let initial: unknown = field.initial;
+    if (ctx && initial && typeof initial === 'object' && 'expr' in (initial as Record<string, unknown>)) {
+      initial = transformExpression(initial as Expression, ctx);
+    }
+    result[name] = { type: field.type, initial };
   }
   return result;
 }

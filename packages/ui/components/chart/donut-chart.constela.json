@@ -24,21 +24,95 @@
       "type": "json",
       "required": false
     },
-    "showLabels": {
-      "type": "boolean",
-      "required": false
-    },
-    "showPercentage": {
-      "type": "boolean",
-      "required": false
-    },
-    "innerRadius": {
-      "type": "number",
-      "required": false
-    },
     "centerLabel": {
       "type": "string",
       "required": false
+    }
+  },
+  "localState": {
+    "_width": {
+      "type": "number",
+      "initial": {
+        "expr": "cond",
+        "if": { "expr": "param", "name": "width" },
+        "then": { "expr": "param", "name": "width" },
+        "else": { "expr": "lit", "value": 300 }
+      }
+    },
+    "_height": {
+      "type": "number",
+      "initial": {
+        "expr": "cond",
+        "if": { "expr": "param", "name": "height" },
+        "then": { "expr": "param", "name": "height" },
+        "else": { "expr": "lit", "value": 300 }
+      }
+    },
+    "_cx": {
+      "type": "number",
+      "initial": {
+        "expr": "bin", "op": "/",
+        "left": { "expr": "local", "name": "_width" },
+        "right": { "expr": "lit", "value": 2 }
+      }
+    },
+    "_cy": {
+      "type": "number",
+      "initial": {
+        "expr": "bin", "op": "/",
+        "left": { "expr": "local", "name": "_height" },
+        "right": { "expr": "lit", "value": 2 }
+      }
+    },
+    "_outerRadius": {
+      "type": "number",
+      "initial": {
+        "expr": "bin", "op": "*",
+        "left": {
+          "expr": "bin", "op": "/",
+          "left": {
+            "expr": "call", "target": null, "method": "min",
+            "args": [
+              { "expr": "local", "name": "_width" },
+              { "expr": "local", "name": "_height" }
+            ]
+          },
+          "right": { "expr": "lit", "value": 2 }
+        },
+        "right": { "expr": "lit", "value": 0.85 }
+      }
+    },
+    "_ringWidth": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 22 }
+    },
+    "_ringGap": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 6 }
+    },
+    "_ringLayout": {
+      "type": "json",
+      "initial": {
+        "expr": "call", "target": null,
+        "method": "getActivityRingLayout",
+        "args": [
+          { "expr": "param", "name": "data" },
+          { "expr": "param", "name": "valueKey" },
+          { "expr": "local", "name": "_cx" },
+          { "expr": "local", "name": "_cy" },
+          { "expr": "local", "name": "_outerRadius" },
+          { "expr": "local", "name": "_ringWidth" },
+          { "expr": "local", "name": "_ringGap" }
+        ]
+      }
+    },
+    "_defaultColors": {
+      "type": "json",
+      "initial": {
+        "expr": "call", "target": null,
+        "method": "getChartDefaultColors",
+        "args": [{ "expr": "lit", "value": "activity" }]
+      }
     }
   },
   "view": {
@@ -58,44 +132,10 @@
         "value": "donut-chart-title"
       },
       "viewBox": { "expr": "concat", "items": [
-          {
-            "expr": "lit",
-            "value": "0 0 "
-          },
-          {
-            "expr": "cond",
-            "if": {
-              "expr": "param",
-              "name": "width"
-            },
-            "then": {
-              "expr": "param",
-              "name": "width"
-            },
-            "else": {
-              "expr": "lit",
-              "value": 300
-            }
-          },
-          {
-            "expr": "lit",
-            "value": " "
-          },
-          {
-            "expr": "cond",
-            "if": {
-              "expr": "param",
-              "name": "height"
-            },
-            "then": {
-              "expr": "param",
-              "name": "height"
-            },
-            "else": {
-              "expr": "lit",
-              "value": 300
-            }
-          }
+          { "expr": "lit", "value": "0 0 " },
+          { "expr": "local", "name": "_width" },
+          { "expr": "lit", "value": " " },
+          { "expr": "local", "name": "_height" }
         ]
       },
       "className": {
@@ -131,105 +171,91 @@
       },
       {
         "kind": "element",
-        "tag": "g",
-        "props": {
-          "transform": { "expr": "concat", "items": [
-              {
-                "expr": "lit",
-                "value": "translate("
-              },
-              {
-                "expr": "bin",
-                "op": "/",
-                "left": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "width"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "width"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 300
-                  }
-                },
-                "right": {
-                  "expr": "lit",
-                  "value": 2
-                }
-              },
-              {
-                "expr": "lit",
-                "value": ", "
-              },
-              {
-                "expr": "bin",
-                "op": "/",
-                "left": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "height"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "height"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 300
-                  }
-                },
-                "right": {
-                  "expr": "lit",
-                  "value": 2
-                }
-              },
-              {
-                "expr": "lit",
-                "value": ")"
-              }
+        "tag": "defs",
+        "props": {},
+        "children": [
+          {
+            "kind": "element",
+            "tag": "filter",
+            "props": { "id": { "expr": "lit", "value": "ringGlow" } },
+            "children": [
+              { "kind": "element", "tag": "feGaussianBlur", "props": { "in": { "expr": "lit", "value": "SourceAlpha" }, "stdDeviation": { "expr": "lit", "value": "2" } } },
+              { "kind": "element", "tag": "feOffset", "props": { "dx": { "expr": "lit", "value": "0" }, "dy": { "expr": "lit", "value": "1" } } },
+              { "kind": "element", "tag": "feComponentTransfer", "props": {}, "children": [
+                { "kind": "element", "tag": "feFuncA", "props": { "type": { "expr": "lit", "value": "linear" }, "slope": { "expr": "lit", "value": "0.3" } } }
+              ] },
+              { "kind": "element", "tag": "feMerge", "props": {}, "children": [
+                { "kind": "element", "tag": "feMergeNode", "props": {} },
+                { "kind": "element", "tag": "feMergeNode", "props": { "in": { "expr": "lit", "value": "SourceGraphic" } } }
+              ] }
             ]
           }
+        ]
+      },
+      {
+        "kind": "element",
+        "tag": "g",
+        "props": {
+          "transform": {
+            "expr": "concat", "items": [
+              { "expr": "lit", "value": "translate(" },
+              { "expr": "local", "name": "_cx" },
+              { "expr": "lit", "value": ", " },
+              { "expr": "local", "name": "_cy" },
+              { "expr": "lit", "value": ")" }
+            ]
+          },
+          "filter": { "expr": "lit", "value": "url(#ringGlow)" }
         },
         "children": [
           {
             "kind": "each",
-            "items": {
-              "expr": "call",
-              "target": null,
-              "method": "getDonutSlices",
-              "args": [
-                {
-                  "expr": "param",
-                  "name": "data"
-                },
-                {
-                  "expr": "param",
-                  "name": "valueKey"
-                },
-                {
+            "items": { "expr": "local", "name": "_ringLayout" },
+            "as": "ring",
+            "index": "ringIdx",
+            "body": {
+              "kind": "element",
+              "tag": "circle",
+              "props": {
+                "cx": { "expr": "lit", "value": 0 },
+                "cy": { "expr": "lit", "value": 0 },
+                "r": { "expr": "get", "base": { "expr": "var", "name": "ring" }, "path": "radius" },
+                "fill": { "expr": "lit", "value": "none" },
+                "stroke": {
                   "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "innerRadius"
-                  },
+                  "if": { "expr": "param", "name": "colors" },
                   "then": {
-                    "expr": "param",
-                    "name": "innerRadius"
+                    "expr": "call",
+                    "target": { "expr": "param", "name": "colors" },
+                    "method": "at",
+                    "args": [{
+                      "expr": "bin", "op": "%",
+                      "left": { "expr": "var", "name": "ringIdx" },
+                      "right": { "expr": "call", "target": { "expr": "param", "name": "colors" }, "method": "length", "args": [] }
+                    }]
                   },
                   "else": {
-                    "expr": "lit",
-                    "value": 0.6
+                    "expr": "call",
+                    "target": { "expr": "local", "name": "_defaultColors" },
+                    "method": "at",
+                    "args": [{
+                      "expr": "bin", "op": "%",
+                      "left": { "expr": "var", "name": "ringIdx" },
+                      "right": { "expr": "call", "target": { "expr": "local", "name": "_defaultColors" }, "method": "length", "args": [] }
+                    }]
                   }
-                }
-              ]
-            },
-            "as": "slice",
-            "index": "idx",
+                },
+                "stroke-width": { "expr": "local", "name": "_ringWidth" },
+                "stroke-opacity": { "expr": "lit", "value": "0.15" },
+                "stroke-linecap": { "expr": "lit", "value": "round" }
+              }
+            }
+          },
+          {
+            "kind": "each",
+            "items": { "expr": "local", "name": "_ringLayout" },
+            "as": "ring",
+            "index": "ringIdx",
             "body": {
               "kind": "element",
               "tag": "path",
@@ -237,225 +263,42 @@
                 "d": {
                   "expr": "call",
                   "target": null,
-                  "method": "getArcPath",
+                  "method": "getActivityRingArcPath",
                   "args": [
-                    {
-                      "expr": "lit",
-                      "value": 0
-                    },
-                    {
-                      "expr": "lit",
-                      "value": 0
-                    },
-                    {
-                      "expr": "bin",
-                      "op": "*",
-                      "left": {
-                        "expr": "bin",
-                        "op": "/",
-                        "left": {
-                          "expr": "call",
-                          "target": null,
-                          "method": "min",
-                          "args": [
-                            {
-                              "expr": "cond",
-                              "if": {
-                                "expr": "param",
-                                "name": "width"
-                              },
-                              "then": {
-                                "expr": "param",
-                                "name": "width"
-                              },
-                              "else": {
-                                "expr": "lit",
-                                "value": 300
-                              }
-                            },
-                            {
-                              "expr": "cond",
-                              "if": {
-                                "expr": "param",
-                                "name": "height"
-                              },
-                              "then": {
-                                "expr": "param",
-                                "name": "height"
-                              },
-                              "else": {
-                                "expr": "lit",
-                                "value": 300
-                              }
-                            }
-                          ]
-                        },
-                        "right": {
-                          "expr": "lit",
-                          "value": 2
-                        }
-                      },
-                      "right": {
-                        "expr": "lit",
-                        "value": 0.9
-                      }
-                    },
-                    {
-                      "expr": "get",
-                      "base": {
-                        "expr": "var",
-                        "name": "slice"
-                      },
-                      "path": "startAngle"
-                    },
-                    {
-                      "expr": "get",
-                      "base": {
-                        "expr": "var",
-                        "name": "slice"
-                      },
-                      "path": "endAngle"
-                    }
+                    { "expr": "lit", "value": 0 },
+                    { "expr": "lit", "value": 0 },
+                    { "expr": "get", "base": { "expr": "var", "name": "ring" }, "path": "radius" },
+                    { "expr": "lit", "value": 0 },
+                    { "expr": "get", "base": { "expr": "var", "name": "ring" }, "path": "angle" }
                   ]
                 },
-                "fill": {
+                "fill": { "expr": "lit", "value": "none" },
+                "stroke": {
                   "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "colors"
-                  },
+                  "if": { "expr": "param", "name": "colors" },
                   "then": {
                     "expr": "call",
-                    "target": {
-                      "expr": "param",
-                      "name": "colors"
-                    },
+                    "target": { "expr": "param", "name": "colors" },
                     "method": "at",
-                    "args": [
-                      {
-                        "expr": "bin",
-                        "op": "%",
-                        "left": {
-                          "expr": "var",
-                          "name": "idx"
-                        },
-                        "right": {
-                          "expr": "call",
-                          "target": {
-                            "expr": "param",
-                            "name": "colors"
-                          },
-                          "method": "length",
-                          "args": []
-                        }
-                      }
-                    ]
+                    "args": [{
+                      "expr": "bin", "op": "%",
+                      "left": { "expr": "var", "name": "ringIdx" },
+                      "right": { "expr": "call", "target": { "expr": "param", "name": "colors" }, "method": "length", "args": [] }
+                    }]
                   },
                   "else": {
-                    "expr": "lit",
-                    "value": "#3b82f6"
+                    "expr": "call",
+                    "target": { "expr": "local", "name": "_defaultColors" },
+                    "method": "at",
+                    "args": [{
+                      "expr": "bin", "op": "%",
+                      "left": { "expr": "var", "name": "ringIdx" },
+                      "right": { "expr": "call", "target": { "expr": "local", "name": "_defaultColors" }, "method": "length", "args": [] }
+                    }]
                   }
                 },
-                "className": {
-                  "expr": "style",
-                  "name": "chartSlice",
-                  "variants": {
-                    "state": {
-                      "expr": "lit",
-                      "value": "default"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          {
-            "kind": "element",
-            "tag": "circle",
-            "props": {
-              "cx": {
-                "expr": "lit",
-                "value": "0"
-              },
-              "cy": {
-                "expr": "lit",
-                "value": "0"
-              },
-              "r": {
-                "expr": "bin",
-                "op": "*",
-                "left": {
-                  "expr": "bin",
-                  "op": "*",
-                  "left": {
-                    "expr": "bin",
-                    "op": "/",
-                    "left": {
-                      "expr": "call",
-                      "target": null,
-                      "method": "min",
-                      "args": [
-                        {
-                          "expr": "cond",
-                          "if": {
-                            "expr": "param",
-                            "name": "width"
-                          },
-                          "then": {
-                            "expr": "param",
-                            "name": "width"
-                          },
-                          "else": {
-                            "expr": "lit",
-                            "value": 300
-                          }
-                        },
-                        {
-                          "expr": "cond",
-                          "if": {
-                            "expr": "param",
-                            "name": "height"
-                          },
-                          "then": {
-                            "expr": "param",
-                            "name": "height"
-                          },
-                          "else": {
-                            "expr": "lit",
-                            "value": 300
-                          }
-                        }
-                      ]
-                    },
-                    "right": {
-                      "expr": "lit",
-                      "value": 2
-                    }
-                  },
-                  "right": {
-                    "expr": "lit",
-                    "value": 0.9
-                  }
-                },
-                "right": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "innerRadius"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "innerRadius"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 0.6
-                  }
-                }
-              },
-              "fill": {
-                "expr": "lit",
-                "value": "white"
+                "stroke-width": { "expr": "local", "name": "_ringWidth" },
+                "stroke-linecap": { "expr": "lit", "value": "round" }
               }
             }
           }
@@ -471,52 +314,8 @@
           "kind": "element",
           "tag": "text",
           "props": {
-            "x": {
-              "expr": "bin",
-              "op": "/",
-              "left": {
-                "expr": "cond",
-                "if": {
-                  "expr": "param",
-                  "name": "width"
-                },
-                "then": {
-                  "expr": "param",
-                  "name": "width"
-                },
-                "else": {
-                  "expr": "lit",
-                  "value": 300
-                }
-              },
-              "right": {
-                "expr": "lit",
-                "value": 2
-              }
-            },
-            "y": {
-              "expr": "bin",
-              "op": "/",
-              "left": {
-                "expr": "cond",
-                "if": {
-                  "expr": "param",
-                  "name": "height"
-                },
-                "then": {
-                  "expr": "param",
-                  "name": "height"
-                },
-                "else": {
-                  "expr": "lit",
-                  "value": 300
-                }
-              },
-              "right": {
-                "expr": "lit",
-                "value": 2
-              }
-            },
+            "x": { "expr": "local", "name": "_cx" },
+            "y": { "expr": "local", "name": "_cy" },
             "text-anchor": {
               "expr": "lit",
               "value": "middle"
@@ -546,126 +345,6 @@
               "value": {
                 "expr": "param",
                 "name": "centerLabel"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "kind": "if",
-        "condition": {
-          "expr": "param",
-          "name": "showLabels"
-        },
-        "then": {
-          "kind": "element",
-          "tag": "g",
-          "props": {
-            "className": {
-              "expr": "style",
-              "name": "chartLabel",
-              "variants": {
-                "type": {
-                  "expr": "lit",
-                  "value": "data"
-                }
-              }
-            }
-          },
-          "children": [
-            {
-              "kind": "each",
-              "items": {
-                "expr": "call",
-                "target": null,
-                "method": "getDonutSlices",
-                "args": [
-                  {
-                    "expr": "param",
-                    "name": "data"
-                  },
-                  {
-                    "expr": "param",
-                    "name": "valueKey"
-                  },
-                  {
-                    "expr": "cond",
-                    "if": {
-                      "expr": "param",
-                      "name": "innerRadius"
-                    },
-                    "then": {
-                      "expr": "param",
-                      "name": "innerRadius"
-                    },
-                    "else": {
-                      "expr": "lit",
-                      "value": 0.6
-                    }
-                  }
-                ]
-              },
-              "as": "slice",
-              "index": "idx",
-              "body": {
-                "kind": "element",
-                "tag": "text",
-                "props": {
-                  "x": {
-                    "expr": "lit",
-                    "value": "150"
-                  },
-                  "y": {
-                    "expr": "lit",
-                    "value": "150"
-                  },
-                  "text-anchor": {
-                    "expr": "lit",
-                    "value": "middle"
-                  }
-                },
-                "children": [
-                  {
-                    "kind": "text",
-                    "value": {
-                      "expr": "cond",
-                      "if": {
-                        "expr": "param",
-                        "name": "showPercentage"
-                      },
-                      "then": { "expr": "concat", "items": [
-                          {
-                            "expr": "call",
-                            "target": null,
-                            "method": "round",
-                            "args": [
-                              {
-                                "expr": "get",
-                                "base": {
-                                  "expr": "var",
-                                  "name": "slice"
-                                },
-                                "path": "percentage"
-                              }
-                            ]
-                          },
-                          {
-                            "expr": "lit",
-                            "value": "%"
-                          }
-                        ]
-                      },
-                      "else": {
-                        "expr": "get",
-                        "base": {
-                          "expr": "var",
-                          "name": "slice"
-                        },
-                        "path": "value"
-                      }
-                    }
-                  }
-                ]
               }
             }
           ]

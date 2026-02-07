@@ -96,7 +96,7 @@
         },
         "else": {
           "expr": "lit",
-          "value": 4
+          "value": 6
         }
       }
     },
@@ -116,6 +116,30 @@
           "expr": "lit",
           "value": "vertical"
         }
+      }
+    },
+    "_paddingTop": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 20 }
+    },
+    "_paddingBottom": {
+      "type": "number",
+      "initial": { "expr": "lit", "value": 40 }
+    },
+    "_gridLines": {
+      "type": "json",
+      "initial": {
+        "expr": "call",
+        "target": null,
+        "method": "getChartGridLines",
+        "args": [
+          { "expr": "lit", "value": 0 },
+          { "expr": "lit", "value": 100 },
+          { "expr": "local", "name": "_height" },
+          { "expr": "lit", "value": 20 },
+          { "expr": "lit", "value": 40 },
+          { "expr": "lit", "value": 5 }
+        ]
       }
     }
   },
@@ -186,6 +210,58 @@
         ]
       },
       {
+        "kind": "element",
+        "tag": "defs",
+        "props": {},
+        "children": [
+          {
+            "kind": "element",
+            "tag": "linearGradient",
+            "props": {
+              "id": { "expr": "lit", "value": "barGradient0" },
+              "x1": { "expr": "lit", "value": "0" },
+              "y1": { "expr": "lit", "value": "1" },
+              "x2": { "expr": "lit", "value": "0" },
+              "y2": { "expr": "lit", "value": "0" }
+            },
+            "children": [
+              {
+                "kind": "element",
+                "tag": "stop",
+                "props": {
+                  "offset": { "expr": "lit", "value": "0%" },
+                  "stop-color": { "expr": "lit", "value": "#007AFF" }
+                }
+              },
+              {
+                "kind": "element",
+                "tag": "stop",
+                "props": {
+                  "offset": { "expr": "lit", "value": "100%" },
+                  "stop-color": { "expr": "lit", "value": "#5AC8FA" }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "filter",
+            "props": { "id": { "expr": "lit", "value": "barShadow" } },
+            "children": [
+              { "kind": "element", "tag": "feGaussianBlur", "props": { "in": { "expr": "lit", "value": "SourceAlpha" }, "stdDeviation": { "expr": "lit", "value": "2" } } },
+              { "kind": "element", "tag": "feOffset", "props": { "dx": { "expr": "lit", "value": "0" }, "dy": { "expr": "lit", "value": "2" } } },
+              { "kind": "element", "tag": "feComponentTransfer", "props": {}, "children": [
+                { "kind": "element", "tag": "feFuncA", "props": { "type": { "expr": "lit", "value": "linear" }, "slope": { "expr": "lit", "value": "0.15" } } }
+              ] },
+              { "kind": "element", "tag": "feMerge", "props": {}, "children": [
+                { "kind": "element", "tag": "feMergeNode", "props": {} },
+                { "kind": "element", "tag": "feMergeNode", "props": { "in": { "expr": "lit", "value": "SourceGraphic" } } }
+              ] }
+            ]
+          }
+        ]
+      },
+      {
         "kind": "if",
         "condition": {
           "expr": "param",
@@ -208,25 +284,42 @@
           },
           "children": [
             {
-              "kind": "element",
-              "tag": "line",
-              "props": {
-                "x1": {
-                  "expr": "lit",
-                  "value": "40"
-                },
-                "y1": {
-                  "expr": "lit",
-                  "value": "0"
-                },
-                "x2": {
-                  "expr": "lit",
-                  "value": "40"
-                },
-                "y2": {
-                  "expr": "local",
-                  "name": "_height"
-                }
+              "kind": "each",
+              "items": { "expr": "local", "name": "_gridLines" },
+              "as": "gl",
+              "index": "glIdx",
+              "body": {
+                "kind": "element",
+                "tag": "g",
+                "props": {},
+                "children": [
+                  {
+                    "kind": "element",
+                    "tag": "line",
+                    "props": {
+                      "x1": { "expr": "lit", "value": "0" },
+                      "y1": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "y" },
+                      "x2": { "expr": "local", "name": "_width" },
+                      "y2": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "y" },
+                      "stroke": { "expr": "lit", "value": "#d1d5db" },
+                      "stroke-width": { "expr": "lit", "value": "0.5" },
+                      "stroke-opacity": { "expr": "lit", "value": "0.25" }
+                    }
+                  },
+                  {
+                    "kind": "element",
+                    "tag": "text",
+                    "props": {
+                      "x": { "expr": "lit", "value": 8 },
+                      "y": { "expr": "bin", "op": "+", "left": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "y" }, "right": { "expr": "lit", "value": 3 } },
+                      "text-anchor": { "expr": "lit", "value": "start" },
+                      "className": { "expr": "style", "name": "chartYLabel" }
+                    },
+                    "children": [
+                      { "kind": "text", "value": { "expr": "get", "base": { "expr": "var", "name": "gl" }, "path": "label" } }
+                    ]
+                  }
+                ]
               }
             }
           ]
@@ -252,162 +345,92 @@
             "index": "idx",
             "body": {
               "kind": "element",
-              "tag": "rect",
+              "tag": "path",
               "props": {
-                "x": {
-                  "expr": "get",
-                  "base": {
-                    "expr": "call",
-                    "target": null,
-                    "method": "getBarDimensions",
-                    "args": [
-                      {
-                        "expr": "param",
-                        "name": "data"
+                "d": {
+                  "expr": "call",
+                  "target": null,
+                  "method": "getRoundedBarPath",
+                  "args": [
+                    {
+                      "expr": "get",
+                      "base": {
+                        "expr": "call",
+                        "target": null,
+                        "method": "getBarDimensions",
+                        "args": [
+                          { "expr": "param", "name": "data" },
+                          { "expr": "var", "name": "idx" },
+                          { "expr": "local", "name": "_width" },
+                          { "expr": "local", "name": "_height" },
+                          { "expr": "local", "name": "_barGap" },
+                          { "expr": "local", "name": "_orientation" },
+                          { "expr": "param", "name": "valueKey" }
+                        ]
                       },
-                      {
-                        "expr": "var",
-                        "name": "idx"
+                      "path": "x"
+                    },
+                    {
+                      "expr": "get",
+                      "base": {
+                        "expr": "call",
+                        "target": null,
+                        "method": "getBarDimensions",
+                        "args": [
+                          { "expr": "param", "name": "data" },
+                          { "expr": "var", "name": "idx" },
+                          { "expr": "local", "name": "_width" },
+                          { "expr": "local", "name": "_height" },
+                          { "expr": "local", "name": "_barGap" },
+                          { "expr": "local", "name": "_orientation" },
+                          { "expr": "param", "name": "valueKey" }
+                        ]
                       },
-                      {
-                        "expr": "local",
-                        "name": "_width"
+                      "path": "y"
+                    },
+                    {
+                      "expr": "get",
+                      "base": {
+                        "expr": "call",
+                        "target": null,
+                        "method": "getBarDimensions",
+                        "args": [
+                          { "expr": "param", "name": "data" },
+                          { "expr": "var", "name": "idx" },
+                          { "expr": "local", "name": "_width" },
+                          { "expr": "local", "name": "_height" },
+                          { "expr": "local", "name": "_barGap" },
+                          { "expr": "local", "name": "_orientation" },
+                          { "expr": "param", "name": "valueKey" }
+                        ]
                       },
-                      {
-                        "expr": "local",
-                        "name": "_height"
+                      "path": "width"
+                    },
+                    {
+                      "expr": "get",
+                      "base": {
+                        "expr": "call",
+                        "target": null,
+                        "method": "getBarDimensions",
+                        "args": [
+                          { "expr": "param", "name": "data" },
+                          { "expr": "var", "name": "idx" },
+                          { "expr": "local", "name": "_width" },
+                          { "expr": "local", "name": "_height" },
+                          { "expr": "local", "name": "_barGap" },
+                          { "expr": "local", "name": "_orientation" },
+                          { "expr": "param", "name": "valueKey" }
+                        ]
                       },
-                      {
-                        "expr": "local",
-                        "name": "_barGap"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_orientation"
-                      }
-                    ]
-                  },
-                  "path": "x"
-                },
-                "y": {
-                  "expr": "get",
-                  "base": {
-                    "expr": "call",
-                    "target": null,
-                    "method": "getBarDimensions",
-                    "args": [
-                      {
-                        "expr": "param",
-                        "name": "data"
-                      },
-                      {
-                        "expr": "var",
-                        "name": "idx"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_width"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_height"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_barGap"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_orientation"
-                      }
-                    ]
-                  },
-                  "path": "y"
-                },
-                "width": {
-                  "expr": "get",
-                  "base": {
-                    "expr": "call",
-                    "target": null,
-                    "method": "getBarDimensions",
-                    "args": [
-                      {
-                        "expr": "param",
-                        "name": "data"
-                      },
-                      {
-                        "expr": "var",
-                        "name": "idx"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_width"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_height"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_barGap"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_orientation"
-                      }
-                    ]
-                  },
-                  "path": "width"
-                },
-                "height": {
-                  "expr": "get",
-                  "base": {
-                    "expr": "call",
-                    "target": null,
-                    "method": "getBarDimensions",
-                    "args": [
-                      {
-                        "expr": "param",
-                        "name": "data"
-                      },
-                      {
-                        "expr": "var",
-                        "name": "idx"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_width"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_height"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_barGap"
-                      },
-                      {
-                        "expr": "local",
-                        "name": "_orientation"
-                      }
-                    ]
-                  },
-                  "path": "height"
-                },
-                "rx": {
-                  "expr": "cond",
-                  "if": {
-                    "expr": "param",
-                    "name": "barRadius"
-                  },
-                  "then": {
-                    "expr": "param",
-                    "name": "barRadius"
-                  },
-                  "else": {
-                    "expr": "lit",
-                    "value": 0
-                  }
+                      "path": "height"
+                    },
+                    {
+                      "expr": "cond",
+                      "if": { "expr": "param", "name": "barRadius" },
+                      "then": { "expr": "param", "name": "barRadius" },
+                      "else": { "expr": "lit", "value": 8 }
+                    }
+                  ]
                 },
                 "fill": {
                   "expr": "cond",
@@ -444,9 +467,10 @@
                   },
                   "else": {
                     "expr": "lit",
-                    "value": "#3b82f6"
+                    "value": "url(#barGradient0)"
                   }
                 },
+                "filter": { "expr": "lit", "value": "url(#barShadow)" },
                 "className": {
                   "expr": "style",
                   "name": "chartBar",
@@ -529,6 +553,10 @@
                           {
                             "expr": "local",
                             "name": "_orientation"
+                          },
+                          {
+                            "expr": "param",
+                            "name": "valueKey"
                           }
                         ]
                       },
@@ -567,6 +595,10 @@
                             {
                               "expr": "local",
                               "name": "_orientation"
+                            },
+                            {
+                              "expr": "param",
+                              "name": "valueKey"
                             }
                           ]
                         },

@@ -123,8 +123,32 @@
       },
       {
         "kind": "element",
+        "tag": "defs",
+        "props": {},
+        "children": [
+          {
+            "kind": "element",
+            "tag": "filter",
+            "props": { "id": { "expr": "lit", "value": "pieShadow" } },
+            "children": [
+              { "kind": "element", "tag": "feGaussianBlur", "props": { "in": { "expr": "lit", "value": "SourceAlpha" }, "stdDeviation": { "expr": "lit", "value": "3" } } },
+              { "kind": "element", "tag": "feOffset", "props": { "dx": { "expr": "lit", "value": "0" }, "dy": { "expr": "lit", "value": "2" } } },
+              { "kind": "element", "tag": "feComponentTransfer", "props": {}, "children": [
+                { "kind": "element", "tag": "feFuncA", "props": { "type": { "expr": "lit", "value": "linear" }, "slope": { "expr": "lit", "value": "0.2" } } }
+              ] },
+              { "kind": "element", "tag": "feMerge", "props": {}, "children": [
+                { "kind": "element", "tag": "feMergeNode", "props": {} },
+                { "kind": "element", "tag": "feMergeNode", "props": { "in": { "expr": "lit", "value": "SourceGraphic" } } }
+              ] }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "element",
         "tag": "g",
         "props": {
+          "filter": { "expr": "lit", "value": "url(#pieShadow)" },
           "transform": { "expr": "concat", "items": [
               {
                 "expr": "lit",
@@ -274,7 +298,7 @@
                       },
                       "right": {
                         "expr": "lit",
-                        "value": 0.9
+                        "value": 0.85
                       }
                     },
                     {
@@ -329,8 +353,19 @@
                     ]
                   },
                   "else": {
-                    "expr": "lit",
-                    "value": "#3b82f6"
+                    "expr": "call",
+                    "target": {
+                      "expr": "call",
+                      "target": null,
+                      "method": "getChartDefaultColors",
+                      "args": [{ "expr": "lit", "value": "health" }]
+                    },
+                    "method": "at",
+                    "args": [{
+                      "expr": "bin", "op": "%",
+                      "left": { "expr": "var", "name": "idx" },
+                      "right": { "expr": "lit", "value": 7 }
+                    }]
                   }
                 },
                 "className": {
@@ -367,6 +402,67 @@
                   "value": "data"
                 }
               }
+            },
+            "transform": { "expr": "concat", "items": [
+                {
+                  "expr": "lit",
+                  "value": "translate("
+                },
+                {
+                  "expr": "bin",
+                  "op": "/",
+                  "left": {
+                    "expr": "cond",
+                    "if": {
+                      "expr": "param",
+                      "name": "width"
+                    },
+                    "then": {
+                      "expr": "param",
+                      "name": "width"
+                    },
+                    "else": {
+                      "expr": "lit",
+                      "value": 300
+                    }
+                  },
+                  "right": {
+                    "expr": "lit",
+                    "value": 2
+                  }
+                },
+                {
+                  "expr": "lit",
+                  "value": ", "
+                },
+                {
+                  "expr": "bin",
+                  "op": "/",
+                  "left": {
+                    "expr": "cond",
+                    "if": {
+                      "expr": "param",
+                      "name": "height"
+                    },
+                    "then": {
+                      "expr": "param",
+                      "name": "height"
+                    },
+                    "else": {
+                      "expr": "lit",
+                      "value": 300
+                    }
+                  },
+                  "right": {
+                    "expr": "lit",
+                    "value": 2
+                  }
+                },
+                {
+                  "expr": "lit",
+                  "value": ")"
+                }
+              ]
             }
           },
           "children": [
@@ -394,12 +490,44 @@
                 "tag": "text",
                 "props": {
                   "x": {
-                    "expr": "lit",
-                    "value": "150"
+                    "expr": "get",
+                    "base": {
+                      "expr": "call",
+                      "target": null,
+                      "method": "getSliceLabelPosition",
+                      "args": [
+                        { "expr": "lit", "value": 0 },
+                        { "expr": "lit", "value": 0 },
+                        {
+                          "expr": "bin", "op": "*",
+                          "left": { "expr": "bin", "op": "/", "left": { "expr": "call", "target": null, "method": "min", "args": [{ "expr": "cond", "if": { "expr": "param", "name": "width" }, "then": { "expr": "param", "name": "width" }, "else": { "expr": "lit", "value": 300 } }, { "expr": "cond", "if": { "expr": "param", "name": "height" }, "then": { "expr": "param", "name": "height" }, "else": { "expr": "lit", "value": 300 } }] }, "right": { "expr": "lit", "value": 2 } },
+                          "right": { "expr": "lit", "value": 0.7 }
+                        },
+                        { "expr": "get", "base": { "expr": "var", "name": "slice" }, "path": "startAngle" },
+                        { "expr": "get", "base": { "expr": "var", "name": "slice" }, "path": "endAngle" }
+                      ]
+                    },
+                    "path": "x"
                   },
                   "y": {
-                    "expr": "lit",
-                    "value": "150"
+                    "expr": "get",
+                    "base": {
+                      "expr": "call",
+                      "target": null,
+                      "method": "getSliceLabelPosition",
+                      "args": [
+                        { "expr": "lit", "value": 0 },
+                        { "expr": "lit", "value": 0 },
+                        {
+                          "expr": "bin", "op": "*",
+                          "left": { "expr": "bin", "op": "/", "left": { "expr": "call", "target": null, "method": "min", "args": [{ "expr": "cond", "if": { "expr": "param", "name": "width" }, "then": { "expr": "param", "name": "width" }, "else": { "expr": "lit", "value": 300 } }, { "expr": "cond", "if": { "expr": "param", "name": "height" }, "then": { "expr": "param", "name": "height" }, "else": { "expr": "lit", "value": 300 } }] }, "right": { "expr": "lit", "value": 2 } },
+                          "right": { "expr": "lit", "value": 0.7 }
+                        },
+                        { "expr": "get", "base": { "expr": "var", "name": "slice" }, "path": "startAngle" },
+                        { "expr": "get", "base": { "expr": "var", "name": "slice" }, "path": "endAngle" }
+                      ]
+                    },
+                    "path": "y"
                   },
                   "text-anchor": {
                     "expr": "lit",

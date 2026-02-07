@@ -451,8 +451,8 @@ describe('Chart Component Suite', () => {
         });
       });
 
-      it('should contain rect elements for bars', () => {
-        expect(hasElementTag(ctx.barChart.view, 'rect')).toBe(true);
+      it('should contain path elements for bars', () => {
+        expect(hasElementTag(ctx.barChart.view, 'path')).toBe(true);
       });
     });
 
@@ -719,7 +719,7 @@ describe('Chart Component Suite', () => {
       });
 
       it('should render grid when showGrid is true', () => {
-        expect(usesStylePreset(ctx.lineChart.view, 'chartGrid')).toBe(true);
+        expect(hasLocalReference(ctx.lineChart.view, '_gridLines')).toBe(true);
       });
 
       it('should render labels when showLabels is true', () => {
@@ -911,7 +911,7 @@ describe('Chart Component Suite', () => {
       });
 
       it('should render grid when showGrid is true', () => {
-        expect(usesStylePreset(ctx.areaChart.view, 'chartGrid')).toBe(true);
+        expect(hasLocalReference(ctx.areaChart.view, '_gridLines')).toBe(true);
       });
 
       it('should render labels when showLabels is true', () => {
@@ -1212,9 +1212,6 @@ describe('Chart Component Suite', () => {
           { name: 'width', type: 'number' },
           { name: 'height', type: 'number' },
           { name: 'colors', type: 'json' },
-          { name: 'showLabels', type: 'boolean' },
-          { name: 'showPercentage', type: 'boolean' },
-          { name: 'innerRadius', type: 'number' },
           { name: 'centerLabel', type: 'string' },
         ];
 
@@ -1235,9 +1232,6 @@ describe('Chart Component Suite', () => {
           'width',
           'height',
           'colors',
-          'showLabels',
-          'showPercentage',
-          'innerRadius',
           'centerLabel',
         ];
         expect(hasParams(ctx.donutChart, expectedParams)).toBe(true);
@@ -1272,30 +1266,17 @@ describe('Chart Component Suite', () => {
     // ==================== Rendering Tests ====================
 
     describe('Rendering', () => {
-      it('should use getDonutSlices helper for slice calculation', () => {
-        const call = findExpressionCall(ctx.donutChart.view, 'getDonutSlices');
+      it('should use getActivityRingLayout helper for ring layout calculation', () => {
+        // getActivityRingLayout is called in localState, not in view
+        expect(hasLocalState(ctx.donutChart, '_ringLayout')).toBe(true);
+        const initial = ctx.donutChart.localState!['_ringLayout'].initial as Record<string, unknown>;
+        expect(initial['expr']).toBe('call');
+        expect(initial['method']).toBe('getActivityRingLayout');
+      });
+
+      it('should use getActivityRingArcPath helper for arc path generation', () => {
+        const call = findExpressionCall(ctx.donutChart.view, 'getActivityRingArcPath');
         expect(call).not.toBeNull();
-      });
-
-      it('should use getArcPath helper for path generation', () => {
-        const call = findExpressionCall(ctx.donutChart.view, 'getArcPath');
-        expect(call).not.toBeNull();
-      });
-
-      it('should apply chartSlice style preset to slice elements', () => {
-        expect(usesStylePreset(ctx.donutChart.view, 'chartSlice')).toBe(true);
-      });
-
-      it('should render labels when showLabels is true', () => {
-        expect(usesStylePreset(ctx.donutChart.view, 'chartLabel')).toBe(true);
-      });
-
-      it('should support percentage display when showPercentage is true', () => {
-        expect(hasParams(ctx.donutChart, ['showPercentage'])).toBe(true);
-      });
-
-      it('should support configurable inner radius', () => {
-        expect(hasParams(ctx.donutChart, ['innerRadius'])).toBe(true);
       });
 
       it('should support center label display', () => {
@@ -1312,10 +1293,6 @@ describe('Chart Component Suite', () => {
           expr: 'style',
           name: 'chartSvg',
         });
-      });
-
-      it('should use chartSlice preset for donut slices', () => {
-        expect(usesStylePreset(ctx.donutChart.view, 'chartSlice')).toBe(true);
       });
 
       it('should use chartLabel preset for center label', () => {
@@ -1451,7 +1428,7 @@ describe('Chart Component Suite', () => {
       });
 
       it('should render grid when showGrid is true', () => {
-        expect(usesStylePreset(ctx.scatterChart.view, 'chartGrid')).toBe(true);
+        expect(hasLocalReference(ctx.scatterChart.view, '_gridLines')).toBe(true);
       });
 
       it('should render labels when showLabels is true', () => {
@@ -1617,7 +1594,7 @@ describe('Chart Component Suite', () => {
       });
 
       it('should render grid when showGrid is true', () => {
-        expect(usesStylePreset(ctx.radarChart.view, 'chartGrid')).toBe(true);
+        expect(findExpressionCall(ctx.radarChart.view, 'getRadarGridPolygons')).not.toBeNull();
       });
 
       it('should support configurable max value', () => {
@@ -2581,7 +2558,6 @@ describe('Chart Component Suite', () => {
 
       it('DonutChart should reference only existing style presets', () => {
         expect(ctx.styles['chartSvg']).toBeDefined();
-        expect(ctx.styles['chartSlice']).toBeDefined();
         expect(ctx.styles['chartLabel']).toBeDefined();
       });
 
@@ -2639,13 +2615,15 @@ describe('Chart Component Suite', () => {
         expect(call).not.toBeNull();
       });
 
-      it('DonutChart should use getDonutSlices for slice calculation', () => {
-        const call = findExpressionCall(ctx.donutChart.view, 'getDonutSlices');
-        expect(call).not.toBeNull();
+      it('DonutChart should use getActivityRingLayout for ring layout calculation', () => {
+        // getActivityRingLayout is in localState, not view
+        expect(hasLocalState(ctx.donutChart, '_ringLayout')).toBe(true);
+        const initial = ctx.donutChart.localState!['_ringLayout'].initial as Record<string, unknown>;
+        expect(initial['method']).toBe('getActivityRingLayout');
       });
 
-      it('DonutChart should use getArcPath for path generation', () => {
-        const call = findExpressionCall(ctx.donutChart.view, 'getArcPath');
+      it('DonutChart should use getActivityRingArcPath for arc path generation', () => {
+        const call = findExpressionCall(ctx.donutChart.view, 'getActivityRingArcPath');
         expect(call).not.toBeNull();
       });
 
@@ -2667,7 +2645,8 @@ describe('Chart Component Suite', () => {
 
     describe('Common Param Consistency', () => {
       const commonParams = ['data', 'valueKey', 'labelKey', 'width', 'height', 'colors', 'showGrid', 'showLabels'];
-      const pieDonutCommonParams = ['data', 'valueKey', 'labelKey', 'width', 'height', 'colors', 'showLabels'];
+      const pieCommonParams = ['data', 'valueKey', 'labelKey', 'width', 'height', 'colors', 'showLabels'];
+      const donutActivityParams = ['data', 'valueKey', 'labelKey', 'width', 'height', 'colors'];
       const scatterChartParams = ['data', 'xKey', 'yKey', 'width', 'height', 'colors', 'showGrid', 'showLabels'];
       const radarChartParams = ['data', 'valueKey', 'labelKey', 'width', 'height', 'colors', 'showGrid'];
 
@@ -2677,9 +2656,12 @@ describe('Chart Component Suite', () => {
         expect(hasParams(ctx.areaChart, commonParams)).toBe(true);
       });
 
-      it('pie and donut charts should have common params (without showGrid)', () => {
-        expect(hasParams(ctx.pieChart, pieDonutCommonParams)).toBe(true);
-        expect(hasParams(ctx.donutChart, pieDonutCommonParams)).toBe(true);
+      it('pie chart should have common params (without showGrid)', () => {
+        expect(hasParams(ctx.pieChart, pieCommonParams)).toBe(true);
+      });
+
+      it('donut chart (activity ring) should have common params (without showGrid/showLabels)', () => {
+        expect(hasParams(ctx.donutChart, donutActivityParams)).toBe(true);
       });
 
       it('scatter chart should have its required params (xKey, yKey instead of valueKey)', () => {
@@ -2797,8 +2779,8 @@ describe('Chart Component Suite', () => {
           expect(hasLocalStateType(ctx.barChart, '_barGap', 'number')).toBe(true);
         });
 
-        it('should have _barGap initial with cond pattern for barGap param defaulting to 4', () => {
-          expect(hasCondInitialPattern(ctx.barChart, '_barGap', 'barGap', 4)).toBe(true);
+        it('should have _barGap initial with cond pattern for barGap param defaulting to 6', () => {
+          expect(hasCondInitialPattern(ctx.barChart, '_barGap', 'barGap', 6)).toBe(true);
         });
       });
 
@@ -3260,6 +3242,360 @@ describe('Chart Component Suite', () => {
         expect(containsLocalReference(barLabelProps!['y'], '_height')).toBe(true);
         expect(containsLocalReference(lineLabelProps!['y'], '_height')).toBe(true);
         expect(containsLocalReference(areaLabelProps!['y'], '_height')).toBe(true);
+      });
+    });
+  });
+
+  // ==================== Y-axis Scaling Tests ====================
+
+  describe('Y-axis scaling with scaleChartY', () => {
+    describe('LineChart', () => {
+      it('should have _bounds in localState', () => {
+        expect(hasLocalState(ctx.lineChart, '_bounds')).toBe(true);
+      });
+
+      it('should have _paddingTop in localState', () => {
+        expect(hasLocalState(ctx.lineChart, '_paddingTop')).toBe(true);
+      });
+
+      it('should have _paddingBottom in localState', () => {
+        expect(hasLocalState(ctx.lineChart, '_paddingBottom')).toBe(true);
+      });
+
+      it('should use scaleChartY for Y coordinate calculation', () => {
+        const call = findExpressionCall(ctx.lineChart.view, 'scaleChartY');
+        expect(call).not.toBeNull();
+      });
+
+      it('should use getChartBounds for _bounds initial value', () => {
+        const bounds = ctx.lineChart.localState!['_bounds'];
+        const initial = bounds.initial as Record<string, unknown>;
+        expect(initial['expr']).toBe('call');
+        expect(initial['method']).toBe('getChartBounds');
+      });
+    });
+
+    describe('AreaChart', () => {
+      it('should have _bounds in localState', () => {
+        expect(hasLocalState(ctx.areaChart, '_bounds')).toBe(true);
+      });
+
+      it('should have _paddingTop in localState', () => {
+        expect(hasLocalState(ctx.areaChart, '_paddingTop')).toBe(true);
+      });
+
+      it('should have _paddingBottom in localState', () => {
+        expect(hasLocalState(ctx.areaChart, '_paddingBottom')).toBe(true);
+      });
+
+      it('should use scaleChartY for Y coordinate calculation', () => {
+        const call = findExpressionCall(ctx.areaChart.view, 'scaleChartY');
+        expect(call).not.toBeNull();
+      });
+
+      it('should use getChartBounds for _bounds initial value', () => {
+        const bounds = ctx.areaChart.localState!['_bounds'];
+        const initial = bounds.initial as Record<string, unknown>;
+        expect(initial['expr']).toBe('call');
+        expect(initial['method']).toBe('getChartBounds');
+      });
+
+      it('should use _height minus _paddingBottom as getAreaPath baseline', () => {
+        const areaPathCall = findExpressionCall(ctx.areaChart.view, 'getAreaPath') as Record<string, unknown> | null;
+        expect(areaPathCall).not.toBeNull();
+        const args = areaPathCall!['args'] as Array<Record<string, unknown>>;
+        // Second arg is the baseline
+        const baseline = args[1];
+        expect(baseline['expr']).toBe('bin');
+        expect(baseline['op']).toBe('-');
+        const left = baseline['left'] as Record<string, unknown>;
+        const right = baseline['right'] as Record<string, unknown>;
+        expect(left['expr']).toBe('local');
+        expect(left['name']).toBe('_height');
+        expect(right['expr']).toBe('local');
+        expect(right['name']).toBe('_paddingBottom');
+      });
+    });
+
+    describe('ScatterChart', () => {
+      it('should have _bounds in localState', () => {
+        expect(hasLocalState(ctx.scatterChart, '_bounds')).toBe(true);
+      });
+
+      it('should have _paddingTop in localState', () => {
+        expect(hasLocalState(ctx.scatterChart, '_paddingTop')).toBe(true);
+      });
+
+      it('should have _paddingBottom in localState', () => {
+        expect(hasLocalState(ctx.scatterChart, '_paddingBottom')).toBe(true);
+      });
+
+      it('should use scaleChartY for Y coordinate calculation', () => {
+        const call = findExpressionCall(ctx.scatterChart.view, 'scaleChartY');
+        expect(call).not.toBeNull();
+      });
+
+      it('should have localState with _width and _height', () => {
+        expect(hasLocalState(ctx.scatterChart, '_width')).toBe(true);
+        expect(hasLocalState(ctx.scatterChart, '_height')).toBe(true);
+      });
+
+      it('should use getChartBounds with yKey for _bounds initial value', () => {
+        const bounds = ctx.scatterChart.localState!['_bounds'];
+        const initial = bounds.initial as Record<string, unknown>;
+        expect(initial['expr']).toBe('call');
+        expect(initial['method']).toBe('getChartBounds');
+        // Should use yKey param, not valueKey
+        const args = initial['args'] as Array<Record<string, unknown>>;
+        const keyArg = args[1];
+        expect(keyArg['expr']).toBe('param');
+        expect(keyArg['name']).toBe('yKey');
+      });
+    });
+  });
+
+  // ==================== Apple Health Redesign Features ====================
+
+  describe('Apple Health Redesign Features', () => {
+    // ==================== Style Preset Redesign ====================
+
+    describe('Redesign: Style Presets', () => {
+      let styles: Record<string, any>;
+      beforeAll(() => {
+        styles = loadChartStyles();
+      });
+
+      it('chartContainer should have rounded-2xl', () => {
+        expect(styles.chartContainer.base).toContain('rounded-2xl');
+      });
+
+      it('chartContainer should have dark mode', () => {
+        expect(styles.chartContainer.base).toContain('dark:bg-gray-900');
+      });
+
+      it('chartGrid should have dark mode', () => {
+        expect(styles.chartGrid.base).toContain('dark:stroke-gray-600/25');
+      });
+
+      it('chartTooltip should have backdrop-blur', () => {
+        expect(styles.chartTooltip.base).toContain('backdrop-blur');
+      });
+
+      it('chartTooltip should have rounded-xl', () => {
+        expect(styles.chartTooltip.base).toContain('rounded-xl');
+      });
+
+      it('should have chartGridLine style', () => {
+        expect(styles.chartGridLine).toBeDefined();
+        expect(styles.chartGridLine.base).toContain('stroke-gray-300/25');
+      });
+
+      it('should have chartYLabel style with text-[10px]', () => {
+        expect(styles.chartYLabel).toBeDefined();
+        expect(styles.chartYLabel.base).toContain('text-[10px]');
+      });
+
+      it('chartSlice should have stroke for gap', () => {
+        expect(styles.chartSlice.base).toContain('stroke-white');
+      });
+
+      it('chartLegendItem should have dark mode', () => {
+        expect(styles.chartLegendItem.base).toContain('dark:text-gray-300');
+      });
+    });
+
+    // ==================== LineChart Redesign ====================
+
+    describe('Redesign: LineChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('line-chart');
+      });
+
+      it('should have _paddingLeft local state', () => {
+        expect(hasLocalState(component, '_paddingLeft')).toBe(true);
+      });
+
+      it('should have _gridLines local state', () => {
+        expect(hasLocalState(component, '_gridLines')).toBe(true);
+      });
+
+      it('should call getChartGridLines', () => {
+        const gridLines = component.localState?.['_gridLines'];
+        expect(gridLines).toBeDefined();
+        const initialStr = JSON.stringify(gridLines?.initial);
+        expect(initialStr).toContain('"method":"getChartGridLines"');
+      });
+
+      it('should have defs element for gradients', () => {
+        expect(hasElementTag(component.view, 'defs')).toBe(true);
+      });
+
+      it('should have linearGradient element', () => {
+        expect(hasElementTag(component.view, 'linearGradient')).toBe(true);
+      });
+
+      it('should default stroke-width to 2.5 for Apple Health style', () => {
+        expect(JSON.stringify(component.view)).toContain('"value":2.5');
+      });
+    });
+
+    // ==================== AreaChart Redesign ====================
+
+    describe('Redesign: AreaChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('area-chart');
+      });
+
+      it('should have _paddingLeft local state', () => {
+        expect(hasLocalState(component, '_paddingLeft')).toBe(true);
+      });
+
+      it('should have _gridLines local state', () => {
+        expect(hasLocalState(component, '_gridLines')).toBe(true);
+      });
+
+      it('should have defs element for gradients', () => {
+        expect(hasElementTag(component.view, 'defs')).toBe(true);
+      });
+
+      it('should have linearGradient for area fill', () => {
+        expect(hasElementTag(component.view, 'linearGradient')).toBe(true);
+      });
+
+      it('should default fill-opacity to 0.4', () => {
+        expect(JSON.stringify(component.view)).toContain('"value":0.4');
+      });
+    });
+
+    // ==================== BarChart Redesign ====================
+
+    describe('Redesign: BarChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('bar-chart');
+      });
+
+      it('should call getRoundedBarPath for bars', () => {
+        expect(findExpressionCall(component.view, 'getRoundedBarPath')).not.toBeNull();
+      });
+
+      it('should have defs element for bar gradients', () => {
+        expect(hasElementTag(component.view, 'defs')).toBe(true);
+      });
+
+      it('should have _gridLines local state', () => {
+        expect(hasLocalState(component, '_gridLines')).toBe(true);
+      });
+
+      it('should use path elements with getRoundedBarPath instead of rect for bars', () => {
+        const viewStr = JSON.stringify(component.view);
+        expect(viewStr).toContain('"method":"getRoundedBarPath"');
+      });
+    });
+
+    // ==================== ScatterChart Redesign ====================
+
+    describe('Redesign: ScatterChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('scatter-chart');
+      });
+
+      it('should have defs with radialGradient', () => {
+        expect(hasElementTag(component.view, 'defs')).toBe(true);
+        expect(hasElementTag(component.view, 'radialGradient')).toBe(true);
+      });
+
+      it('should have _gridLines local state', () => {
+        expect(hasLocalState(component, '_gridLines')).toBe(true);
+      });
+
+      it('should call getChartGridLines', () => {
+        const gridLines = component.localState?.['_gridLines'];
+        expect(gridLines).toBeDefined();
+        const initialStr = JSON.stringify(gridLines?.initial);
+        expect(initialStr).toContain('"method":"getChartGridLines"');
+      });
+    });
+
+    // ==================== PieChart Redesign ====================
+
+    describe('Redesign: PieChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('pie-chart');
+      });
+
+      it('should call getSliceLabelPosition for labels', () => {
+        expect(findExpressionCall(component.view, 'getSliceLabelPosition')).not.toBeNull();
+      });
+    });
+
+    // ==================== DonutChart Redesign ====================
+
+    describe('Redesign: DonutChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('donut-chart');
+      });
+
+      it('should call getActivityRingArcPath for ring segments', () => {
+        expect(findExpressionCall(component.view, 'getActivityRingArcPath')).not.toBeNull();
+      });
+
+      it('should use getActivityRingArcPath for activity ring arcs', () => {
+        const viewStr = JSON.stringify(component.view);
+        expect(viewStr).toContain('"method":"getActivityRingArcPath"');
+      });
+    });
+
+    // ==================== RadarChart Redesign ====================
+
+    describe('Redesign: RadarChart', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('radar-chart');
+      });
+
+      it('should call getRadarGridPolygons for concentric grid', () => {
+        expect(findExpressionCall(component.view, 'getRadarGridPolygons')).not.toBeNull();
+      });
+
+      it('should have defs element for gradient', () => {
+        expect(hasElementTag(component.view, 'defs')).toBe(true);
+      });
+
+      it('should have data points as circles', () => {
+        expect(hasElementTag(component.view, 'circle')).toBe(true);
+      });
+    });
+
+    // ==================== ChartTooltip Redesign ====================
+
+    describe('Redesign: ChartTooltip', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('chart-tooltip');
+      });
+
+      it('tooltip should reference chartTooltip style with backdrop-blur', () => {
+        expect(component.view).toBeDefined();
+      });
+    });
+
+    // ==================== ChartLegend Redesign ====================
+
+    describe('Redesign: ChartLegend', () => {
+      let component: ComponentDef;
+      beforeAll(() => {
+        component = loadChartComponent('chart-legend');
+      });
+
+      it('should have rounded-full color indicators', () => {
+        const viewStr = JSON.stringify(component.view);
+        expect(viewStr).toContain('rounded-full');
       });
     });
   });

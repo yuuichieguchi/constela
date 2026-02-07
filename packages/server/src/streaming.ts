@@ -743,6 +743,12 @@ function evaluateBinary(
       }
       return dividend / divisor;
     }
+    case '%': {
+      const dividend = typeof leftVal === 'number' ? leftVal : 0;
+      const divisor = typeof rightVal === 'number' ? rightVal : 0;
+      if (divisor === 0) return NaN;
+      return dividend % divisor;
+    }
     case '==':
       return leftVal === rightVal;
     case '!=':
@@ -1148,14 +1154,17 @@ async function renderPortalToStream(node: CompiledPortalNode, ctx: StreamingCont
 async function renderLocalStateToStream(node: CompiledLocalStateNode, ctx: StreamingContext): Promise<void> {
   // Create a map of local state with initial values (evaluate expressions)
   const localStateValues: Record<string, unknown> = {};
+  const progressiveLocals = { ...ctx.locals };
   for (const [name, field] of Object.entries(node.state)) {
     const initial = (field as { initial: unknown }).initial;
     // field.initial may be a CompiledExpression or a literal value
     if (initial && typeof initial === 'object' && 'expr' in (initial as object)) {
-      localStateValues[name] = evaluate(initial as CompiledExpression, ctx);
+      const evalCtx: StreamingContext = { ...ctx, locals: progressiveLocals };
+      localStateValues[name] = evaluate(initial as CompiledExpression, evalCtx);
     } else {
       localStateValues[name] = initial;
     }
+    progressiveLocals[name] = localStateValues[name];
   }
 
   // Create a new context with local state merged into locals

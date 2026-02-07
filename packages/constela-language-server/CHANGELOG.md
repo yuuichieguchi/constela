@@ -1,5 +1,68 @@
 # @constela/language-server
 
+## 0.1.30
+
+### Patch Changes
+
+- Updated dependencies [6e8ae3d]
+  - @constela/core@0.21.4
+  - @constela/compiler@0.15.20
+
+## 0.1.29
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.3
+  - @constela/compiler@0.15.19
+
+## 0.1.28
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.2
+  - @constela/compiler@0.15.18
+
+## 0.1.27
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.1
+  - @constela/compiler@0.15.17
+
+## 0.1.26
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+  - @constela/compiler@0.15.16
+
+## 0.1.25
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+  - @constela/compiler@0.15.15
+
+## 0.1.24
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.15.14
+
+## 0.1.23
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.19.0
+  - @constela/compiler@0.15.13
+
 ## 0.1.22
 
 ### Patch Changes

@@ -78,7 +78,7 @@
               "props": {
                 "className": {
                   "expr": "lit",
-                  "value": "w-3 h-3 rounded-sm"
+                  "value": "w-3 h-3 rounded-full"
                 },
                 "style": { "expr": "concat", "items": [
                     {

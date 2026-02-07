@@ -1,3 +1,45 @@
+/* Chart Animations - Apple Health inspired */
+
+@keyframes area-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes point-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes radar-grow {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes line-glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}
+
 @keyframes bar-grow {
   from {
     transform: scaleY(0);
@@ -7,20 +49,42 @@
   }
 }
 
+@keyframes slice-rotate {
+  from {
+    transform: scale(0) rotate(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
 @keyframes line-draw {
   from {
-    stroke-dashoffset: 100%;
+    stroke-dashoffset: var(--line-length, 1000);
   }
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes slice-rotate {
+@keyframes ring-draw {
   from {
-    transform: scale(0) rotate(-90deg);
+    stroke-dashoffset: var(--ring-length, 1000);
   }
   to {
-    transform: scale(1) rotate(0);
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

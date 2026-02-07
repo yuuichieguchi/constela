@@ -1030,4 +1030,198 @@ describe('Hydrate with Component Local State', () => {
       app.destroy();
     });
   });
+
+  // ==================== Inter-Field Dependency in LocalState Initialization ====================
+
+  describe('inter-field dependency in localState initialization (hydrate)', () => {
+    /**
+     * BUG: When field B's initial value references field A via
+     * { expr: 'local', name: '_fieldA' }, field A is undefined because
+     * ctx.locals hasn't been updated yet during the initialization loop
+     * inside createLocalStateStore in hydrate.ts.
+     *
+     * The fix should progressively update ctx.locals as each field is initialized,
+     * so that later fields can reference earlier ones during hydration.
+     */
+
+    it('should resolve field B that references field A via expr:get on a literal object', async () => {
+      /**
+       * Given: SSR rendered localState with _bounds and _gridMin = _bounds.min
+       * When: hydrateApp is called
+       * Then: _gridMin should resolve to 0 (from _bounds.min)
+       *
+       * Currently BROKEN: _bounds is undefined when _gridMin is evaluated
+       * in createLocalStateStore inside hydrate.ts.
+       */
+
+      // Arrange
+      const localStateNode: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _bounds: {
+            type: 'object',
+            initial: { min: 0, max: 100 },
+          },
+          _gridMin: {
+            type: 'number',
+            initial: {
+              expr: 'get',
+              base: { expr: 'local', name: '_bounds' },
+              path: 'min',
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_gridMin' } },
+          ],
+        },
+      });
+
+      const program = createMinimalProgram({
+        view: localStateNode,
+      });
+
+      // SSR would have rendered _gridMin as "0" if the bug were fixed.
+      // We set it to "0" to match expected post-fix SSR output.
+      setupSSRContent('<span id="result">0</span>');
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Assert - after hydration, the text should reflect the correctly resolved value
+      await Promise.resolve();
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('0');
+
+      app.destroy();
+    });
+
+    it('should resolve field B that computes from two properties of field A via expr:bin', async () => {
+      /**
+       * Given: SSR rendered localState with _bounds ({min:10, max:200}) and _range = max - min
+       * When: hydrateApp is called
+       * Then: _range should resolve to 190
+       *
+       * Currently BROKEN: _bounds is undefined, so bin:- produces NaN.
+       */
+
+      // Arrange
+      const localStateNode: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _bounds: {
+            type: 'object',
+            initial: { min: 10, max: 200 },
+          },
+          _range: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '-',
+              left: {
+                expr: 'get',
+                base: { expr: 'local', name: '_bounds' },
+                path: 'max',
+              },
+              right: {
+                expr: 'get',
+                base: { expr: 'local', name: '_bounds' },
+                path: 'min',
+              },
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_range' } },
+          ],
+        },
+      });
+
+      const program = createMinimalProgram({
+        view: localStateNode,
+      });
+
+      setupSSRContent('<span id="result">190</span>');
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Assert
+      await Promise.resolve();
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('190');
+
+      app.destroy();
+    });
+
+    it('should resolve a three-field chain A -> B -> C', async () => {
+      /**
+       * Given: SSR rendered localState with:
+       *   _base = 10, _doubled = _base * 2, _tripled = _doubled + _base
+       * When: hydrateApp is called
+       * Then: _tripled should resolve to 30 (10*2 + 10)
+       *
+       * Currently BROKEN: _base is undefined when _doubled is evaluated,
+       * so _doubled = NaN, _tripled = NaN.
+       */
+
+      // Arrange
+      const localStateNode: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _base: {
+            type: 'number',
+            initial: 10,
+          },
+          _doubled: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '*',
+              left: { expr: 'local', name: '_base' },
+              right: { expr: 'lit', value: 2 },
+            } as unknown,
+          },
+          _tripled: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '+',
+              left: { expr: 'local', name: '_doubled' },
+              right: { expr: 'local', name: '_base' },
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_tripled' } },
+          ],
+        },
+      });
+
+      const program = createMinimalProgram({
+        view: localStateNode,
+      });
+
+      setupSSRContent('<span id="result">30</span>');
+
+      // Act
+      const app = hydrateApp({ program, container });
+
+      // Assert
+      await Promise.resolve();
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('30');
+
+      app.destroy();
+    });
+  });
 });

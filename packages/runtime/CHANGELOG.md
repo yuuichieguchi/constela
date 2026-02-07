@@ -1,5 +1,100 @@
 # @constela/runtime
 
+## 5.0.6
+
+### Patch Changes
+
+- Updated dependencies [6e8ae3d]
+  - @constela/core@0.21.4
+  - @constela/ai@6.0.4
+  - @constela/compiler@0.15.20
+
+## 5.0.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.3
+  - @constela/ai@6.0.3
+  - @constela/compiler@0.15.19
+
+## 5.0.4
+
+### Patch Changes
+
+- Add SVG filter primitive elements to SVG_TAGS whitelist to fix chart filter rendering
+
+## 5.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.2
+  - @constela/ai@6.0.2
+  - @constela/compiler@0.15.18
+
+## 5.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.1
+  - @constela/ai@6.0.1
+  - @constela/compiler@0.15.17
+
+## 5.0.1
+
+### Patch Changes
+
+- Add modulo (%) operator to expression evaluators
+
+## 5.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+  - @constela/ai@6.0.0
+  - @constela/compiler@0.15.16
+
+## 4.0.1
+
+### Patch Changes
+
+- fix: support inter-field dependencies in localState initialization
+
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+  - @constela/ai@5.0.0
+  - @constela/compiler@0.15.15
+
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/compiler@0.15.14
+
+## 3.0.0
+
+### Patch Changes
+
+- feat: move global helper functions to @constela/core for SSR support, enabling chart Y-axis scaling in server-side rendering
+- Updated dependencies
+  - @constela/core@0.19.0
+  - @constela/ai@4.0.0
+  - @constela/compiler@0.15.13
+
+## 2.0.10
+
+### Patch Changes
+
+- fix: normalize Y-axis scaling in LineChart, AreaChart, ScatterChart using scaleChartY helper
+
 ## 2.0.9
 
 ### Patch Changes

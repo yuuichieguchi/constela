@@ -567,6 +567,49 @@ function substituteParamExpr(
     };
   }
 
+  // Recursively substitute in call expressions
+  if (expr.expr === 'call') {
+    return {
+      ...expr,
+      target: expr.target ? substituteParamExpr(expr.target, props) : null,
+      args: expr.args?.map((arg: Expression) => substituteParamExpr(arg, props)),
+    };
+  }
+
+  // Recursively substitute in lambda expressions
+  if (expr.expr === 'lambda') {
+    return {
+      ...expr,
+      body: substituteParamExpr(expr.body, props),
+    };
+  }
+
+  // Recursively substitute in array expressions
+  if (expr.expr === 'array') {
+    return {
+      ...expr,
+      elements: expr.elements.map((el: Expression) => substituteParamExpr(el, props)),
+    };
+  }
+
+  // Recursively substitute in object expressions
+  if (expr.expr === 'obj') {
+    return {
+      ...expr,
+      props: Object.fromEntries(
+        Object.entries(expr.props).map(([key, val]) => [key, substituteParamExpr(val as Expression, props)])
+      ),
+    };
+  }
+
+  // Recursively substitute in concat expressions
+  if (expr.expr === 'concat') {
+    return {
+      ...expr,
+      items: expr.items.map((item: Expression) => substituteParamExpr(item, props)),
+    };
+  }
+
   // For lit, state, var, route, import, data, ref - return as-is
   return expr;
 }
@@ -716,7 +759,7 @@ function convertViewNode(
       if (componentDef?.localState && Object.keys(componentDef.localState).length > 0) {
         return {
           kind: 'localState',
-          state: convertLocalState(componentDef.localState),
+          state: convertLocalState(componentDef.localState, (componentNode.props ?? {}) as Record<string, Expression>),
           actions: convertLocalActions(componentDef.localActions ?? []),
           child: expandedView,
         };
@@ -825,11 +868,16 @@ function convertState(state: Record<string, unknown> | undefined): Record<string
  * Convert local state to compiled format
  */
 function convertLocalState(
-  localState: Record<string, StateField>
+  localState: Record<string, StateField>,
+  props?: Record<string, Expression>
 ): Record<string, { type: string; initial: unknown }> {
   const result: Record<string, { type: string; initial: unknown }> = {};
   for (const [name, field] of Object.entries(localState)) {
-    result[name] = { type: field.type, initial: field.initial };
+    let initial: unknown = field.initial;
+    if (props && initial && typeof initial === 'object' && 'expr' in (initial as Record<string, unknown>)) {
+      initial = substituteParamExpr(initial as Expression, props);
+    }
+    result[name] = { type: field.type, initial };
   }
   return result;
 }

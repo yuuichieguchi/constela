@@ -479,6 +479,91 @@ describe('evaluate', () => {
       expect(result).toBe(5);
     });
 
+    it('should compute modulo of two numbers', () => {
+      // Arrange
+      const expr: CompiledExpression = {
+        expr: 'bin',
+        op: '%',
+        left: { expr: 'lit', value: 10 },
+        right: { expr: 'lit', value: 3 },
+      };
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe(1);
+    });
+
+    it('should return NaN for modulo by zero', () => {
+      // Arrange
+      const expr: CompiledExpression = {
+        expr: 'bin',
+        op: '%',
+        left: { expr: 'lit', value: 5 },
+        right: { expr: 'lit', value: 0 },
+      };
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBeNaN();
+    });
+
+    it('should treat non-number as 0 in modulo', () => {
+      // Arrange
+      const expr: CompiledExpression = {
+        expr: 'bin',
+        op: '%',
+        left: { expr: 'lit', value: 'abc' },
+        right: { expr: 'lit', value: 3 },
+      };
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe(0);
+    });
+
+    it('should handle negative modulo (JS semantics)', () => {
+      // Arrange
+      const expr: CompiledExpression = {
+        expr: 'bin',
+        op: '%',
+        left: { expr: 'lit', value: -7 },
+        right: { expr: 'lit', value: 3 },
+      };
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe(-1);
+    });
+
+    it('should handle float modulo', () => {
+      // Arrange
+      const expr: CompiledExpression = {
+        expr: 'bin',
+        op: '%',
+        left: { expr: 'lit', value: 5.5 },
+        right: { expr: 'lit', value: 2 },
+      };
+      const context = createContext();
+
+      // Act
+      const result = evaluate(expr, context);
+
+      // Assert
+      expect(result).toBe(1.5);
+    });
+
     it('should concatenate strings with +', () => {
       // Arrange
       const expr: CompiledExpression = {

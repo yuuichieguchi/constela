@@ -329,3 +329,7 @@ export {
   isSuspenseBoundary,
   isStreamChunk,
 } from './types/streaming.js';
+
+// ==================== Global Helper Functions ====================
+export type { CalendarDay } from './helpers/global-functions.js';
+export { callGlobalFunction, GLOBAL_FUNCTIONS } from './helpers/global-functions.js';

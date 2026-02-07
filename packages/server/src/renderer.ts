@@ -23,7 +23,7 @@ import type {
   CompiledCallExpr,
   CompiledLambdaExpr,
 } from '@constela/compiler';
-import { isCookieInitialExpr } from '@constela/core';
+import { isCookieInitialExpr, callGlobalFunction } from '@constela/core';
 import { parseMarkdownSSRAsync } from './markdown.js';
 import { renderCodeSSR } from './code.js';
 import { escapeHtml } from './utils/escape.js';
@@ -536,9 +536,13 @@ function evaluate(expr: CompiledExpression, ctx: SSRContext): unknown {
 
     case 'call': {
       const callExpr = expr as CompiledCallExpr;
-      // target が null の場合はグローバルヘルパー関数呼び出し（SSR では未サポート）
+      // target が null の場合はグローバルヘルパー関数呼び出し
       if (callExpr.target === null) {
-        return undefined;
+        const globalArgs = callExpr.args?.map((arg: CompiledExpression) => {
+          if (arg.expr === 'lambda') return arg;
+          return evaluate(arg, ctx);
+        }) ?? [];
+        return callGlobalFunction(callExpr.method, globalArgs);
       }
       const target = evaluate(callExpr.target, ctx);
       if (target == null) return undefined;
@@ -691,6 +695,12 @@ function evaluateBinary(
         return dividend === 0 ? NaN : dividend > 0 ? Infinity : -Infinity;
       }
       return dividend / divisor;
+    }
+    case '%': {
+      const dividend = typeof leftVal === 'number' ? leftVal : 0;
+      const divisor = typeof rightVal === 'number' ? rightVal : 0;
+      if (divisor === 0) return NaN;
+      return dividend % divisor;
     }
     case '==':
       return leftVal === rightVal;
@@ -1011,14 +1021,17 @@ async function renderPortal(node: CompiledPortalNode, ctx: SSRContext): Promise<
 async function renderLocalState(node: CompiledLocalStateNode, ctx: SSRContext): Promise<string> {
   // Create a map of local state with initial values (evaluate expressions)
   const localStateValues: Record<string, unknown> = {};
+  const progressiveLocals = { ...ctx.locals };
   for (const [name, field] of Object.entries(node.state)) {
     // field.initial may be a CompiledExpression or a literal value
     const initial = field.initial;
     if (initial && typeof initial === 'object' && 'expr' in initial) {
-      localStateValues[name] = evaluate(initial as CompiledExpression, ctx);
+      const evalCtx: SSRContext = { ...ctx, locals: progressiveLocals };
+      localStateValues[name] = evaluate(initial as CompiledExpression, evalCtx);
     } else {
       localStateValues[name] = initial;
     }
+    progressiveLocals[name] = localStateValues[name];
   }
 
   // Create a new context with local state merged into locals

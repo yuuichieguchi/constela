@@ -140,6 +140,7 @@ function createLocalStateStore(
   ctx: HydrateContext
 ): LocalStateStore {
   const signals: Record<string, Signal<unknown>> = {};
+  const progressiveLocals = { ...ctx.locals };
 
   for (const [name, def] of Object.entries(stateDefs)) {
     // def.initial may be a CompiledExpression or a literal value
@@ -148,7 +149,7 @@ function createLocalStateStore(
     if (initial && typeof initial === 'object' && 'expr' in (initial as object)) {
       const evalCtx: Parameters<typeof evaluate>[1] = {
         state: ctx.state,
-        locals: ctx.locals,
+        locals: progressiveLocals,
       };
       if (ctx.route) evalCtx.route = ctx.route;
       if (ctx.imports) evalCtx.imports = ctx.imports;
@@ -158,6 +159,7 @@ function createLocalStateStore(
       initialValue = initial;
     }
     signals[name] = createSignal<unknown>(initialValue);
+    progressiveLocals[name] = initialValue;
   }
 
   return {

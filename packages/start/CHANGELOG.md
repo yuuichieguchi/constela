@@ -1,5 +1,139 @@
 # @constela/start
 
+## 1.9.28
+
+### Patch Changes
+
+- Updated dependencies [6e8ae3d]
+  - @constela/core@0.21.4
+  - @constela/ai@6.0.4
+  - @constela/compiler@0.15.20
+  - @constela/runtime@5.0.6
+  - @constela/server@17.0.1
+  - @constela/router@23.0.0
+
+## 1.9.27
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.3
+  - @constela/ai@6.0.3
+  - @constela/compiler@0.15.19
+  - @constela/runtime@5.0.5
+  - @constela/server@17.0.1
+  - @constela/router@23.0.0
+
+## 1.9.26
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@5.0.4
+  - @constela/router@23.0.0
+
+## 1.9.25
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.2
+  - @constela/ai@6.0.2
+  - @constela/compiler@0.15.18
+  - @constela/runtime@5.0.3
+  - @constela/server@17.0.1
+  - @constela/router@23.0.0
+
+## 1.9.24
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.1
+  - @constela/ai@6.0.1
+  - @constela/compiler@0.15.17
+  - @constela/runtime@5.0.2
+  - @constela/server@17.0.1
+  - @constela/router@23.0.0
+
+## 1.9.23
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@5.0.1
+  - @constela/server@17.0.1
+  - @constela/router@23.0.0
+
+## 1.9.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.21.0
+  - @constela/ai@6.0.0
+  - @constela/compiler@0.15.16
+  - @constela/runtime@5.0.0
+  - @constela/server@17.0.0
+  - @constela/router@23.0.0
+
+## 1.9.21
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@4.0.1
+  - @constela/server@16.0.1
+  - @constela/router@22.0.0
+
+## 1.9.20
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.20.0
+  - @constela/ai@5.0.0
+  - @constela/compiler@0.15.15
+  - @constela/runtime@4.0.0
+  - @constela/server@16.0.0
+  - @constela/router@22.0.0
+
+## 1.9.19
+
+### Patch Changes
+
+- fix(compiler,start): transform expression objects in localState field.initial
+
+  transformLocalState now passes expression objects (e.g. call, cond) through
+  transformExpression to resolve param references. Also adds call, lambda,
+  array, obj, concat cases to substituteParamExpr in json-page-loader.
+
+- Updated dependencies
+  - @constela/compiler@0.15.14
+  - @constela/router@21.0.0
+  - @constela/runtime@3.0.1
+  - @constela/server@15.0.0
+
+## 1.9.18
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.19.0
+  - @constela/runtime@3.0.0
+  - @constela/server@15.0.0
+  - @constela/ai@4.0.0
+  - @constela/compiler@0.15.13
+  - @constela/router@21.0.0
+
+## 1.9.17
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/runtime@2.0.10
+  - @constela/router@20.0.0
+
 ## 1.9.16
 
 ### Patch Changes

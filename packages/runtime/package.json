@@ -1,6 +1,6 @@
 {
   "name": "@constela/runtime",
-  "version": "2.0.9",
+  "version": "5.0.6",
   "description": "Runtime DOM renderer for Constela UI framework",
   "type": "module",
   "main": "./dist/index.js",

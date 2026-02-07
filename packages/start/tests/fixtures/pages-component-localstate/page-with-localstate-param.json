@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "route": { "path": "/localstate-param-test" },
+  "state": {},
+  "actions": [],
+  "components": {
+    "ChartLike": {
+      "params": {
+        "values": { "type": "list" },
+        "minY": { "type": "number" },
+        "maxY": { "type": "number" }
+      },
+      "localState": {
+        "_bounds": {
+          "type": "object",
+          "initial": {
+            "expr": "call",
+            "target": null,
+            "method": "getChartBounds",
+            "args": [
+              { "expr": "param", "name": "values" },
+              { "expr": "param", "name": "minY" },
+              { "expr": "param", "name": "maxY" }
+            ]
+          }
+        }
+      },
+      "view": {
+        "kind": "element",
+        "tag": "div",
+        "children": [
+          { "kind": "text", "value": { "expr": "state", "name": "_bounds" } }
+        ]
+      }
+    }
+  },
+  "view": {
+    "kind": "component",
+    "name": "ChartLike",
+    "props": {
+      "values": { "expr": "lit", "value": [10, 20, 30] },
+      "minY": { "expr": "lit", "value": 0 },
+      "maxY": { "expr": "lit", "value": 100 }
+    }
+  }
+}

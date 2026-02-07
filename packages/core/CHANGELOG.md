@@ -1,5 +1,56 @@
 # @constela/core
 
+## 0.21.4
+
+### Patch Changes
+
+- 6e8ae3d: Fix pie chart slice/label angle mismatch and remove area fill from LineChart
+
+## 0.21.3
+
+### Patch Changes
+
+- Fix chart rendering: getArcPath generates pie wedges, getBarDimensions supports valueKey, add fill="none" to line/area stroke paths
+
+## 0.21.2
+
+### Patch Changes
+
+- Add min/max global functions for chart radius calculations
+
+## 0.21.1
+
+### Patch Changes
+
+- fix(core): prevent negative radius in getActivityRingLayout when data items exceed available drawing area
+
+## 0.21.0
+
+### Minor Changes
+
+- Apple Health level visual overhaul for all 7 chart types
+
+  - New global functions: getActivityRingArcPath, getActivityRingLayout, getChartDefaultColors
+  - Line/Area: area fill gradient, Apple Green, glow filter, round caps
+  - Bar: Apple Blue, drop shadow, Y-axis labels
+  - Pie: Apple Health 7-color palette, drop shadow
+  - Donut: Activity Ring style (stroke-based concentric rings)
+  - Radar: solid thin grids, glow filter, white-ringed data points
+  - Scatter: Apple Blue, white ring, improved shadow
+  - All charts: solid thin grid lines, drop shadows, rounded line caps
+
+## 0.20.0
+
+### Minor Changes
+
+- feat: Apple Health style chart redesign for all 7 chart types
+
+## 0.19.0
+
+### Minor Changes
+
+- feat: move global helper functions to @constela/core for SSR support, enabling chart Y-axis scaling in server-side rendering
+
 ## 0.18.5
 
 ### Patch Changes

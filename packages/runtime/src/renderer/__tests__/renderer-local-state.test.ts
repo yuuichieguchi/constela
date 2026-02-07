@@ -813,6 +813,182 @@ describe('Renderer with Component Local State', () => {
     });
   });
 
+  // ==================== Inter-Field Dependency in LocalState Initialization ====================
+
+  describe('inter-field dependency in localState initialization', () => {
+    /**
+     * BUG: When field B's initial value references field A via
+     * { expr: 'local', name: '_fieldA' }, field A is undefined because
+     * ctx.locals hasn't been updated yet during the initialization loop.
+     *
+     * The fix should progressively update ctx.locals as each field is initialized,
+     * so that later fields can reference earlier ones.
+     */
+
+    it('should resolve field B that references field A via expr:get on a literal object', () => {
+      /**
+       * Given: localState with _bounds (object) and _gridMin that reads _bounds.min
+       * When: The localState node is rendered
+       * Then: _gridMin should resolve to 0 (the value of _bounds.min)
+       *
+       * Currently BROKEN: _bounds is undefined when _gridMin is evaluated,
+       * so expr:get on undefined returns undefined, and the text shows "undefined".
+       */
+
+      // Arrange
+      const node: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _bounds: {
+            type: 'object',
+            initial: { min: 0, max: 100 },
+          },
+          _gridMin: {
+            type: 'number',
+            initial: {
+              expr: 'get',
+              base: { expr: 'local', name: '_bounds' },
+              path: 'min',
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_gridMin' } },
+          ],
+        },
+      });
+
+      const ctx = createRenderContext();
+
+      // Act
+      const result = render(node, ctx);
+      container.appendChild(result);
+
+      // Assert
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('0');
+    });
+
+    it('should resolve field B that computes from two properties of field A via expr:bin', () => {
+      /**
+       * Given: localState with _bounds ({ min: 10, max: 200 }) and _range = max - min
+       * When: The localState node is rendered
+       * Then: _range should resolve to 190
+       *
+       * Currently BROKEN: _bounds is undefined when _range is evaluated,
+       * so expr:get returns undefined for both sides, and bin:- produces NaN.
+       */
+
+      // Arrange
+      const node: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _bounds: {
+            type: 'object',
+            initial: { min: 10, max: 200 },
+          },
+          _range: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '-',
+              left: {
+                expr: 'get',
+                base: { expr: 'local', name: '_bounds' },
+                path: 'max',
+              },
+              right: {
+                expr: 'get',
+                base: { expr: 'local', name: '_bounds' },
+                path: 'min',
+              },
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_range' } },
+          ],
+        },
+      });
+
+      const ctx = createRenderContext();
+
+      // Act
+      const result = render(node, ctx);
+      container.appendChild(result);
+
+      // Assert
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('190');
+    });
+
+    it('should resolve a three-field chain A -> B -> C', () => {
+      /**
+       * Given: localState with:
+       *   _base = 10 (literal)
+       *   _doubled = _base * 2 (depends on _base)
+       *   _tripled = _doubled + _base (depends on _doubled AND _base)
+       * When: The localState node is rendered
+       * Then: _tripled should resolve to 30 (10*2 + 10)
+       *
+       * Currently BROKEN: _base is undefined when _doubled is evaluated,
+       * so _doubled = NaN, and _tripled = NaN + undefined = NaN.
+       */
+
+      // Arrange
+      const node: CompiledLocalStateNode = createLocalStateNode({
+        state: {
+          _base: {
+            type: 'number',
+            initial: 10,
+          },
+          _doubled: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '*',
+              left: { expr: 'local', name: '_base' },
+              right: { expr: 'lit', value: 2 },
+            } as unknown,
+          },
+          _tripled: {
+            type: 'number',
+            initial: {
+              expr: 'bin',
+              op: '+',
+              left: { expr: 'local', name: '_doubled' },
+              right: { expr: 'local', name: '_base' },
+            } as unknown,
+          },
+        },
+        child: {
+          kind: 'element',
+          tag: 'span',
+          props: { id: { expr: 'lit', value: 'result' } },
+          children: [
+            { kind: 'text', value: { expr: 'state', name: '_tripled' } },
+          ],
+        },
+      });
+
+      const ctx = createRenderContext();
+
+      // Act
+      const result = render(node, ctx);
+      container.appendChild(result);
+
+      // Assert
+      const span = container.querySelector('#result');
+      expect(span?.textContent).toBe('30');
+    });
+  });
+
   // ==================== Cleanup ====================
 
   describe('cleanup', () => {
