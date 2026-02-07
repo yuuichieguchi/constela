@@ -147,7 +147,7 @@ Declare application state with explicit types:
 
 ### View Nodes
 
-Five node types for building UI:
+12 node types for building UI:
 
 ```json
 // Element node
@@ -164,6 +164,27 @@ Five node types for building UI:
 
 // Portal node (render children to a different DOM location)
 { "kind": "portal", "target": "body", "children": [...] }
+
+// Component node
+{ "kind": "component", "name": "Button", "props": { "label": { "expr": "lit", "value": "Click" } } }
+
+// Slot node (insertion point for children in components/layouts)
+{ "kind": "slot" }
+
+// Markdown node
+{ "kind": "markdown", "content": { "expr": "state", "name": "markdownContent" } }
+
+// Code node (syntax-highlighted code block)
+{ "kind": "code", "code": { "expr": "lit", "value": "const x = 42;" }, "language": { "expr": "lit", "value": "typescript" } }
+
+// Island node (client-side interactive region within SSR)
+{ "kind": "island", "component": "Counter", "props": {...} }
+
+// Suspense node (async loading boundary)
+{ "kind": "suspense", "fallback": {...}, "children": [...] }
+
+// Error boundary node
+{ "kind": "errorBoundary", "fallback": {...}, "children": [...] }
 ```
 
 **Portal targets:** `body`, `head`, or any CSS selector
@@ -208,7 +229,7 @@ Constrained expression system (no arbitrary JavaScript):
 { "expr": "validity", "ref": "emailInput", "property": "message" }
 ```
 
-**Binary operators:** `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
+**Binary operators:** `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`
 
 **Route sources:** `param` (default), `query`, `path`
 
@@ -1116,15 +1137,17 @@ export default { fetch: adapter.fetch };
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `create-constela` | 0.2.0 | CLI scaffolding tool (`npx create-constela my-app`) |
-| `@constela/core` | 0.8.0 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
-| `@constela/compiler` | 0.8.0 | 3-pass compiler: validate → analyze → transform, Style analysis |
-| `@constela/runtime` | 0.16.0 | DOM renderer, hydration, reactive signals, Style evaluation |
-| `@constela/router` | 9.0.0 | History API routing, dynamic params, catch-all routes |
-| `@constela/server` | 4.1.0 | SSR with Shiki dual-theme syntax highlighting |
-| `@constela/start` | 1.6.0 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
-| `@constela/cli` | 0.4.1 | CLI: compile, dev, build, start, validate, inspect commands |
-| `@constela/builder` | 0.2.0 | Type-safe builders for programmatic AST construction |
+| `create-constela` | 0.2.3 | CLI scaffolding tool (`npx create-constela my-app`) |
+| `@constela/core` | 0.21.4 | AST types, JSON Schema, validator, 47 type guards, error codes, Style System |
+| `@constela/compiler` | 0.15.20 | 3-pass compiler: validate → analyze → transform, Style analysis |
+| `@constela/runtime` | 5.0.6 | DOM renderer, hydration, reactive signals, Style evaluation |
+| `@constela/router` | 23.0.0 | History API routing, dynamic params, catch-all routes |
+| `@constela/server` | 17.0.1 | SSR with Shiki dual-theme syntax highlighting |
+| `@constela/start` | 1.9.28 | Dev server, build, SSG, MDX, layouts, API routes, edge adapters |
+| `@constela/cli` | 0.5.78 | CLI: compile, dev, build, start, validate, inspect commands |
+| `@constela/builder` | 0.2.34 | Type-safe builders for programmatic AST construction |
+| `@constela/ai` | 6.0.4 | AI-powered DSL generation with Anthropic and OpenAI providers |
+| `@constela/ui` | 0.6.5 | Pre-built UI component library (30+ components) |
 
 See each package's README for detailed API documentation.
 
@@ -1428,27 +1451,6 @@ To test your Constela application:
    ```bash
    constela build && ls -la dist/
    ```
-
-## Roadmap
-
-### Completed
-
-- [x] Style system integration (`styles`, `StyleExpr`)
-- [x] TypeScript builder API (`@constela/builder`)
-- [x] Enhanced error messages with "Did you mean?" suggestions
-- [x] CLI improvements (`--json`, `--watch`, `--verbose`, `--debug`)
-- [x] New CLI commands (`validate`, `inspect`)
-- [x] Timer actions (`delay`, `interval`, `clearTimer`)
-- [x] Enhanced event data (keyboard, mouse, touch, scroll, files)
-- [x] Form features (`focus` step, `validity` expression)
-- [x] Portal node for rendering outside component tree
-- [x] Event handler options (`debounce`, `throttle`, `intersect`)
-- [x] Hot Module Replacement (HMR)
-
-### Planned
-
-- [ ] Visual editor / playground
-- [ ] IDE extensions (VSCode, etc.)
 
 ## License
 
