@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { join, isAbsolute, dirname, basename, relative } from 'node:path';
-import type { AddressInfo } from 'node:net';
+
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 import { type ViewNode, isCookieInitialExpr, ConstelaError } from '@constela/core';
 import type { DevServerOptions, ScannedRoute } from '../types.js';
@@ -561,80 +561,93 @@ h1 { color: #666; }
 </html>`);
         });
 
-        httpServer.on('error', (err) => {
-          reject(err);
-        });
+        let currentPort = port;
+        const MAX_PORT_TRIES = 10;
+        httpServer!.setMaxListeners(MAX_PORT_TRIES + 1);
 
-        httpServer.listen(port, host, async () => {
-          // Get the actual port (important when port is 0)
-          const address = httpServer?.address() as AddressInfo | null;
-          if (address) {
-            actualPort = address.port;
-          }
+        const tryListen = () => {
+          httpServer!.once('error', (err: NodeJS.ErrnoException) => {
+            if (err.code === 'EADDRINUSE' && currentPort < port + MAX_PORT_TRIES - 1) {
+              currentPort++;
+              tryListen();
+            } else {
+              reject(err);
+            }
+          });
 
-          // Initialize HMR server
-          try {
-            hmrServer = await createHMRServer({ port: 0 });
+          httpServer!.listen(currentPort, host, async () => {
+            actualPort = currentPort;
 
-            // Initialize file watcher for routes directory
-            watcher = await createWatcher({
-              directory: absoluteRoutesDir,
-              patterns: ['**/*.json'],
-            });
+            if (currentPort !== port) {
+              console.warn(`Port ${port} is in use, using port ${currentPort} instead.`);
+            }
 
-            // Handle file changes
-            watcher.on('change', async (event) => {
-              const projectRoot = process.cwd();
-              const pageLoader = new JsonPageLoader(projectRoot);
+            // Initialize HMR server
+            try {
+              hmrServer = await createHMRServer({ port: 0 });
 
-              try {
-                // Normalize path to use forward slashes (for Windows compatibility)
-                const relativePath = relative(projectRoot, event.path).replace(/\\/g, '/');
-                const pageInfo = await pageLoader.loadPage(relativePath);
-                const program = await convertToCompiledProgram(pageInfo);
+              // Initialize file watcher for routes directory
+              watcher = await createWatcher({
+                directory: absoluteRoutesDir,
+                patterns: ['**/*.json'],
+              });
 
-                if (hmrServer) {
-                  hmrServer.broadcastUpdate(event.path, program);
-                }
-              } catch (error) {
-                if (hmrServer) {
-                  if (error instanceof ConstelaError) {
-                    hmrServer.broadcastError(event.path, [error]);
-                  } else {
-                    // Create a generic error object with minimal ConstelaError shape
-                    const genericError = {
-                      code: 'COMPILE_ERROR',
-                      message: error instanceof Error ? error.message : String(error),
-                      path: event.path,
-                      severity: 'error' as const,
-                      suggestion: undefined,
-                      expected: undefined,
-                      actual: undefined,
-                      context: undefined,
-                      name: 'ConstelaError',
-                      toJSON: () => ({
+              // Handle file changes
+              watcher.on('change', async (event) => {
+                const projectRoot = process.cwd();
+                const pageLoader = new JsonPageLoader(projectRoot);
+
+                try {
+                  // Normalize path to use forward slashes (for Windows compatibility)
+                  const relativePath = relative(projectRoot, event.path).replace(/\\/g, '/');
+                  const pageInfo = await pageLoader.loadPage(relativePath);
+                  const program = await convertToCompiledProgram(pageInfo);
+
+                  if (hmrServer) {
+                    hmrServer.broadcastUpdate(event.path, program);
+                  }
+                } catch (error) {
+                  if (hmrServer) {
+                    if (error instanceof ConstelaError) {
+                      hmrServer.broadcastError(event.path, [error]);
+                    } else {
+                      // Create a generic error object with minimal ConstelaError shape
+                      const genericError = {
                         code: 'COMPILE_ERROR',
                         message: error instanceof Error ? error.message : String(error),
                         path: event.path,
-                        severity: 'error',
+                        severity: 'error' as const,
                         suggestion: undefined,
                         expected: undefined,
                         actual: undefined,
                         context: undefined,
-                      }),
-                    } as unknown as ConstelaError;
-                    hmrServer.broadcastError(event.path, [genericError]);
+                        name: 'ConstelaError',
+                        toJSON: () => ({
+                          code: 'COMPILE_ERROR',
+                          message: error instanceof Error ? error.message : String(error),
+                          path: event.path,
+                          severity: 'error',
+                          suggestion: undefined,
+                          expected: undefined,
+                          actual: undefined,
+                          context: undefined,
+                        }),
+                      } as unknown as ConstelaError;
+                      hmrServer.broadcastError(event.path, [genericError]);
+                    }
                   }
                 }
-              }
-            });
-          } catch (hmrError) {
-            // HMR initialization failed - log but don't fail server startup
-            console.warn('HMR initialization failed:', hmrError);
-          }
+              });
+            } catch (hmrError) {
+              // HMR initialization failed - log but don't fail server startup
+              console.warn('HMR initialization failed:', hmrError);
+            }
 
-          resolve();
-        });
+            resolve();
+          });
+        };
+
+        tryListen();
       });
     },
 
