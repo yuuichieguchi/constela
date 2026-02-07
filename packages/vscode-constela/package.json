@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "Constela",
   "description": "Language support for Constela DSL - syntax highlighting, auto-completion, and error checking",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "publisher": "constela",
   "icon": "icons/constela-icon.png",
   "engines": {
