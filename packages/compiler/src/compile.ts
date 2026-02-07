@@ -16,6 +16,7 @@ import { transformPass } from './passes/transform.js';
 export interface CompileSuccess {
   ok: true;
   program: CompiledProgram;
+  warnings?: ConstelaError[];
 }
 
 export interface CompileFailure {
@@ -60,5 +61,6 @@ export function compile(input: unknown): CompileResult {
   return {
     ok: true,
     program,
+    warnings: analyzeResult.warnings,
   };
 }

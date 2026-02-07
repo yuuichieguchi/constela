@@ -305,6 +305,14 @@ export {
   createLocalActionInvalidStepError,
   // Island error factories
   createDuplicateIslandIdError,
+  // Accessibility error factories
+  createA11yImgNoAltError,
+  createA11yButtonNoLabelError,
+  createA11yAnchorNoLabelError,
+  createA11yInputNoLabelError,
+  createA11yHeadingSkipError,
+  createA11yPositiveTabindexError,
+  createA11yDuplicateIdError,
 } from './types/error.js';
 
 // ==================== Validator ====================
