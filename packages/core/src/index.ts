@@ -333,3 +333,16 @@ export {
 // ==================== Global Helper Functions ====================
 export type { CalendarDay } from './helpers/global-functions.js';
 export { callGlobalFunction, GLOBAL_FUNCTIONS } from './helpers/global-functions.js';
+
+// ==================== Unified Evaluate ====================
+export type { StateReader, EnvironmentAdapter, CoreEvaluationContext } from './evaluate/index.js';
+export {
+  evaluate,
+  evaluateStyle,
+  SAFE_ARRAY_METHODS,
+  SAFE_STRING_METHODS,
+  SAFE_MATH_METHODS,
+  SAFE_DATE_STATIC_METHODS,
+  SAFE_DATE_INSTANCE_METHODS,
+  FORBIDDEN_KEYS,
+} from './evaluate/index.js';
