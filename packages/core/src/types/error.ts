@@ -57,7 +57,15 @@ export type ErrorCode =
   | 'UNDEFINED_LOCAL_STATE'
   | 'LOCAL_ACTION_INVALID_STEP'
   // Island-related error codes
-  | 'DUPLICATE_ISLAND_ID';
+  | 'DUPLICATE_ISLAND_ID'
+  // Accessibility error codes
+  | 'A11Y_IMG_NO_ALT'
+  | 'A11Y_BUTTON_NO_LABEL'
+  | 'A11Y_ANCHOR_NO_LABEL'
+  | 'A11Y_INPUT_NO_LABEL'
+  | 'A11Y_HEADING_SKIP'
+  | 'A11Y_POSITIVE_TABINDEX'
+  | 'A11Y_DUPLICATE_ID';
 
 // ==================== Error Options Interface ====================
 
@@ -633,6 +641,92 @@ export function createDuplicateIslandIdError(id: string, path?: string, suggesti
     {
       suggestion: suggestions?.[0] ?? 'Use a unique ID for each island',
     }
+  );
+}
+
+// ==================== Accessibility Error Factory Functions ====================
+
+/**
+ * Creates an a11y error for img missing alt attribute
+ */
+export function createA11yImgNoAltError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_IMG_NO_ALT',
+    `Accessibility: <img> element is missing an 'alt' attribute`,
+    path,
+    { severity: 'warning', suggestion: `Add an 'alt' attribute to describe the image, or alt="" for decorative images` }
+  );
+}
+
+/**
+ * Creates an a11y error for button missing accessible label
+ */
+export function createA11yButtonNoLabelError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_BUTTON_NO_LABEL',
+    `Accessibility: <button> element has no text content or 'aria-label'`,
+    path,
+    { severity: 'warning', suggestion: `Add text content or an 'aria-label' attribute` }
+  );
+}
+
+/**
+ * Creates an a11y error for anchor missing accessible label
+ */
+export function createA11yAnchorNoLabelError(path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_ANCHOR_NO_LABEL',
+    `Accessibility: <a> element has no text content or 'aria-label'`,
+    path,
+    { severity: 'warning', suggestion: `Add text content or an 'aria-label' attribute` }
+  );
+}
+
+/**
+ * Creates an a11y error for form input missing label
+ */
+export function createA11yInputNoLabelError(tag: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_INPUT_NO_LABEL',
+    `Accessibility: <${tag}> element has no 'aria-label' or 'aria-labelledby'`,
+    path,
+    { severity: 'warning', suggestion: `Add an 'aria-label' or 'aria-labelledby' attribute` }
+  );
+}
+
+/**
+ * Creates an a11y error for heading level skip
+ */
+export function createA11yHeadingSkipError(current: number, expected: number, path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_HEADING_SKIP',
+    `Accessibility: Heading level skipped from h${expected - 1} to h${current}`,
+    path,
+    { severity: 'warning', suggestion: `Use h${expected} instead of h${current} to maintain heading hierarchy` }
+  );
+}
+
+/**
+ * Creates an a11y error for positive tabindex
+ */
+export function createA11yPositiveTabindexError(value: number, path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_POSITIVE_TABINDEX',
+    `Accessibility: Avoid positive tabindex value '${value}'`,
+    path,
+    { severity: 'warning', suggestion: `Use tabindex="0" or tabindex="-1" instead` }
+  );
+}
+
+/**
+ * Creates an a11y error for duplicate id
+ */
+export function createA11yDuplicateIdError(id: string, path?: string): ConstelaError {
+  return new ConstelaError(
+    'A11Y_DUPLICATE_ID',
+    `Accessibility: Duplicate id '${id}' found`,
+    path,
+    { severity: 'warning', suggestion: `Use unique id values for each element` }
   );
 }
 

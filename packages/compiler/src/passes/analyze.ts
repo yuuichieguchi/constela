@@ -26,6 +26,7 @@ import type {
   ArrayExpr,
   IslandNode,
 } from '@constela/core';
+import { validateA11y } from './a11y-validate.js';
 import {
   createUndefinedStateError,
   createUndefinedActionError,
@@ -103,6 +104,7 @@ export interface AnalyzePassSuccess {
   ok: true;
   ast: Program;
   context: AnalysisContext;
+  warnings: ConstelaError[];
 }
 
 export interface AnalyzePassFailure {
@@ -1914,6 +1916,9 @@ export function analyzePass(programAst: Program): AnalyzePassResult {
     })
   );
 
+  // Run a11y validation (warnings don't block compilation)
+  const a11yWarnings = validateA11y(programAst);
+
   if (errors.length > 0) {
     return {
       ok: false,
@@ -1925,5 +1930,6 @@ export function analyzePass(programAst: Program): AnalyzePassResult {
     ok: true,
     ast: programAst,
     context,
+    warnings: a11yWarnings,
   };
 }
