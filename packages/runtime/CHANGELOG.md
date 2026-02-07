@@ -1,5 +1,14 @@
 # @constela/runtime
 
+## 6.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.22.1
+  - @constela/ai@7.0.1
+  - @constela/compiler@0.15.22
+
 ## 6.0.0
 
 ### Patch Changes

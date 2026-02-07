@@ -1,5 +1,12 @@
 # @constela/compiler
 
+## 0.15.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @constela/core@0.22.1
+
 ## 0.15.21
 
 ### Patch Changes

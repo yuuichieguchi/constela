@@ -1,5 +1,11 @@
 # @constela/core
 
+## 0.22.1
+
+### Patch Changes
+
+- fix(server): add bindFunction to SSR adapter for var expression method binding
+
 ## 0.22.0
 
 ### Minor Changes
