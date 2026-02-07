@@ -27,8 +27,8 @@ export interface CoreEvaluationContext {
     params: Record<string, string>;
     query: Record<string, string>;
     path: string;
-  };
-  imports?: Record<string, unknown>;
-  styles?: Record<string, StylePreset>;
+  } | undefined;
+  imports?: Record<string, unknown> | undefined;
+  styles?: Record<string, StylePreset> | undefined;
   env: EnvironmentAdapter;
 }

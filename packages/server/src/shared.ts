@@ -5,7 +5,7 @@
  * and common helpers shared between renderer.ts and streaming.ts.
  */
 
-import { callGlobalFunction, GLOBAL_FUNCTIONS } from '@constela/core';
+import { GLOBAL_FUNCTIONS } from '@constela/core';
 import type { EnvironmentAdapter, CoreEvaluationContext, StylePreset } from '@constela/core';
 
 // ==================== SSR Context ====================

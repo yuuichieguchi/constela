@@ -7,7 +7,7 @@
 
 import type { StateStore } from '../state/store.js';
 import type { CompiledExpression } from '@constela/compiler';
-import { evaluate as coreEvaluate, evaluateStyle as coreEvaluateStyle, GLOBAL_FUNCTIONS } from '@constela/core';
+import { evaluate as coreEvaluate, evaluateStyle as coreEvaluateStyle, GLOBAL_FUNCTIONS, FORBIDDEN_KEYS } from '@constela/core';
 import type { EnvironmentAdapter, CoreEvaluationContext } from '@constela/core';
 
 /**
@@ -109,11 +109,10 @@ export function evaluatePayload(
 
   // Object payload case - evaluate each field recursively
   if (typeof payload === 'object' && payload !== null) {
-    const forbiddenKeys = new Set(['__proto__', 'constructor', 'prototype']);
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(payload)) {
-      if (forbiddenKeys.has(key)) continue;
+      if (FORBIDDEN_KEYS.has(key)) continue;
 
       if (isExpression(value)) {
         result[key] = evaluate(value, ctx);
