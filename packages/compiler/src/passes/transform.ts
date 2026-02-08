@@ -26,6 +26,7 @@ import type {
   SuspenseNode,
   ErrorBoundaryNode,
   StylePreset,
+  TransitionDirective,
 } from '@constela/core';
 import { isEventHandler } from '@constela/core';
 import type { AnalysisContext } from './analyze.js';
@@ -469,6 +470,7 @@ export interface CompiledTextNode {
 export interface CompiledIfNode {
   kind: 'if';
   condition: CompiledExpression;
+  transition?: TransitionDirective;
   then: CompiledNode;
   else?: CompiledNode;
 }
@@ -479,6 +481,7 @@ export interface CompiledEachNode {
   as: string;
   index?: string;
   key?: CompiledExpression;
+  transition?: TransitionDirective;
   body: CompiledNode;
 }
 
@@ -1390,6 +1393,10 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         then: transformViewNode(node.then, ctx),
       };
 
+      if (node.transition) {
+        compiledIf.transition = node.transition;
+      }
+
       if (node.else) {
         compiledIf.else = transformViewNode(node.else, ctx);
       }
@@ -1404,6 +1411,10 @@ function transformViewNode(node: ViewNode, ctx: TransformContext): CompiledNode 
         as: node.as,
         body: transformViewNode(node.body, ctx),
       };
+
+      if (node.transition) {
+        compiledEach.transition = node.transition;
+      }
 
       if (node.index) {
         compiledEach.index = node.index;

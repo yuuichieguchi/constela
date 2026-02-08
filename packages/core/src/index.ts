@@ -88,6 +88,8 @@ export type {
   // Local Action Types
   LocalActionStep,
   LocalActionDefinition,
+  // Transition Directive
+  TransitionDirective,
   // View Nodes
   ViewNode,
   ElementNode,

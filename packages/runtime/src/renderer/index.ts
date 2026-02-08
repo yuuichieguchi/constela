@@ -30,6 +30,7 @@ import { createEffect } from '../reactive/effect.js';
 import { createSignal, type Signal } from '../reactive/signal.js';
 import { evaluate, evaluatePayload, type StylePreset } from '../expression/evaluator.js';
 import { executeAction } from '../action/executor.js';
+import { applyEnterTransition, applyExitTransition } from '../transition/index.js';
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const SVG_TAGS = new Set([
@@ -523,6 +524,7 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
   let currentNode: Node | null = null;
   let currentBranch: 'then' | 'else' | 'none' = 'none';
   let branchCleanups: (() => void)[] = [];
+  let pendingExitCancel: (() => void) | null = null;
 
   const effectCleanup = createEffect(() => {
     const condition = evaluate(node.condition, { state: ctx.state, locals: ctx.locals, ...(ctx.refs && { refs: ctx.refs }), ...(ctx.imports && { imports: ctx.imports }), ...(ctx.route && { route: ctx.route }), ...(ctx.styles && { styles: ctx.styles }) });
@@ -530,15 +532,34 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
     const newBranch = shouldShowThen ? 'then' : (node.else ? 'else' : 'none');
 
     if (newBranch !== currentBranch) {
+      // Cancel any pending exit transition from a previous branch change
+      if (pendingExitCancel) {
+        pendingExitCancel();
+        pendingExitCancel = null;
+      }
+
       // Cleanup previous branch effects
       for (const cleanup of branchCleanups) {
         cleanup();
       }
       branchCleanups = [];
 
-      // Remove current node
-      if (currentNode && currentNode.parentNode) {
-        currentNode.parentNode.removeChild(currentNode);
+      const oldNode = currentNode;
+
+      // Remove old node (with or without exit transition)
+      if (oldNode && oldNode.parentNode) {
+        if (node.transition && oldNode instanceof HTMLElement) {
+          const { promise, cancel } = applyExitTransition(oldNode, node.transition);
+          pendingExitCancel = cancel;
+          promise.then(() => {
+            pendingExitCancel = null;
+            if (oldNode.parentNode) {
+              oldNode.parentNode.removeChild(oldNode);
+            }
+          });
+        } else {
+          oldNode.parentNode.removeChild(oldNode);
+        }
       }
 
       // Create a local cleanups array for the new branch
@@ -559,6 +580,11 @@ function renderIf(node: CompiledIfNode, ctx: RenderContext): Node {
       // Insert after anchor
       if (currentNode && anchor.parentNode) {
         anchor.parentNode.insertBefore(currentNode, anchor.nextSibling);
+      }
+
+      // Apply enter transition to new node
+      if (currentNode && node.transition && currentNode instanceof HTMLElement) {
+        applyEnterTransition(currentNode, node.transition);
       }
 
       currentBranch = newBranch;

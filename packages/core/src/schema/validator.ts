@@ -55,6 +55,30 @@ interface ValidationError {
 }
 
 /**
+ * Validates a TransitionDirective and returns the first error found
+ */
+function validateTransitionDirective(
+  transition: unknown,
+  path: string
+): ValidationError | null {
+  if (typeof transition !== 'object' || transition === null) {
+    return { path, message: 'transition must be an object' };
+  }
+  const t = transition as Record<string, unknown>;
+  for (const field of ['enter', 'enterActive', 'exit', 'exitActive']) {
+    if (typeof t[field] !== 'string') {
+      return { path: path + '/' + field, message: `${field} must be a string` };
+    }
+  }
+  if ('duration' in t && t['duration'] !== undefined) {
+    if (typeof t['duration'] !== 'number' || t['duration'] < 0) {
+      return { path: path + '/duration', message: 'duration must be a non-negative number' };
+    }
+  }
+  return null;
+}
+
+/**
  * Validates a ViewNode and returns the first error found
  */
 function validateViewNode(node: unknown, path: string): ValidationError | null {
@@ -114,6 +138,10 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
       {
         const condError = validateExpression(node['condition'], path + '/condition');
         if (condError) return condError;
+        if ('transition' in node) {
+          const transError = validateTransitionDirective(node['transition'], path + '/transition');
+          if (transError) return transError;
+        }
         const thenError = validateViewNode(node['then'], path + '/then');
         if (thenError) return thenError;
         if ('else' in node) {
@@ -136,6 +164,10 @@ function validateViewNode(node: unknown, path: string): ValidationError | null {
       {
         const itemsError = validateExpression(node['items'], path + '/items');
         if (itemsError) return itemsError;
+        if ('transition' in node) {
+          const transError = validateTransitionDirective(node['transition'], path + '/transition');
+          if (transError) return transError;
+        }
         const bodyError = validateViewNode(node['body'], path + '/body');
         if (bodyError) return bodyError;
       }
