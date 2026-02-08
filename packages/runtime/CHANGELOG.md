@@ -1,5 +1,22 @@
 # @constela/runtime
 
+## 7.0.0
+
+### Minor Changes
+
+- feat(core,compiler,runtime): add CSS class-based transition system for if/each nodes
+
+  Add TransitionDirective type with enter/exit animation classes. Schema validation, compiler pass-through, and runtime applyEnterTransition/applyExitTransition with cancel support and transitionend bubble guard.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @constela/core@0.23.0
+  - @constela/compiler@0.16.0
+  - @constela/ai@8.0.0
+
 ## 6.0.1
 
 ### Patch Changes

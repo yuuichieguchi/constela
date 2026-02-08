@@ -1,5 +1,21 @@
 # @constela/core
 
+## 0.23.0
+
+### Minor Changes
+
+- feat(compiler): add compile-time a11y validation with 7 accessibility rules
+
+  Add a new a11y validation stage to the compiler's analyze pass that emits severity: 'warning' errors for accessibility violations without blocking compilation. Rules: IMG_NO_ALT, BUTTON_NO_LABEL, ANCHOR_NO_LABEL, INPUT_NO_LABEL, HEADING_SKIP, POSITIVE_TABINDEX, DUPLICATE_ID.
+
+- feat(core,start): add plugin system for registering custom global functions
+
+  Introduce ConstelaPlugin interface with registerPlugin/clearPlugins API. Plugins can register global helper functions callable via call expressions. Includes prototype pollution defense and atomic registration with rollback on partial failure.
+
+- feat(core,compiler,runtime): add CSS class-based transition system for if/each nodes
+
+  Add TransitionDirective type with enter/exit animation classes. Schema validation, compiler pass-through, and runtime applyEnterTransition/applyExitTransition with cancel support and transitionend bubble guard.
+
 ## 0.22.1
 
 ### Patch Changes

@@ -1,5 +1,24 @@
 # @constela/compiler
 
+## 0.16.0
+
+### Minor Changes
+
+- feat(compiler): add compile-time a11y validation with 7 accessibility rules
+
+  Add a new a11y validation stage to the compiler's analyze pass that emits severity: 'warning' errors for accessibility violations without blocking compilation. Rules: IMG_NO_ALT, BUTTON_NO_LABEL, ANCHOR_NO_LABEL, INPUT_NO_LABEL, HEADING_SKIP, POSITIVE_TABINDEX, DUPLICATE_ID.
+
+- feat(core,compiler,runtime): add CSS class-based transition system for if/each nodes
+
+  Add TransitionDirective type with enter/exit animation classes. Schema validation, compiler pass-through, and runtime applyEnterTransition/applyExitTransition with cancel support and transitionend bubble guard.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @constela/core@0.23.0
+
 ## 0.15.22
 
 ### Patch Changes

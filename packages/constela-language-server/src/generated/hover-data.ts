@@ -208,11 +208,11 @@ export const VIEW_DOCS: Record<string, { signature: string; description: string 
     description: 'Text node - represents text content',
   },
   if: {
-    signature: '{ "kind": "if", "condition": Expression, "then": ViewNode, "else"?: ViewNode }',
+    signature: '{ "kind": "if", "condition": Expression, "transition"?: TransitionDirective, "then": ViewNode, "else"?: ViewNode }',
     description: 'If node - conditional rendering',
   },
   each: {
-    signature: '{ "kind": "each", "items": Expression, "as": string, "index"?: string, "key"?: Expression, "body": ViewNode }',
+    signature: '{ "kind": "each", "items": Expression, "as": string, "index"?: string, "key"?: Expression, "transition"?: TransitionDirective, "body": ViewNode }',
     description: 'Each node - list rendering',
   },
   component: {

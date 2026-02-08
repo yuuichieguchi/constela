@@ -1,5 +1,25 @@
 # @constela/start
 
+## 1.11.0
+
+### Minor Changes
+
+- feat(core,start): add plugin system for registering custom global functions
+
+  Introduce ConstelaPlugin interface with registerPlugin/clearPlugins API. Plugins can register global helper functions callable via call expressions. Includes prototype pollution defense and atomic registration with rollback on partial failure.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @constela/core@0.23.0
+  - @constela/compiler@0.16.0
+  - @constela/runtime@7.0.0
+  - @constela/ai@8.0.0
+  - @constela/server@19.0.0
+  - @constela/router@25.0.0
+
 ## 1.10.2
 
 ### Patch Changes
