@@ -374,6 +374,7 @@ Create `constela.config.json`:
   "adapter": "node",
   "css": "src/styles/globals.css",
   "layoutsDir": "src/layouts",
+  "plugins": ["constela-plugin-charts", "./src/plugins/my-plugin"],
   "islands": {
     "enabled": true,
     "defaultStrategy": "visible"
@@ -434,6 +435,18 @@ const resolver = new LayoutResolver('src/layouts');
 await resolver.scan();
 const layout = await resolver.load('docs');
 ```
+
+### loadPlugins
+
+```typescript
+import { loadPlugins } from '@constela/start';
+
+// Load plugins from config
+const plugins = await loadPlugins(['constela-plugin-charts', './src/plugins/my-plugin']);
+// Registers all plugin global functions automatically
+```
+
+Plugins are resolved from `node_modules` (npm packages) or relative paths (local plugins). Each plugin must export a `ConstelaPlugin` object as its default export.
 
 ### API Routes
 

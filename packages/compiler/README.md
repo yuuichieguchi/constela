@@ -42,7 +42,7 @@ constela compile app.constela.json --out dist/app.compiled.json
 The compiler transforms JSON programs through three passes:
 
 1. **Validate** - JSON Schema validation
-2. **Analyze** - Semantic analysis (state, actions, components, routes)
+2. **Analyze** - Semantic analysis (state, actions, components, routes) + a11y validation
 3. **Transform** - AST to optimized runtime program
 
 ## Supported Features
@@ -55,6 +55,8 @@ The compiler transforms JSON programs through three passes:
 - **call/lambda expressions** - Compiles method calls and anonymous functions for array/string/Math/Date operations
 - **array expression** - Compiles dynamic array construction from expressions
 - **localState/localActions** - Component-scoped state with instance isolation
+- **a11y validation** - Compile-time accessibility checks (7 rules) reported as warnings
+- **transition directive** - CSS class-based enter/exit transitions on `if`/`each` nodes
 
 ## Component Local State
 
@@ -172,6 +174,18 @@ Structured errors with JSON Pointer paths:
 - `LAYOUT_MISSING_SLOT` - Layout missing slot node
 - `LAYOUT_NOT_FOUND` - Referenced layout not found
 
+**a11y Warning Codes** (reported as warnings, do not block compilation):
+
+| Code | Description |
+|------|-------------|
+| `IMG_NO_ALT` | `<img>` element missing `alt` attribute |
+| `BUTTON_NO_LABEL` | `<button>` has no text content or `aria-label` |
+| `ANCHOR_NO_LABEL` | `<a>` has no text content or `aria-label` |
+| `INPUT_NO_LABEL` | `<input>` missing associated label or `aria-label` |
+| `HEADING_SKIP` | Heading level skipped (e.g., h1 → h3) |
+| `POSITIVE_TABINDEX` | Positive `tabindex` value found |
+| `DUPLICATE_ID` | Duplicate `id` attribute detected |
+
 ## Internal API
 
 > For framework developers only. End users should use the CLI.
@@ -188,6 +202,28 @@ if (result.ok) {
 } else {
   console.error(result.errors);
 }
+```
+
+### Compile Warnings
+
+The `compile` and `analyzePass` functions return warnings for non-fatal issues (e.g., a11y):
+
+```typescript
+const result = compile(jsonInput);
+
+if (result.ok) {
+  console.log(result.program);
+  if (result.warnings?.length) {
+    console.warn('Warnings:', result.warnings);
+    // [{ code: 'IMG_NO_ALT', message: '...', path: '/view/children/0' }]
+  }
+}
+```
+
+```typescript
+const analyzed = analyzePass(validated.program);
+// analyzed.warnings contains a11y warnings
+console.log(analyzed.warnings);
 ```
 
 ### Individual Passes

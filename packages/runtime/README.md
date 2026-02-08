@@ -281,6 +281,49 @@ Features:
 
 Use cases: Accordions, dropdowns, form fields, toggles, tooltips
 
+### Transition System
+
+Add CSS class-based enter/exit animations to `if` nodes:
+
+```json
+{
+  "kind": "if",
+  "condition": { "expr": "state", "name": "showSuccess" },
+  "then": {
+    "kind": "element",
+    "tag": "div",
+    "props": { "className": { "expr": "lit", "value": "message" } },
+    "children": [
+      { "kind": "text", "value": { "expr": "lit", "value": "Success!" } }
+    ]
+  },
+  "transition": {
+    "enter": "fade-enter",
+    "enterActive": "fade-enter-active",
+    "exit": "fade-exit",
+    "exitActive": "fade-exit-active",
+    "duration": 300
+  }
+}
+```
+
+**CSS Example:**
+
+```css
+.fade-enter { opacity: 0; }
+.fade-enter-active { transition: opacity 300ms ease; opacity: 1; }
+.fade-exit { opacity: 1; }
+.fade-exit-active { transition: opacity 300ms ease; opacity: 0; }
+```
+
+**Enter flow:** Element created → `enter` class added → next frame: `enter` removed, `enterActive` added → transition ends: `enterActive` removed.
+
+**Exit flow:** `exit` class added → next frame: `exit` removed, `exitActive` added → transition ends: element removed from DOM.
+
+- Transitions are client-side only (SSR renders without transition classes)
+- Fast condition toggling is handled with a cancel mechanism
+- `transitionend` events from child elements are ignored (bubble guard)
+
 ### Hydration
 
 Server-rendered HTML is hydrated on the client without DOM reconstruction:
@@ -534,6 +577,30 @@ interface AppInstance {
   getState(name: string): unknown;
   subscribe(name: string, fn: (value: unknown) => void): () => void;
 }
+```
+
+### Transition Functions
+
+```typescript
+import { applyEnterTransition, applyExitTransition } from '@constela/runtime';
+
+// Apply enter transition - returns a cancel function
+const cancelEnter = applyEnterTransition(element, {
+  enter: 'fade-enter',
+  enterActive: 'fade-enter-active',
+  duration: 300,
+});
+
+// Apply exit transition - returns { promise, cancel }
+const { promise, cancel } = applyExitTransition(element, {
+  exit: 'fade-exit',
+  exitActive: 'fade-exit-active',
+  duration: 300,
+});
+
+// Wait for exit to complete before removing element
+await promise;
+element.remove();
 ```
 
 ### Reactive Primitives

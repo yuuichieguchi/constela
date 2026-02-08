@@ -187,6 +187,38 @@ Construct arrays dynamically from expressions:
 }
 ```
 
+## Transition Directive
+
+`if` and `each` nodes support an optional `transition` property for CSS class-based enter/exit animations:
+
+```json
+{
+  "kind": "if",
+  "condition": { "expr": "state", "name": "showMessage" },
+  "then": { "kind": "text", "value": { "expr": "lit", "value": "Hello!" } },
+  "transition": {
+    "enter": "fade-enter",
+    "enterActive": "fade-enter-active",
+    "exit": "fade-exit",
+    "exitActive": "fade-exit-active",
+    "duration": 300
+  }
+}
+```
+
+**TransitionDirective Properties:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `enter` | `string` | No | CSS class applied on the first frame of enter |
+| `enterActive` | `string` | No | CSS class applied during enter transition |
+| `exit` | `string` | No | CSS class applied on the first frame of exit |
+| `exitActive` | `string` | No | CSS class applied during exit transition |
+| `duration` | `number` | No | Transition duration in ms (must be non-negative) |
+
+- Transitions are **client-side only**; SSR renders without transition classes.
+- `duration` defaults to listening for the `transitionend` event if omitted.
+
 ## Action Step Types
 
 27 step types for declarative actions:
@@ -518,6 +550,13 @@ Define interactive islands with partial hydration strategies:
 | `INVALID_NAVIGATE_TARGET` | Invalid navigate target |
 | `UNDEFINED_STYLE` | Reference to undefined style preset |
 | `UNDEFINED_VARIANT` | Reference to undefined style variant |
+| `IMG_NO_ALT` | `<img>` element missing `alt` attribute (a11y warning) |
+| `BUTTON_NO_LABEL` | `<button>` has no text content or `aria-label` (a11y warning) |
+| `ANCHOR_NO_LABEL` | `<a>` has no text content or `aria-label` (a11y warning) |
+| `INPUT_NO_LABEL` | `<input>` missing associated label or `aria-label` (a11y warning) |
+| `HEADING_SKIP` | Heading level skipped (e.g., h1 → h3) (a11y warning) |
+| `POSITIVE_TABINDEX` | Positive `tabindex` value found (a11y warning) |
+| `DUPLICATE_ID` | Duplicate `id` attribute detected (a11y warning) |
 
 ### Error Suggestions
 
@@ -572,6 +611,55 @@ const error = new ConstelaError(
   '/view/children/0/props/onClick'
 );
 ```
+
+## Plugin System
+
+Extend Constela with custom global functions via plugins.
+
+### ConstelaPlugin Interface
+
+```typescript
+import type { ConstelaPlugin } from '@constela/core';
+
+const myPlugin: ConstelaPlugin = {
+  name: 'my-plugin',
+  version: '1.0.0',
+  globalFunctions: {
+    greet: (name: string) => `Hello, ${name}!`,
+    sum: (...args: number[]) => args.reduce((a, b) => a + b, 0),
+  },
+};
+```
+
+### Registration API
+
+```typescript
+import { registerPlugin, clearPlugins, getRegisteredPlugins } from '@constela/core';
+
+// Register a plugin (atomically registers all global functions)
+registerPlugin(myPlugin);
+
+// List registered plugins
+const plugins = getRegisteredPlugins(); // ['my-plugin']
+
+// Remove all plugins and their global functions
+clearPlugins();
+```
+
+### Manual Global Function Registration
+
+```typescript
+import { registerGlobalFunction, unregisterGlobalFunction } from '@constela/core';
+
+registerGlobalFunction('formatCurrency', (amount: number, currency: string) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+);
+
+// Later, remove it
+unregisterGlobalFunction('formatCurrency');
+```
+
+**Security:** Plugin names containing `__proto__`, `constructor`, or `prototype` are rejected to prevent prototype pollution.
 
 ## License
 
