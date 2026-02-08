@@ -21,6 +21,8 @@ export interface ConstelaConfigFile {
     /** HTML lang attribute (e.g., 'ja', 'en', 'zh-CN') */
     lang?: string;
   };
+  /** Plugin module paths to load and register */
+  plugins?: string[];
 }
 
 export interface CLIOptions {

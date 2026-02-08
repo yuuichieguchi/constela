@@ -340,7 +340,11 @@ export {
 
 // ==================== Global Helper Functions ====================
 export type { CalendarDay } from './helpers/global-functions.js';
-export { callGlobalFunction, GLOBAL_FUNCTIONS } from './helpers/global-functions.js';
+export { callGlobalFunction, GLOBAL_FUNCTIONS, registerGlobalFunction, unregisterGlobalFunction } from './helpers/global-functions.js';
+
+// ==================== Plugin System ====================
+export type { ConstelaPlugin } from './plugin/index.js';
+export { registerPlugin, getRegisteredPlugins, clearPlugins } from './plugin/index.js';
 
 // ==================== Unified Evaluate ====================
 export type { StateReader, EnvironmentAdapter, CoreEvaluationContext } from './evaluate/index.js';

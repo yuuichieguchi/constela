@@ -2020,6 +2020,41 @@ export const GLOBAL_FUNCTIONS: Record<string, (...args: unknown[]) => unknown> =
   },
 };
 
+// ==================== Plugin Registration API ====================
+
+// Track built-in function names (immutable after module load)
+const BUILTIN_FUNCTION_NAMES = new Set(Object.keys(GLOBAL_FUNCTIONS));
+
+/**
+ * Registers a custom global function.
+ * Throws if the name collides with a built-in or existing custom function.
+ */
+const FORBIDDEN_FUNCTION_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function registerGlobalFunction(name: string, fn: (...args: unknown[]) => unknown): void {
+  if (FORBIDDEN_FUNCTION_NAMES.has(name)) {
+    throw new Error(`Cannot register global function '${name}': forbidden name`);
+  }
+  if (BUILTIN_FUNCTION_NAMES.has(name)) {
+    throw new Error(`Cannot register global function '${name}': conflicts with built-in function`);
+  }
+  if (name in GLOBAL_FUNCTIONS) {
+    throw new Error(`Cannot register global function '${name}': already registered`);
+  }
+  GLOBAL_FUNCTIONS[name] = fn;
+}
+
+/**
+ * Unregisters a custom global function.
+ * Built-in functions cannot be unregistered.
+ */
+export function unregisterGlobalFunction(name: string): void {
+  if (BUILTIN_FUNCTION_NAMES.has(name)) {
+    throw new Error(`Cannot unregister built-in function '${name}'`);
+  }
+  delete GLOBAL_FUNCTIONS[name];
+}
+
 // ==================== Public API ====================
 
 /**
