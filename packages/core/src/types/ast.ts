@@ -750,11 +750,23 @@ export interface TextNode {
 }
 
 /**
+ * Transition directive for enter/exit animations on if/each nodes
+ */
+export interface TransitionDirective {
+  enter: string;
+  enterActive: string;
+  exit: string;
+  exitActive: string;
+  duration?: number;
+}
+
+/**
  * If node - conditional rendering
  */
 export interface IfNode {
   kind: 'if';
   condition: Expression;
+  transition?: TransitionDirective;
   then: ViewNode;
   else?: ViewNode;
 }
@@ -768,6 +780,7 @@ export interface EachNode {
   as: string;
   index?: string;
   key?: Expression;
+  transition?: TransitionDirective;
   body: ViewNode;
 }
 
